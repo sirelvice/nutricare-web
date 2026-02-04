@@ -1,48 +1,84 @@
-import type { ReactNode } from "react";
+"use client";
+
 import Link from "next/link";
-import { LayoutDashboard, Calculator, User, Flame, Sparkles } from "lucide-react";
+import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import {
+  LayoutDashboard,
+  User,
+  Ruler,
+  Flame,
+  Sparkles,
+  Scale,
+} from "lucide-react";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/tools/bmi", label: "BMI Tool", icon: Calculator },
-  { href: "/tools/calories", label: "Calories", icon: Flame },
   { href: "/profile", label: "Profile", icon: User },
-  { href: "/tools/recommendations", label: "Recommendations", icon: Sparkles }
-
+  { href: "/tools/bmi", label: "BMI", icon: Ruler },
+  { href: "/tools/calories", label: "Calories", icon: Flame },
+  { href: "/tools/recommendations", label: "Recommendations", icon: Sparkles },
+  { href: "/tools/tracking/weight", label: "Weight Tracking", icon: Scale },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto flex max-w-7xl gap-4 px-4 py-6">
-        <aside className="hidden w-64 shrink-0 md:block">
-          <div className="rounded-3xl border bg-white p-4">
-            <div className="mb-4">
-              <div className="text-sm font-semibold">NutriCare</div>
-              <div className="text-xs text-slate-500">Nutrition & Health</div>
-            </div>
+  const pathname = usePathname();
 
+  return (
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <header className="mb-6 flex items-center justify-between">
+          <Link href="/" className="text-lg font-semibold tracking-tight">
+            NutriCare
+          </Link>
+
+          <div className="text-sm text-slate-600">
+            Tools • Profile • Tracking
+          </div>
+        </header>
+
+        <div className="grid gap-6 md:grid-cols-[240px_1fr]">
+          <aside className="h-fit rounded-3xl border bg-white p-3">
             <nav className="space-y-1">
               {nav.map((item) => {
+                const active =
+                  pathname === item.href || pathname.startsWith(item.href + "/");
                 const Icon = item.icon;
+
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-2 rounded-2xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    className={[
+                      "flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition",
+                      active
+                        ? "bg-slate-900 text-white"
+                        : "text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
                   >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
+                    <Icon size={18} />
+                    <span>{item.label}</span>
                   </Link>
                 );
               })}
             </nav>
-          </div>
-        </aside>
 
-        <main className="flex-1 rounded-3xl border bg-white p-5 md:p-8">
-          {children}
-        </main>
+            <div className="mt-4 rounded-2xl bg-slate-50 p-3 text-xs text-slate-600">
+              <div className="font-semibold text-slate-700">NutriCare MVP</div>
+              <div className="mt-1">
+                Profile • BMI • Calories • Recommendations • Tracking
+              </div>
+            </div>
+          </aside>
+
+          <main className="rounded-3xl border bg-white p-5 md:p-6">
+            {children}
+          </main>
+        </div>
+
+        <footer className="mt-10 border-t pt-6 text-xs text-slate-500">
+          © {new Date().getFullYear()} NutriCare. Built for nutrition-first care.
+        </footer>
       </div>
     </div>
   );

@@ -1,65 +1,155 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="space-y-14">
+      {/* HERO */}
+      <section className="rounded-3xl border bg-gradient-to-b from-slate-50 to-white p-8 md:p-12">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">Evidence-based</Badge>
+            <Badge variant="secondary">Privacy-first</Badge>
+            <Badge variant="secondary">Partner-ready</Badge>
+          </div>
+
+          <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
+            NutriCare — nutrition intelligence for healthier lives.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p className="max-w-2xl text-base text-slate-600 md:text-lg">
+            Assess nutrition-driven health (BMI and more), get practical guidance, and track progress over time —
+            designed for individuals and public-health pilots.
+          </p>
+
+          <div className="flex flex-wrap gap-3">
+            <Button asChild size="lg">
+              <Link href="/register">Get started</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/impact">View impact</Link>
+            </Button>
+          </div>
+
+          <div className="grid gap-3 pt-4 md:grid-cols-3">
+            {[
+              { k: "Assess", v: "BMI & core metrics with clear interpretation" },
+              { k: "Guide", v: "Targets and practical nutrition guidance" },
+              { k: "Track", v: "Progress trends that show improvement over time" },
+            ].map((x) => (
+              <div key={x.k} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                <div className="text-sm font-semibold">{x.k}</div>
+                <div className="mt-1 text-sm text-slate-600">{x.v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* WHAT WE DO */}
+      <section className="space-y-5">
+        <div className="flex items-end justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold md:text-2xl">What NutriCare does</h2>
+            <p className="max-w-2xl text-slate-600">
+              A simple, trustworthy experience for people — and a scalable foundation for partners.
+            </p>
+          </div>
+          <Button asChild variant="ghost" className="hidden md:inline-flex">
+            <Link href="/tools/bmi">Try BMI tool →</Link>
+          </Button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle className="text-lg">Health assessments</CardTitle>
+            </CardHeader>
+            <CardContent className="text-slate-600">
+              BMI today, then more assessments over time — always with clear explanations, not just numbers.
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle className="text-lg">Nutrition guidance</CardTitle>
+            </CardHeader>
+            <CardContent className="text-slate-600">
+              Practical targets and guidance designed to be understandable, local-friendly, and easy to follow.
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-3xl">
+            <CardHeader>
+              <CardTitle className="text-lg">Progress tracking</CardTitle>
+            </CardHeader>
+            <CardContent className="text-slate-600">
+              Trends over time so users can see improvement — and partners can measure outcomes responsibly.
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <Separator />
+
+      {/* TRUST / CREDIBILITY */}
+      <section className="rounded-3xl border p-8">
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold md:text-2xl">Trust & credibility</h2>
+          <p className="max-w-3xl text-slate-600">
+            NutriCare is designed with transparent calculations, clean UX, and privacy-first principles —
+            suitable for real deployments and partner reporting.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-4">
+          {[
+            { t: "Transparent methods", d: "Clear formulas and understandable outputs." },
+            { t: "Clinical tone", d: "Calm, professional design and language." },
+            { t: "Privacy-first", d: "Collect only what is necessary." },
+            { t: "Partner-ready", d: "Built to support pilots and reporting." },
+          ].map((x) => (
+            <div key={x.t} className="rounded-2xl bg-slate-50 p-4">
+              <div className="text-sm font-semibold">{x.t}</div>
+              <div className="mt-1 text-sm text-slate-600">{x.d}</div>
+            </div>
+          ))}
         </div>
-      </main>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button asChild variant="outline">
+            <Link href="/partners">For partners</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/about">About NutriCare</Link>
+          </Button>
+        </div>
+      </section>
+
+      {/* CTA BAND */}
+      <section className="rounded-3xl border bg-white p-8">
+        <div className="grid gap-6 md:grid-cols-2 md:items-center">
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold md:text-2xl">
+              Start with a simple assessment.
+            </h2>
+            <p className="text-slate-600">
+              Try the BMI tool and see how NutriCare turns basic inputs into clear, useful guidance.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 md:justify-end">
+            <Button asChild>
+              <Link href="/tools/bmi">Open BMI tool</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/register">Create an account</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

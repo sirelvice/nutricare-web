@@ -1,32 +1,27 @@
 import { NextResponse } from "next/server";
-import { calcBMIKgM, bmiCategoryWHO } from "@/lib/calc/bmi";
-import { getNutritionRecommendations } from "@/lib/recommendations/nutrition";
+import { buildRecommendations } from "@/lib/reco/engine";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
 
-  const heightCm = Number(body?.heightCm);
-  const weightKg = Number(body?.weightKg);
+  const bmi = Number(body?.bmi);
+  const category = body?.category as
+    | "underweight"
+    | "normal"
+    | "overweight"
+    | "obese1"
+    | "obese2"
+    | "obese3";
   const goal = (body?.goal ?? "maintain") as "lose" | "maintain" | "gain";
+  const targetCalories = Number(body?.targetCalories);
 
-  if (!heightCm || !weightKg) {
-    return NextResponse.json({ error: "heightCm and weightKg are required." }, { status: 400 });
+  if (!Number.isFinite(bmi) || !Number.isFinite(targetCalories) || !category) {
+    return NextResponse.json(
+      { error: "bmi, category, and targetCalories are required." },
+      { status: 400 }
+    );
   }
 
-  const bmi = calcBMIKgM(weightKg, heightCm);
-  if (!bmi) return NextResponse.json({ error: "Invalid BMI inputs." }, { status: 400 });
-
-  const category = bmiCategoryWHO(bmi);
-
-  const recommendations = getNutritionRecommendations({
-    bmi,
-    bmiLabel: category.label,
-    goal,
-  });
-
-  return NextResponse.json({
-    bmi,
-    category,
-    recommendations,
-  });
+  const rec = buildRecommendations({ bmi, category, goal, targetCalories });
+  return NextResponse.json(rec);
 }

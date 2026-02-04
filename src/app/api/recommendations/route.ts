@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { calcBMIKgM, bmiCategory } from "@/lib/calc/bmi";
+import { calcBMIKgM, bmiCategoryWHO } from "@/lib/calc/bmi";
 import { getNutritionRecommendations } from "@/lib/recommendations/nutrition";
 
 export async function POST(req: Request) {
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const bmi = calcBMIKgM(weightKg, heightCm);
   if (!bmi) return NextResponse.json({ error: "Invalid BMI inputs." }, { status: 400 });
 
-  const category = bmiCategory(bmi);
+  const category = bmiCategoryWHO(bmi);
 
   const recommendations = getNutritionRecommendations({
     bmi,

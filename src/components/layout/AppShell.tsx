@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Calculator, User } from "lucide-react";
+import { LayoutDashboard, Calculator, User, Flame } from "lucide-react";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tools/bmi", label: "BMI Tool", icon: Calculator },
+  { href: "/tools/calories", label: "Calories", icon: Flame },
   { href: "/profile", label: "Profile", icon: User },
+
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

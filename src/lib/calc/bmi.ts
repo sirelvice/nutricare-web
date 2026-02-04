@@ -4,9 +4,20 @@ export function calcBMIKgM(weightKg: number, heightCm: number) {
   return Number.isFinite(bmi) ? Number(bmi.toFixed(1)) : null;
 }
 
-export function bmiCategory(bmi: number) {
-  if (bmi < 18.5) return { label: "Underweight", note: "May indicate insufficient nutrition." };
-  if (bmi < 25) return { label: "Healthy range", note: "Generally associated with lower risk." };
-  if (bmi < 30) return { label: "Overweight", note: "Consider gradual improvements in diet and activity." };
-  return { label: "Obesity range", note: "Higher risk; consider professional guidance." };
+/**
+ * WHO adult BMI categories:
+ * <18.5 Underweight
+ * 18.5–24.9 Normal
+ * 25.0–29.9 Overweight
+ * 30.0–34.9 Obese Class I
+ * 35.0–39.9 Obese Class II
+ * >=40  Obese Class III
+ */
+export function bmiCategoryWHO(bmi: number) {
+  if (bmi < 18.5) return { label: "Underweight", note: "Below the healthy range." };
+  if (bmi < 25) return { label: "Normal", note: "Within the healthy range." };
+  if (bmi < 30) return { label: "Overweight", note: "Above the healthy range." };
+  if (bmi < 35) return { label: "Obese Class I", note: "Higher risk; gradual lifestyle changes help." };
+  if (bmi < 40) return { label: "Obese Class II", note: "Higher risk; consider professional guidance." };
+  return { label: "Obese Class III", note: "Highest risk category; seek medical guidance when possible." };
 }

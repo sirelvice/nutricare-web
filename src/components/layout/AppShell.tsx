@@ -10,6 +10,8 @@ import {
   Flame,
   Sparkles,
   Scale,
+  Clock,
+  FileDown
 } from "lucide-react";
 
 const nav = [
@@ -19,6 +21,10 @@ const nav = [
   { href: "/tools/calories", label: "Calories", icon: Flame },
   { href: "/tools/recommendations", label: "Recommendations", icon: Sparkles },
   { href: "/tools/tracking/weight", label: "Weight Tracking", icon: Scale },
+  { href: "/history", label: "History", icon: Clock },
+  { href: "/report", label: "Export Report", icon: FileDown },
+
+
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

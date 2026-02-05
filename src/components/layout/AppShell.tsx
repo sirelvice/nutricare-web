@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import Image from "next/image";
 import {
   LayoutDashboard,
   User,
@@ -44,9 +45,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-6xl px-4 py-6">
         <header className="mb-6 flex items-center justify-between">
-          <Link href="/" className="text-lg font-semibold tracking-tight">
-            NutriCare
+          <Link href="/" className="flex items-center gap-2">
+            <Image
+              src="/brand/nutricare-logo.png"
+              alt="NutriCare"
+              width={100}
+              height={40}
+              priority
+            />
           </Link>
+
 
           <div className="text-sm text-slate-600">
             Tools • Profile • Tracking

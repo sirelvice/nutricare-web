@@ -1,117 +1,91 @@
-import Link from "next/link";
+"use client";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { impactMetrics, impactNarrative, impactMeasures } from "@/lib/impact/config";
+
+function download(filename: string, text: string) {
+  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export default function ImpactPage() {
+  async function onDownload() {
+    const res = await fetch("/api/impact-snapshot");
+    const json = await res.json();
+    const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    download(`nutricare-impact-snapshot-${ts}.json`, JSON.stringify(json, null, 2));
+  }
+
   return (
-    <div className="space-y-12">
-      {/* Header */}
+    <div className="space-y-10">
       <section className="space-y-4">
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">Impact</Badge>
-          <Badge variant="secondary">Pilot-ready</Badge>
+          <Badge variant="secondary">Reporting</Badge>
           <Badge variant="secondary">Privacy-first</Badge>
         </div>
 
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-          Measuring nutrition-driven health outcomes.
-        </h1>
+        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">{impactNarrative.title}</h1>
+        <div className="max-w-3xl space-y-2 text-slate-600">
+          {impactNarrative.body.map((p) => (
+            <p key={p}>{p}</p>
+          ))}
+        </div>
 
-        <p className="max-w-3xl text-slate-600">
-          NutriCare is designed to support responsible, anonymized reporting for pilots — helping partners
-          understand trends, identify risks early, and improve nutrition interventions.
-        </p>
-
-        <div className="flex flex-wrap gap-3">
-          <Button asChild>
-            <Link href="/partners">Partner with us</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/register">Get started</Link>
+        <div className="pt-2">
+          <Button onClick={onDownload} variant="outline">
+            Download impact snapshot (JSON)
           </Button>
         </div>
       </section>
 
-      {/* KPI cards (demo placeholders) */}
       <section className="grid gap-4 md:grid-cols-4">
-        {[
-          { k: "Screenings", v: "—", d: "Users assessed (pilot/demo)" },
-          { k: "Risk flags", v: "—", d: "Users flagged for follow-up" },
-          { k: "Trend insights", v: "—", d: "Changes over time detected" },
-          { k: "Reports", v: "—", d: "Exportable summaries (planned)" },
-        ].map((x) => (
-          <Card key={x.k} className="rounded-3xl">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-slate-600">{x.k}</CardTitle>
+        {impactMetrics.map((m) => (
+          <Card key={m.label} className="rounded-3xl">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-sm text-slate-500">{m.label}</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold">{x.v}</div>
-              <div className="mt-1 text-xs text-slate-500">{x.d}</div>
+            <CardContent className="space-y-2">
+              <div className="text-2xl font-semibold">{m.value}</div>
+              <div className="text-xs text-slate-600">{m.note}</div>
             </CardContent>
           </Card>
         ))}
       </section>
 
-      <Separator />
-
-      {/* What we measure */}
-      <section className="space-y-5">
-        <h2 className="text-xl font-semibold md:text-2xl">What NutriCare helps measure</h2>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {[
-            {
-              t: "Nutrition status indicators",
-              d: "BMI categories and trend direction over time (screening-level).",
-            },
-            {
-              t: "Early risk identification",
-              d: "Simple flags for follow-up when patterns suggest increased risk.",
-            },
-            {
-              t: "Program-level trends",
-              d: "Aggregated insights by age group, location, or time period (anonymized).",
-            },
-          ].map((x) => (
-            <Card key={x.t} className="rounded-3xl">
-              <CardHeader>
-                <CardTitle className="text-lg">{x.t}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-slate-600">{x.d}</CardContent>
-            </Card>
-          ))}
-        </div>
+      <section className="grid gap-4 md:grid-cols-3">
+        {impactMeasures.map((b) => (
+          <Card key={b.title} className="rounded-3xl">
+            <CardHeader>
+              <CardTitle className="text-lg">{b.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
+                {b.items.map((x) => (
+                  <li key={x}>{x}</li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ))}
       </section>
 
-      {/* Privacy note */}
-      <section className="rounded-3xl border bg-slate-50 p-8">
-        <h2 className="text-lg font-semibold">Privacy & ethics</h2>
-        <p className="mt-2 max-w-3xl text-slate-600">
-          NutriCare is built to minimize personal data collection. For partner reporting, we focus on
-          aggregated and anonymized insights wherever possible.
+      <section className="rounded-3xl border bg-slate-50 p-6 text-sm text-slate-700">
+        <div className="font-semibold">Donor/partner readiness</div>
+        <p className="mt-2 text-slate-600">
+          NutriCare is designed to support pilots: measurable usage, exportable summaries, and privacy-first handling.
+          The backend phase will enable secure, aggregated reporting (site-level and programme-level) while keeping
+          individuals protected.
         </p>
-      </section>
-
-      {/* CTA */}
-      <section className="rounded-3xl border bg-white p-8">
-        <div className="grid gap-6 md:grid-cols-2 md:items-center">
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold md:text-2xl">Want to run a pilot?</h2>
-            <p className="text-slate-600">
-              We can support pilots with clear onboarding, lightweight reporting, and a scalable product foundation.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3 md:justify-end">
-            <Button asChild>
-              <Link href="/partners">View partner model</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/about">Learn more</Link>
-            </Button>
-          </div>
-        </div>
       </section>
     </div>
   );

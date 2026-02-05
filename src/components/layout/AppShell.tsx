@@ -11,21 +11,31 @@ import {
   Sparkles,
   Scale,
   Clock,
-  FileDown
+  FileDown,
+  PieChart,
+  List,
 } from "lucide-react";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/profile", label: "Profile", icon: User },
+
+  // Tools
   { href: "/tools/bmi", label: "BMI", icon: Ruler },
   { href: "/tools/calories", label: "Calories", icon: Flame },
+  { href: "/tools/macros", label: "Macros", icon: PieChart },
   { href: "/tools/recommendations", label: "Recommendations", icon: Sparkles },
   { href: "/tools/tracking/weight", label: "Weight Tracking", icon: Scale },
+
+  // History
   { href: "/history", label: "History", icon: Clock },
+  { href: "/history/bmi", label: "BMI history", icon: List },
+  { href: "/history/calories", label: "Calories history", icon: List },
+
+  // Reports
   { href: "/report", label: "Export Report", icon: FileDown },
-
-
 ];
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();

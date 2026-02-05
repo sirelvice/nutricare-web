@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import { getProfileSnapshot } from "@/lib/profile/storage";
+import {
+  subscribeProfile,
+  getProfileSnapshot,
+  getProfileServerSnapshot,
+} from "@/lib/profile/storage";
 import { loadWeightEntries, summarize } from "@/lib/tracking/weight";
 
 import { loadBmiHistory } from "@/lib/history/bmi";
@@ -26,9 +30,6 @@ function bmiCategoryFromValue(bmi: number) {
   return { key: "obese3", label: "Obese Class III" };
 }
 
-// ────────────────────────────────────────────────
-// Main Component
-// ────────────────────────────────────────────────
 function fmtTime(ts: number) {
   try {
     return new Date(ts).toLocaleString();
@@ -37,14 +38,19 @@ function fmtTime(ts: number) {
   }
 }
 
+// ────────────────────────────────────────────────
+// Main Component
+// ────────────────────────────────────────────────
+
 export default function DashboardPage() {
   // ── Data loading ────────────────────────────────────────
-  const profile = useMemo(() => getProfileSnapshot(), []);
-  const weightEntries = useMemo(() => loadWeightEntries(), []);
-  const weightStats = useMemo(
-    () => summarize(weightEntries),
-    [weightEntries]
+  const profile = useSyncExternalStore(
+    subscribeProfile,
+    getProfileSnapshot,
+    getProfileServerSnapshot
   );
+  const weightEntries = useMemo(() => loadWeightEntries(), []);
+  const weightStats = useMemo(() => summarize(weightEntries), [weightEntries]);
   const bmiHistory = useMemo(() => loadBmiHistory(), []);
   const calHistory = useMemo(() => loadCaloriesHistory(), []);
 
@@ -69,22 +75,29 @@ export default function DashboardPage() {
 
   // ── Render ──────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header + Actions */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-slate-600">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            Dashboard
+          </h1>
+          <p className="text-slate-600 max-w-2xl">
             Your NutriCare overview — profile, tools, and progress at a glance.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button asChild variant="default" size="sm">
+            <Link href="/tools/bmi">Calculate BMI</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
             <Link href="/profile">Update profile</Link>
           </Button>
-          <Button asChild>
-            <Link href="/tools/bmi">Calculate BMI</Link>
+          <Button asChild variant="ghost" size="sm">
+            <a href="/api/report/pdf" target="_blank" rel="noreferrer">
+              Download PDF report
+            </a>
           </Button>
         </div>
       </div>
@@ -96,7 +109,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="text-lg">Profile</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-slate-700">
+          <CardContent className="space-y-4 text-slate-700">
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">Goal: {profile.goal}</Badge>
               <Badge variant="secondary">Activity: {profile.activity}</Badge>
@@ -127,7 +140,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="text-lg">BMI snapshot</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-4">
             {bmiInfo ? (
               <>
                 <div className="text-3xl font-semibold">{bmiInfo.bmi}</div>
@@ -140,17 +153,13 @@ export default function DashboardPage() {
               </>
             ) : (
               <p className="text-slate-600">
-                Add a weight entry and set your height in Profile to see BMI
-                here.
+                Add a weight entry and set your height in Profile to see BMI here.
               </p>
             )}
 
-            <div className="pt-2 flex gap-2">
+            <div className="pt-2">
               <Button asChild variant="outline" className="w-full">
                 <Link href="/tools/tracking/weight">Add weight</Link>
-              </Button>
-              <Button asChild className="w-full">
-                <Link href="/tools/bmi">BMI tool</Link>
               </Button>
             </div>
           </CardContent>
@@ -161,7 +170,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="text-lg">Weight trend</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-4">
             {weightStats ? (
               <>
                 <div className="flex flex-wrap gap-2">
@@ -290,8 +299,7 @@ export default function DashboardPage() {
         <CardContent className="text-slate-700">
           <ul className="list-disc space-y-2 pl-5 text-sm">
             <li>
-              Save your Profile (age, height, goal, activity) so tools can
-              auto-fill.
+              Save your Profile (age, height, goal, activity) so tools can auto-fill.
             </li>
             <li>
               Add weight entries weekly to see trend and BMI snapshot.

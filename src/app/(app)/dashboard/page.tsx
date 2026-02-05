@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import { loadProfile } from "@/lib/profile/storage";
+import { getProfileSnapshot } from "@/lib/profile/storage";
 import { loadWeightEntries, summarize } from "@/lib/tracking/weight";
+
+import { loadBmiHistory } from "@/lib/history/bmi";
+import { loadCaloriesHistory } from "@/lib/history/calories";
+
+// ────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────
 
 function bmiCategoryFromValue(bmi: number) {
   if (bmi < 18.5) return { key: "underweight", label: "Underweight" };
@@ -18,26 +26,51 @@ function bmiCategoryFromValue(bmi: number) {
   return { key: "obese3", label: "Obese Class III" };
 }
 
-export default function DashboardPage() {
-  const profile = useMemo(() => loadProfile(), []);
-  const weightEntries = useMemo(() => loadWeightEntries(), []);
-  const weightStats = useMemo(() => summarize(weightEntries), [weightEntries]);
+// ────────────────────────────────────────────────
+// Main Component
+// ────────────────────────────────────────────────
+function fmtTime(ts: number) {
+  try {
+    return new Date(ts).toLocaleString();
+  } catch {
+    return String(ts);
+  }
+}
 
-  // Quick BMI estimate if we have both height + latest weight
+export default function DashboardPage() {
+  // ── Data loading ────────────────────────────────────────
+  const profile = useMemo(() => getProfileSnapshot(), []);
+  const weightEntries = useMemo(() => loadWeightEntries(), []);
+  const weightStats = useMemo(
+    () => summarize(weightEntries),
+    [weightEntries]
+  );
+  const bmiHistory = useMemo(() => loadBmiHistory(), []);
+  const calHistory = useMemo(() => loadCaloriesHistory(), []);
+
+  const latestBmi = bmiHistory[0] ?? null;
+  const latestCalories = calHistory[0] ?? null;
+
+  // ── Derived values ──────────────────────────────────────
   const bmiInfo = useMemo(() => {
-    const h = profile.heightCm;
+    const heightCm = profile.heightCm;
     const latestWeight = weightStats?.last?.weightKg;
 
-    if (!h || !latestWeight) return null;
+    if (!heightCm || !latestWeight) return null;
 
-    const bmi = latestWeight / Math.pow(h / 100, 2);
-    const cat = bmiCategoryFromValue(bmi);
+    const bmi = latestWeight / Math.pow(heightCm / 100, 2);
+    const category = bmiCategoryFromValue(bmi);
 
-    return { bmi: Number(bmi.toFixed(1)), category: cat.label };
+    return {
+      bmi: Number(bmi.toFixed(1)),
+      category: category.label,
+    };
   }, [profile.heightCm, weightStats?.last?.weightKg]);
 
+  // ── Render ──────────────────────────────────────────────
   return (
     <div className="space-y-6">
+      {/* Header + Actions */}
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
@@ -56,8 +89,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top stats */}
+      {/* Main Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
+        {/* Profile Card */}
         <Card className="rounded-3xl">
           <CardHeader>
             <CardTitle className="text-lg">Profile</CardTitle>
@@ -70,9 +104,14 @@ export default function DashboardPage() {
             </div>
 
             <div className="text-sm text-slate-600">
-              Height: <span className="font-medium text-slate-800">{profile.heightCm ?? "—"}</span> cm
-              {" • "}
-              Age: <span className="font-medium text-slate-800">{profile.age ?? "—"}</span>
+              Height:{" "}
+              <span className="font-medium text-slate-800">
+                {profile.heightCm ?? "—"}
+              </span>{" "}
+              cm • Age:{" "}
+              <span className="font-medium text-slate-800">
+                {profile.age ?? "—"}
+              </span>
             </div>
 
             <div className="pt-2">
@@ -83,6 +122,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+        {/* BMI Snapshot Card */}
         <Card className="rounded-3xl">
           <CardHeader>
             <CardTitle className="text-lg">BMI snapshot</CardTitle>
@@ -91,14 +131,17 @@ export default function DashboardPage() {
             {bmiInfo ? (
               <>
                 <div className="text-3xl font-semibold">{bmiInfo.bmi}</div>
-                <div className="text-sm text-slate-600">{bmiInfo.category}</div>
+                <div className="text-sm text-slate-600">
+                  {bmiInfo.category}
+                </div>
                 <p className="text-xs text-slate-500">
                   Based on latest weight entry + your saved height.
                 </p>
               </>
             ) : (
               <p className="text-slate-600">
-                Add a weight entry and set your height in Profile to see BMI here.
+                Add a weight entry and set your height in Profile to see BMI
+                here.
               </p>
             )}
 
@@ -113,6 +156,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+        {/* Weight Trend Card */}
         <Card className="rounded-3xl">
           <CardHeader>
             <CardTitle className="text-lg">Weight trend</CardTitle>
@@ -132,11 +176,16 @@ export default function DashboardPage() {
                   <span className="font-medium text-slate-800">
                     {weightStats.last.weightKg} kg
                   </span>{" "}
-                  on <span className="font-medium text-slate-800">{weightStats.last.date}</span>
+                  on{" "}
+                  <span className="font-medium text-slate-800">
+                    {weightStats.last.date}
+                  </span>
                 </div>
               </>
             ) : (
-              <p className="text-slate-600">No weight data yet. Add your first entry.</p>
+              <p className="text-slate-600">
+                No weight data yet. Add your first entry.
+              </p>
             )}
 
             <div className="pt-2">
@@ -148,7 +197,54 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Tools */}
+      {/* Recent calculations */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="rounded-3xl">
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="text-lg">Recent BMI</CardTitle>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/history">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!latestBmi ? (
+              <p className="text-slate-600">No BMI history yet.</p>
+            ) : (
+              <div className="rounded-2xl border p-4">
+                <div className="font-semibold">BMI {latestBmi.bmi.toFixed(1)}</div>
+                <div className="text-sm text-slate-600">
+                  {fmtTime(latestBmi.createdAt)} • {latestBmi.heightCm}cm • {latestBmi.weightKg}kg
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl">
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="text-lg">Recent Calories</CardTitle>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/history">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!latestCalories ? (
+              <p className="text-slate-600">No calories history yet.</p>
+            ) : (
+              <div className="rounded-2xl border p-4">
+                <div className="font-semibold">
+                  Target {latestCalories.targetCalories} kcal • TDEE {latestCalories.tdee} • BMR {latestCalories.bmr}
+                </div>
+                <div className="text-sm text-slate-600">
+                  {fmtTime(latestCalories.createdAt)} • {latestCalories.weightKg}kg • {latestCalories.heightCm}cm • {latestCalories.ageYears}y
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tools Section */}
       <Card className="rounded-3xl">
         <CardHeader>
           <CardTitle className="text-lg">Tools</CardTitle>
@@ -186,16 +282,23 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Next steps */}
+      {/* Next Steps */}
       <Card className="rounded-3xl border bg-slate-50">
         <CardHeader>
           <CardTitle className="text-lg">Next steps</CardTitle>
         </CardHeader>
         <CardContent className="text-slate-700">
           <ul className="list-disc space-y-2 pl-5 text-sm">
-            <li>Save your Profile (age, height, goal, activity) so tools can auto-fill.</li>
-            <li>Add weight entries weekly to see trend and BMI snapshot.</li>
-            <li>Next build: history + “export report” (donor/partner friendly).</li>
+            <li>
+              Save your Profile (age, height, goal, activity) so tools can
+              auto-fill.
+            </li>
+            <li>
+              Add weight entries weekly to see trend and BMI snapshot.
+            </li>
+            <li>
+              Next build: history + “export report” (donor/partner friendly).
+            </li>
           </ul>
         </CardContent>
       </Card>

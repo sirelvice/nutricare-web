@@ -1,31 +1,52 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { addBmiHistory } from "@/lib/history/bmi";
 
 type Goal = "lose" | "maintain" | "gain";
 
-type ApiResponse =
-  | {
-      bmi: number;
-      category: { label: string; note: string };
-      recommendations: {
-        bmiLabel: string;
-        goal: Goal;
-        summary: string;
-        focus: string[];
-        limit: string[];
-        mealIdeas: string[];
-      };
-    }
-  | { error: string };
+type ApiOk = {
+  bmi: number;
+  category: { label: string; note: string };
+  recommendations: {
+    bmiLabel: string;
+    goal: Goal;
+    summary: string;
+    focus: string[];
+    limit: string[];
+    mealIdeas: string[];
+  };
+};
 
-function isOk(res: ApiResponse): res is Exclude<ApiResponse, { error: string }> {
-  return (res as any).bmi !== undefined;
+type ApiResponse = ApiOk | { error: string };
+
+function isOk(res: ApiResponse): res is ApiOk {
+  return "bmi" in res && "category" in res && "recommendations" in res;
+}
+
+type CategoryKey =
+  | "underweight"
+  | "normal"
+  | "overweight"
+  | "obese1"
+  | "obese2"
+  | "obese3";
+
+function categoryKeyFromLabel(label: string): CategoryKey {
+  const x = label.toLowerCase();
+  if (x.includes("under")) return "underweight";
+  if (x.includes("normal")) return "normal";
+  if (x.includes("overweight")) return "overweight";
+  if (x.includes("class i")) return "obese1";
+  if (x.includes("class ii")) return "obese2";
+  if (x.includes("class iii")) return "obese3";
+  // fallback
+  return "normal";
 }
 
 export default function BMIPage() {
@@ -45,7 +66,9 @@ export default function BMIPage() {
     return true;
   }, [heightCm, weightKg]);
 
-  async function fetchRecommendations() {
+  async function fetchRecommendations(nextGoal?: Goal) {
+    const g = nextGoal ?? goal;
+
     if (!valid) {
       setApi({ error: "Enter a valid height and weight first." });
       return;
@@ -55,21 +78,38 @@ export default function BMIPage() {
     setApi(null);
 
     try {
+      const h = Number(heightCm);
+      const w = Number(weightKg);
+
       const res = await fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          heightCm: Number(heightCm),
-          weightKg: Number(weightKg),
-          goal,
+          heightCm: h,
+          weightKg: w,
+          goal: g,
         }),
       });
 
       const json = (await res.json()) as ApiResponse;
+
       if (!res.ok) {
-        setApi({ error: (json as any).error ?? "Request failed." });
+        const err = json && typeof json === "object" && "error" in json
+          ? String(json.error)
+          : "Request failed.";
+        setApi({ error: err });
       } else {
         setApi(json);
+
+        // Save BMI to History (only when we have a successful result)
+        if (isOk(json)) {
+          addBmiHistory({
+            heightCm: h,
+            weightKg: w,
+            bmi: Number(json.bmi.toFixed(1)),
+            category: categoryKeyFromLabel(json.category.label),
+          });
+        }
       }
     } catch {
       setApi({ error: "Network error. Please try again." });
@@ -78,13 +118,14 @@ export default function BMIPage() {
     }
   }
 
-  // Auto-refresh recommendations when goal changes (if we already have a result)
-  useEffect(() => {
-    if (api && isOk(api)) {
-      fetchRecommendations();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+  function onGoalChange(g: Goal) {
+    setGoal(g);
+
+    // If already calculated once, refresh immediately with new goal (no useEffect loop)
+    if (api && isOk(api) && valid && !loading) {
+      fetchRecommendations(g);
     }
-  }, [goal]);
+  }
 
   return (
     <div className="space-y-6">
@@ -92,6 +133,7 @@ export default function BMIPage() {
         <h1 className="text-2xl font-semibold">BMI Calculator</h1>
         <p className="text-slate-600">
           Enter your details to get BMI, category, and nutrition recommendations.
+          Results are saved to History.
         </p>
       </div>
 
@@ -131,7 +173,7 @@ export default function BMIPage() {
                   key={g}
                   type="button"
                   variant={goal === g ? "default" : "outline"}
-                  onClick={() => setGoal(g)}
+                  onClick={() => onGoalChange(g)}
                 >
                   {g === "lose" ? "Lose weight" : g === "gain" ? "Gain weight" : "Maintain"}
                 </Button>
@@ -141,12 +183,13 @@ export default function BMIPage() {
 
           <div className="md:col-span-3">
             <Button
-              onClick={fetchRecommendations}
+              onClick={() => fetchRecommendations()}
               disabled={!valid || loading}
               className="w-full md:w-auto"
             >
               {loading ? "Calculating..." : "Calculate & get recommendations"}
             </Button>
+
             {!valid ? (
               <p className="mt-2 text-xs text-slate-500">
                 Enter realistic values (Height 80–250cm, Weight 20–350kg).
@@ -158,9 +201,13 @@ export default function BMIPage() {
 
       {/* Result */}
       <Card className="rounded-3xl">
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-lg">Result</CardTitle>
+          <Button asChild variant="outline" size="sm">
+            <a href="/history">View History</a>
+          </Button>
         </CardHeader>
+
         <CardContent className="space-y-4">
           {!api ? (
             <p className="text-slate-600">Fill in your details, then click calculate.</p>

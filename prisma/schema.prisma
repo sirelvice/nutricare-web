@@ -4,13 +4,14 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  // url is intentionally removed — handled by adapter in prisma.config.ts
 }
 
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
-  password  String
+  passwordHash String   // ← hashed password only (never plain text)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

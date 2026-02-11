@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 
 // If you ever run into caching issues in dev:
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {

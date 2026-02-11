@@ -95,7 +95,7 @@ export default function DashboardPage() {
             <Link href="/profile">Update profile</Link>
           </Button>
           <Button asChild variant="ghost" size="sm">
-            <a href="/api/report/pdf" download>
+            <a href="/api/report/pdf" download="nutricare-impact-report.pdf">
               Download PDF report
             </a>
           </Button>

@@ -95,7 +95,7 @@ export default function DashboardPage() {
             <Link href="/profile">Update profile</Link>
           </Button>
           <Button asChild variant="ghost" size="sm">
-            <a href="/api/report/pdf" target="_blank" rel="noreferrer">
+            <a href="/api/report/pdf" download>
               Download PDF report
             </a>
           </Button>
@@ -288,6 +288,32 @@ export default function DashboardPage() {
               <Link href="/tools/recommendations">Open</Link>
             </Button>
           </div>
+
+          <div className="rounded-2xl border p-4">
+            <div className="font-semibold">Macros</div>
+            <p className="mt-1 text-sm text-slate-600">
+              Get daily protein, carbs, and fat targets from your calorie goal.
+            </p>
+            <Button asChild variant="outline" className="mt-3 w-full">
+              <Link href="/tools/macros">Open</Link>
+            </Button>
+          </div>
+
+          <div className="rounded-2xl border p-4">
+            <div className="font-semibold">History</div>
+            <p className="mt-1 text-sm text-slate-600">
+              View your saved BMI and calorie calculations.
+            </p>
+            <div className="mt-3 grid gap-2">
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/history/bmi">BMI history</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/history/calories">Calories history</Link>
+              </Button>
+            </div>
+          </div>
+
         </CardContent>
       </Card>
 

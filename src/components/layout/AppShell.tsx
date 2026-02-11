@@ -100,7 +100,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </main>
         </div>
 
-        <footer className="mt-10 border-t pt-6 text-xs text-slate-500">
+        <footer className="mt-10 border-t bg-slate-50 pt-6 text-center text-xs text-slate-500">
           © {new Date().getFullYear()} NutriCare. Built for nutrition-first care.
         </footer>
       </div>

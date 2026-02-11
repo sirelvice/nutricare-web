@@ -1,5 +1,7 @@
+// src/lib/db.ts
 import { PrismaClient } from "@prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+// import Database from "better-sqlite3";
 import path from "path";
 
 declare global {
@@ -8,11 +10,11 @@ declare global {
 
 const dbPath = path.join(process.cwd(), "prisma/dev.db");
 
-// Instead of opening Database yourself, pass the path via url
+// temporarily commented out to test
+// const sqlite = new Database(dbPath);
+
 const adapter = new PrismaBetterSqlite3({
   url: `file:${dbPath}`,
-  // optional: timeout, verbose, etc.
-  // timeout: 5000,
 });
 
 export const prisma =

@@ -16,6 +16,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
     "next": "^16.1.6",
+    "next-auth": "^5.0.0-beta.30",
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.2",
     "radix-ui": "^1.4.3",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/next-auth": "^3.13.0",
     "@types/node": "^20",
     "@types/pdfkit": "^0.17.4",
     "@types/react": "^19.2.10",

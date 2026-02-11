@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { addBmiHistory } from "@/lib/history/bmi";
+{/*import { addMetric } from "@/lib/history/metrics";*/};
+
 
 type Goal = "lose" | "maintain" | "gain";
 

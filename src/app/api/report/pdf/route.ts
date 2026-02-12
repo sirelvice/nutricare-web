@@ -16,7 +16,7 @@ export async function GET() {
 
   // ── Logo ────────────────────────────────────────────────────────────────
   try {
-    const logoBytes = await fetch("http://localhost:3000/brand/nutricare-logo.png")
+    const logoBytes = await fetch("http://localhost:3000/brand/nutricare-design-no-bg-low.png")
       .then((res) => res.arrayBuffer());
     const logoImage = await pdfDoc.embedPng(logoBytes);
 

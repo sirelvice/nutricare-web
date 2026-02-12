@@ -8,24 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function ContactPage() {
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Form state
+  // ── Form state ──────────────────────────────────────────────────────────────
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  // ── UI state ────────────────────────────────────────────────────────────────
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-    if (loading) return;
-
+  // ── Submit handler ──────────────────────────────────────────────────────────
+  async function onSubmit() {
+    setStatus(null);
     setLoading(true);
-    setSuccess(false);
-    setError(null);
 
     try {
       const res = await fetch("/api/contact", {
@@ -37,17 +33,28 @@ export default function ContactPage() {
       const json = await res.json();
 
       if (!res.ok) {
-        setError(json.error ?? "Failed to send message");
-      } else {
-        setSuccess(true);
-        // Clear form on success
-        setName("");
-        setEmail("");
-        setPhone("");
-        setMessage("");
+        setStatus({
+          type: "error",
+          text: json.error ?? "Failed to send message.",
+        });
+        return;
       }
+
+      setStatus({
+        type: "success",
+        text: "Message sent successfully ✓",
+      });
+
+      // Clear form after success
+      setName("");
+      setEmail("");
+      setPhone("");
+      setMessage("");
     } catch {
-      setError("Network error. Please try again.");
+      setStatus({
+        type: "error",
+        text: "Network error. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -80,7 +87,7 @@ export default function ContactPage() {
             <CardTitle className="text-lg">Send a message</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
@@ -133,19 +140,25 @@ export default function ContactPage() {
                 </p>
               </div>
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              {success && (
-                <p className="text-sm text-green-600">Message sent successfully!</p>
-              )}
-
               <Button
-                type="submit"
-                className="w-full md:w-auto"
+                type="button"
+                onClick={onSubmit}
                 disabled={loading}
+                className="w-full md:w-auto"
               >
                 {loading ? "Sending..." : "Send message"}
               </Button>
-            </form>
+
+              {status && (
+                <p
+                  className={`text-sm mt-2 ${
+                    status.type === "success" ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {status.text}
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
 

@@ -23,4 +23,5 @@ model ContactMessage {
   phone     String?
   message   String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

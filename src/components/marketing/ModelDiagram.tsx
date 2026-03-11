@@ -7,11 +7,12 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 type NodeItem = {
   title: string;
   desc: string;
-  icon: any;
+  icon: LucideIcon;
   side: "left" | "right";
   top: string; // tailwind top like "top-4"
 };
@@ -26,7 +27,7 @@ const nodes: NodeItem[] = [
   { title: "Programs", desc: "Pilot-ready outcomes", icon: Users, side: "right", top: "top-52" },
 ];
 
-function NodeCard({ title, desc, icon: Icon }: { title: string; desc: string; icon: any }) {
+function NodeCard({ title, desc, icon: Icon }: { title: string; desc: string; icon: LucideIcon }) {
   return (
     <div className="w-[220px] rounded-3xl border bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">

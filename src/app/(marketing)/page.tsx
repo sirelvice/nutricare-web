@@ -4,6 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
+// New imports
+import { ModelDiagram } from "@/components/marketing/ModelDiagram";
+import { Marquee } from "@/components/marketing/Marquee";
+import { FAQ } from "@/components/marketing/FAQ";
+
 export default function HomePage() {
   return (
     <div className="space-y-14">
@@ -48,6 +53,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Model Diagram - right after HERO */}
+      <ModelDiagram />
 
       {/* WHAT WE DO */}
       <section className="space-y-5">
@@ -128,6 +136,12 @@ export default function HomePage() {
           </Button>
         </div>
       </section>
+
+      {/* FAQ - after Trust & credibility */}
+      <FAQ />
+
+      {/* Marquee - near bottom, before CTA */}
+      <Marquee />
 
       {/* CTA BAND */}
       <section className="rounded-3xl border bg-white p-8">

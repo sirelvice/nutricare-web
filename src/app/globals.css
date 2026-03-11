@@ -125,3 +125,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* --- NutriCare marquee --- */
+.marquee {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+  animation: marquee 18s linear infinite;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}

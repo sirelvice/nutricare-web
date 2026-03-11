@@ -54,6 +54,11 @@ export function SiteFooter() {
                   Contact
                 </Link>
               </li>
+              <li>
+                <Link className="hover:text-white underline-offset-4 hover:underline" href="/sitemap">
+                  Sitemap
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

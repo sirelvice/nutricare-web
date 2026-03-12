@@ -1,36 +1,38 @@
-import { Brain, Cloud, ShieldCheck, Sparkles } from "lucide-react"
-
-export default function ConnectedModels() {
+export function ConnectedModels() {
   return (
-    <section className="relative py-24 bg-gradient-to-b from-black to-neutral-950 text-white">
-      <div className="max-w-6xl mx-auto px-6 text-center">
-        <h2 className="text-4xl font-semibold mb-12">
-          Intelligent Health Engine
+    <section className="relative py-24">
+      <div className="mx-auto max-w-6xl px-4 text-center">
+        <h2 className="text-4xl font-semibold tracking-tight">
+          Connected Intelligence Ecosystem
         </h2>
+        <p className="mt-4 text-gray-600 max-w-2xl mx-auto">
+          NutriCare integrates AI, lab data, wearable insights, and patient history 
+          into a unified clinical intelligence layer.
+        </p>
 
-        <div className="relative flex justify-center items-center">
-
-          {/* Center Card */}
-          <div className="relative z-10 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 w-80 shadow-xl">
-            <h3 className="text-xl font-medium mb-4">DailyCare AI Core</h3>
-            <p className="text-sm text-white/60">
-              Unified health intelligence powering your metrics.
+        <div className="mt-16 grid gap-8 md:grid-cols-3">
+          <div className="premium-card">
+            <h3 className="text-xl font-semibold">AI Nutrition Engine</h3>
+            <p className="mt-3 text-gray-600 text-sm">
+              Predictive dietary modeling powered by large language models.
             </p>
           </div>
 
-          {/* Floating Icons */}
-          <div className="absolute -left-48 top-0 flex flex-col gap-12">
-            <Brain className="w-10 h-10 text-white/60" />
-            <Cloud className="w-10 h-10 text-white/60" />
+          <div className="premium-card">
+            <h3 className="text-xl font-semibold">Wearable Sync</h3>
+            <p className="mt-3 text-gray-600 text-sm">
+              Continuous glucose monitors, activity trackers, sleep analytics.
+            </p>
           </div>
 
-          <div className="absolute -right-48 top-0 flex flex-col gap-12">
-            <ShieldCheck className="w-10 h-10 text-white/60" />
-            <Sparkles className="w-10 h-10 text-white/60" />
+          <div className="premium-card">
+            <h3 className="text-xl font-semibold">Clinical Data Hub</h3>
+            <p className="mt-3 text-gray-600 text-sm">
+              Lab panels, biomarkers, and EHR integrations in real time.
+            </p>
           </div>
-
         </div>
       </div>
     </section>
-  )
+  );
 }

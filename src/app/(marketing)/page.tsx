@@ -9,6 +9,12 @@ import { ModelDiagram } from "@/components/marketing/ModelDiagram";
 import { Marquee } from "@/components/marketing/Marquee";
 import { FAQ } from "@/components/marketing/FAQ";
 
+export const metadata = {
+  title: "Home",
+  description:
+    "Transform nutrition data into intelligent health insights with NutriCare.",
+};
+
 export default function HomePage() {
   return (
     <div className="space-y-14">

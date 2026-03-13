@@ -1,10 +1,12 @@
 import "next-auth";
 import "next-auth/jwt";
+import { SubscriptionTier, Role } from "@prisma/client"; // ✅ import Prisma enums
 
 declare module "next-auth" {
   interface User {
     id: string;
-    role: "USER" | "CLINICIAN" | "ADMIN"; // ✅ add role
+    role: Role;
+    subscriptionTier: SubscriptionTier;
   }
 
   interface Session {
@@ -12,13 +14,15 @@ declare module "next-auth" {
       id: string;
       name?: string | null;
       email?: string | null;
-      role: "USER" | "CLINICIAN" | "ADMIN"; // ✅ add role
+      role: Role;
+      subscriptionTier: SubscriptionTier;
     };
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    role?: "USER" | "CLINICIAN" | "ADMIN"; // ✅ add role
+    role?: Role;
+    subscriptionTier?: SubscriptionTier;
   }
 }

@@ -40,6 +40,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name ?? undefined,
           role: user.role, // ✅ include role
+          subscriptionTier: user.subscriptionTier ?? "FREE", // ✅ include subscription tier
         };
       },
     }),
@@ -52,6 +53,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email = user.email;
         token.name = user.name;
         token.role = user.role ?? "USER"; // optional default
+        token.subscriptionTier = user.subscriptionTier ?? "FREE"; // optional default
       }
 
       return token;
@@ -61,6 +63,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = token.sub ?? "";
             session.user.role = token.role ?? "USER"; // ✅ default if undefined
+            session.user.subscriptionTier = token.subscriptionTier ?? "FREE"; // ✅ default if undefined
       }
 
       return session;

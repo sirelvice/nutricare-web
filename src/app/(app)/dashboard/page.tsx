@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
+import { useSession } from "next-auth/react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export default function DashboardPage() {
     getProfileSnapshot,
     getProfileServerSnapshot
   );
+  const { data: session } = useSession();
   const weightEntries = useMemo(() => loadWeightEntries(), []);
   const weightStats = useMemo(() => summarize(weightEntries), [weightEntries]);
   const bmiHistory = useMemo(() => loadBmiHistory(), []);
@@ -74,6 +76,30 @@ export default function DashboardPage() {
   }, [profile.heightCm, weightStats?.last?.weightKg]);
 
   // ── Render ──────────────────────────────────────────────
+
+  /**
+   * SUBSCRIPTION GATING
+   * Free users will see an upgrade message instead of the dashboard.
+   * Pro / Clinic users will see the full dashboard.
+   */
+  // ── Subscription gate ──────────────────────────────────
+  if (session?.user?.subscriptionTier === "FREE") {
+    return (
+      <div className="max-w-xl mx-auto mt-20 p-6 text-center rounded-xl border bg-slate-50">
+        <p className="mb-4 text-lg text-slate-700">
+          You are on the Free plan. Upgrade to unlock AI tools and Pro features.
+        </p>
+        <Link
+          href="/pricing"
+          className="inline-block rounded-xl bg-emerald-600 px-6 py-3 text-white hover:bg-emerald-700 transition"
+        >
+          Upgrade to Pro
+        </Link>
+      </div >
+    );
+  }
+
+  // ── Full dashboard ──────────────────────────────────────────────
   return (
     <div className="space-y-8">
       {/* Header + Actions */}

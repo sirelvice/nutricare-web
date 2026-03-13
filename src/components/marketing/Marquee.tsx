@@ -12,7 +12,7 @@ const items = [
   "Health Dashboard",
 ]
 
-export default function Marquee() {
+export function Marquee() {
   const [paused, setPaused] = useState(false)
 
   return (

@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 
 // New imports
 import { ModelDiagram } from "@/components/marketing/ModelDiagram";
-import { Marquee } from "@/components/marketing/Marquee";
+import { Marquee} from "@/components/marketing/Marquee";
 import { FAQ } from "@/components/marketing/FAQ";
 
 export const metadata = {

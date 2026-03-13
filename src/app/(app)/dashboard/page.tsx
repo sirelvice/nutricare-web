@@ -334,6 +334,20 @@ export default function DashboardPage() {
               Next build: history + “export report” (donor/partner friendly).
             </li>
           </ul>
+
+          {/* Stripe Upgrade Button */}
+          <div className="pt-4">
+            <button
+              onClick={async () => {
+                const res = await fetch("/api/checkout", { method: "POST" });
+                const data = await res.json();
+                window.location.href = data.url;
+              }}
+              className="rounded-xl bg-emerald-600 px-6 py-3 text-white hover:bg-emerald-700 transition"
+            >
+              Upgrade to Pro
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>

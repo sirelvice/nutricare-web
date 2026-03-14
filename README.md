@@ -1,8 +1,6 @@
 # NutriCare (Web)
 
-![Release](https://img.shields.io/github/v/release/sirelvice/nutricare-web)
-![License](https://img.shields.io/github/license/sirelvice/nutricare-web)
-![Issues](https://img.shields.io/github/issues/sirelvice/nutricare-web)
+## Nutrition Intelligence & Health Tracking
 
 > NutriCare is a modern, privacy-first nutrition intelligence platform designed to help individuals understand and improve their health through evidence-based tools.
 

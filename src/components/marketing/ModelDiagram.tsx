@@ -7,32 +7,42 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 type NodeItem = {
   title: string;
   desc: string;
-  icon: any;
+  icon: LucideIcon;
   side: "left" | "right";
-  top: string; // tailwind top like "top-4"
+  top: string;
 };
 
 const nodes: NodeItem[] = [
-  { title: "BMI", desc: "Interpretation + category", icon: Scale, side: "left", top: "top-4" },
-  { title: "Calories", desc: "BMR/TDEE targets", icon: Flame, side: "left", top: "top-28" },
-  { title: "Tracking", desc: "Trend over time", icon: Activity, side: "left", top: "top-52" },
+  { title: "BMI", desc: "Interpretation + category", icon: Scale, side: "left", top: "top-6" },
+  { title: "Calories", desc: "BMR/TDEE targets", icon: Flame, side: "left", top: "top-32" },
+  { title: "Tracking", desc: "Trend over time", icon: Activity, side: "left", top: "top-60" },
 
-  { title: "Reports", desc: "Partner snapshot", icon: FileText, side: "right", top: "top-4" },
-  { title: "Safeguards", desc: "Privacy-first by design", icon: ShieldCheck, side: "right", top: "top-28" },
-  { title: "Programs", desc: "Pilot-ready outcomes", icon: Users, side: "right", top: "top-52" },
+  { title: "Reports", desc: "Partner snapshot", icon: FileText, side: "right", top: "top-6" },
+  { title: "Safeguards", desc: "Privacy-first by design", icon: ShieldCheck, side: "right", top: "top-32" },
+  { title: "Programs", desc: "Pilot-ready outcomes", icon: Users, side: "right", top: "top-60" },
 ];
 
-function NodeCard({ title, desc, icon: Icon }: { title: string; desc: string; icon: any }) {
+function NodeCard({
+  title,
+  desc,
+  icon: Icon,
+}: {
+  title: string;
+  desc: string;
+  icon: LucideIcon;
+}) {
   return (
-    <div className="w-[220px] rounded-3xl border bg-white p-4 shadow-sm">
+    <div className="w-[230px] rounded-3xl border bg-white p-4 shadow-lg transition hover:-translate-y-1 hover:shadow-xl animate-[float_6s_ease-in-out_infinite]">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 rounded-2xl bg-slate-50 p-2">
+        <div className="rounded-2xl bg-slate-50 p-2">
           <Icon size={18} className="text-slate-700" />
         </div>
+
         <div>
           <div className="text-sm font-semibold text-slate-900">{title}</div>
           <div className="mt-1 text-xs text-slate-600">{desc}</div>
@@ -42,103 +52,154 @@ function NodeCard({ title, desc, icon: Icon }: { title: string; desc: string; ic
   );
 }
 
-function Dot({ className }: { className: string }) {
-  return (
-    <span
-      className={[
-        "absolute h-2 w-2 rounded-full bg-slate-300",
-        "animate-pulse",
-        className,
-      ].join(" ")}
-    />
-  );
-}
-
 export function ModelDiagram() {
   return (
-    <section className="rounded-3xl border bg-white p-6 md:p-10">
+    <section className="rounded-3xl border bg-white p-10">
+
+      {/* Title */}
       <div className="space-y-2">
-        <h2 className="text-xl font-semibold md:text-2xl">How NutriCare fits together</h2>
+        <h2 className="text-2xl font-semibold">How NutriCare fits together</h2>
         <p className="max-w-3xl text-slate-600">
-          A simple engine that turns basic inputs into clear guidance, progress tracking, and partner-ready reporting.
+          A simple engine that turns health inputs into actionable nutrition insights and reporting.
         </p>
       </div>
 
-      <div className="relative mt-8 overflow-hidden rounded-3xl bg-slate-50 p-6 md:p-10">
-        {/* Diagram canvas */}
-        <div className="relative mx-auto max-w-5xl">
-          {/* Center card */}
-          <div className="relative mx-auto w-full max-w-[360px]">
-            <Card className="rounded-3xl">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-lg">NutriCare Engine</CardTitle>
-                <div className="text-sm text-slate-600">
+      {/* Canvas */}
+      <div className="relative mt-12 rounded-3xl bg-slate-50 p-10 overflow-hidden">
+
+        {/* Background glow */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="h-80 w-80 rounded-full bg-emerald-400/20 blur-3xl" />
+        </div>
+
+        {/* Desktop Diagram */}
+        <div className="relative mx-auto max-w-6xl h-[380px] hidden md:block">
+
+          {/* Engine */}
+          <div className="absolute left-1/2 top-1/2 z-20 w-[380px] -translate-x-1/2 -translate-y-1/2">
+            <Card className="rounded-3xl shadow-xl ring-1 ring-emerald-100">
+              <CardHeader>
+                <CardTitle>NutriCare Engine</CardTitle>
+                <p className="text-sm text-slate-600">
                   Evidence-based logic • calm UX • privacy-first defaults
-                </div>
+                </p>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm text-slate-700">
-                <div className="rounded-2xl bg-white p-3">
-                  <div className="text-xs font-semibold text-slate-900">Outputs</div>
-                  <ul className="mt-1 list-disc pl-5 text-xs text-slate-600 space-y-1">
-                    <li>Clear interpretation (not just numbers)</li>
-                    <li>Practical nutrition guidance</li>
-                    <li>Trends + history</li>
-                    <li>Aggregated partner snapshot</li>
-                  </ul>
-                </div>
+
+              <CardContent>
+                <ul className="space-y-1 text-sm text-slate-600 list-disc pl-5">
+                  <li>Clear interpretation (not just numbers)</li>
+                  <li>Practical nutrition guidance</li>
+                  <li>Trends and progress tracking</li>
+                  <li>Partner reporting snapshot</li>
+                </ul>
               </CardContent>
             </Card>
           </div>
 
-          {/* Left nodes */}
-          <div className="pointer-events-none absolute left-0 top-0 hidden h-[320px] w-[240px] md:block">
-            {nodes
-              .filter((n) => n.side === "left")
-              .map((n) => (
-                <div key={n.title} className={["absolute left-0", n.top].join(" ")}>
-                  <NodeCard title={n.title} desc={n.desc} icon={n.icon} />
-                </div>
-              ))}
-          </div>
+          {/* Nodes */}
+          {nodes.map((n) => (
+            <div
+              key={n.title}
+              className={`absolute ${n.side === "left" ? "left-0" : "right-0"
+                } ${n.top} z-10`}
+            >
+              <NodeCard title={n.title} desc={n.desc} icon={n.icon} />
+            </div>
+          ))}
 
-          {/* Right nodes */}
-          <div className="pointer-events-none absolute right-0 top-0 hidden h-[320px] w-[240px] md:block">
-            {nodes
-              .filter((n) => n.side === "right")
-              .map((n) => (
-                <div key={n.title} className={["absolute right-0", n.top].join(" ")}>
-                  <NodeCard title={n.title} desc={n.desc} icon={n.icon} />
-                </div>
-              ))}
-          </div>
-
-          {/* Mobile nodes (stacked) */}
-          <div className="mt-6 grid gap-3 md:hidden">
-            {nodes.map((n) => (
-              <NodeCard key={n.title} title={n.title} desc={n.desc} icon={n.icon} />
-            ))}
-          </div>
-
-          {/* SVG connectors (desktop) */}
+          {/* SVG connectors */}
           <svg
-            className="pointer-events-none absolute left-0 top-0 hidden h-[320px] w-full md:block"
-            viewBox="0 0 1000 320"
+            className="absolute inset-0 z-0 pointer-events-none"
+            viewBox="0 0 1000 380"
             fill="none"
           >
-            {/* dashed lines to center */}
-            <path d="M240 40 C 380 40, 380 80, 500 90" stroke="rgba(100,116,139,0.55)" strokeWidth="2" strokeDasharray="4 6" />
-            <path d="M240 140 C 380 140, 390 150, 500 150" stroke="rgba(100,116,139,0.55)" strokeWidth="2" strokeDasharray="4 6" />
-            <path d="M240 240 C 390 240, 410 220, 500 210" stroke="rgba(100,116,139,0.55)" strokeWidth="2" strokeDasharray="4 6" />
+            <defs>
+              <linearGradient id="flow" x1="0" x2="1">
+                <stop offset="0%" stopColor="#34d399" />
+                <stop offset="100%" stopColor="#166534" />
+              </linearGradient>
+            </defs>
 
-            <path d="M760 40 C 620 40, 620 80, 500 90" stroke="rgba(100,116,139,0.55)" strokeWidth="2" strokeDasharray="4 6" />
-            <path d="M760 140 C 620 140, 610 150, 500 150" stroke="rgba(100,116,139,0.55)" strokeWidth="2" strokeDasharray="4 6" />
-            <path d="M760 240 C 610 240, 590 220, 500 210" stroke="rgba(100,116,139,0.55)" strokeWidth="2" strokeDasharray="4 6" />
+            {/* INPUT LINES */}
+
+            <path
+              id="in1"
+              d="M200 70 C 360 70, 420 130, 470 160"
+              stroke="url(#flow)"
+              strokeWidth="2"
+              strokeDasharray="6 6"
+            />
+
+            <path
+              id="in2"
+              d="M200 170 C 360 170, 420 190, 470 190"
+              stroke="url(#flow)"
+              strokeWidth="2"
+              strokeDasharray="6 6"
+            />
+
+            <path
+              id="in3"
+              d="M200 300 C 360 300, 420 250, 470 230"
+              stroke="url(#flow)"
+              strokeWidth="2"
+              strokeDasharray="6 6"
+            />
+
+            {/* OUTPUT LINES */}
+
+            <path
+              id="out1"
+              d="M530 160 C 600 130, 650 70, 800 70"
+              stroke="url(#flow)"
+              strokeWidth="2"
+              strokeDasharray="6 6"
+            />
+
+            <path
+              id="out2"
+              d="M530 190 C 640 190, 650 170, 800 170"
+              stroke="url(#flow)"
+              strokeWidth="2"
+              strokeDasharray="6 6"
+            />
+
+            <path
+              id="out3"
+              d="M530 230 C 640 260, 660 300, 800 300"
+              stroke="url(#flow)"
+              strokeWidth="2"
+              strokeDasharray="6 6"
+            />
+
+            {/* DATA FLOW PARTICLES */}
+
+            {["in1", "in2", "in3", "out1", "out2", "out3"].map((p) => (
+              <circle key={p} r="3" fill="#10b981">
+                <animateMotion dur="5s" repeatCount="indefinite">
+                  <mpath href={`#${p}`} />
+                </animateMotion>
+              </circle>
+            ))}
           </svg>
+        </div>
 
-          {/* Pulsing dots near center (desktop) */}
-          <Dot className="hidden md:block left-1/2 top-[86px] -translate-x-1/2" />
-          <Dot className="hidden md:block left-1/2 top-[146px] -translate-x-1/2" />
-          <Dot className="hidden md:block left-1/2 top-[206px] -translate-x-1/2" />
+        {/* Mobile Layout */}
+
+        <div className="grid gap-4 md:hidden mt-6">
+
+          <NodeCard title="BMI" desc="Interpretation + category" icon={Scale} />
+          <NodeCard title="Calories" desc="BMR/TDEE targets" icon={Flame} />
+          <NodeCard title="Tracking" desc="Trend over time" icon={Activity} />
+
+          <div className="rounded-2xl border bg-white p-5 shadow-sm text-center font-semibold">
+            NutriCare Engine
+          </div>
+
+          <NodeCard title="Reports" desc="Partner snapshot" icon={FileText} />
+          <NodeCard title="Safeguards" desc="Privacy-first by design" icon={ShieldCheck} />
+          <NodeCard title="Programs" desc="Pilot-ready outcomes" icon={Users} />
+
         </div>
       </div>
     </section>

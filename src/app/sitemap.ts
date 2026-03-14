@@ -1,18 +1,26 @@
-import type { MetadataRoute } from "next";
+import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = "https://nutricare.app"; // change later when you know your domain
+  const baseUrl = "https://nutricare.app";
 
-  const routes = [
-    "/", "/learn", "/impact", "/partners", "/about",
-    "/privacy", "/terms", "/contact",
-    "/login", "/register",
+  return [
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 1,
+    },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date(),
+    },
+    {
+      url: `${baseUrl}/login`,
+      lastModified: new Date(),
+    },
+    {
+      url: `${baseUrl}/register`,
+      lastModified: new Date(),
+    },
   ];
-
-  return routes.map((path) => ({
-    url: `${base}${path}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly",
-    priority: path === "/" ? 1 : 0.7,
-  }));
 }

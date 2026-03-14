@@ -127,14 +127,34 @@
 }
 
 /* --- NutriCare marquee --- */
-.marquee {
+/* .marquee {
   display: inline-block;
   white-space: nowrap;
   will-change: transform;
   animation: marquee 18s linear infinite;
 }
+*/
 
 @keyframes marquee {
-  0% { transform: translateX(0); }
+  0% { transform: translateX(0%); }
   100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: inline-block;
+  min-width: 200%;
+  animation: marquee 25s linear infinite;
+}
+
+.premium-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  background: white;
+  transition: all 0.25s ease;
+}
+
+.premium-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
 }

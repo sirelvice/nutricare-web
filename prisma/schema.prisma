@@ -4,18 +4,35 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  // url is intentionally removed — handled by adapter in prisma.config.ts
 }
 
+// ── Roles & Subscription Tiers ────────────────────────────────
+enum Role {
+  USER
+  CLINICIAN
+  ADMIN
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  CLINIC
+}
+
+// ── User Model ────────────────────────────────────────────────
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  passwordHash String   // ← hashed password only (never plain text)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String            @id @default(cuid())
+  email              String            @unique
+  name               String?
+  passwordHash       String
+  role               Role              @default(USER)
+  stripeCustomerId   String?           // store Stripe customer ID
+  subscriptionTier   SubscriptionTier  @default(FREE)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 }
 
+// ── Contact Messages ─────────────────────────────────────────
 model ContactMessage {
   id        String   @id @default(cuid())
   name      String

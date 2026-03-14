@@ -1,4 +1,8 @@
-import type { BmiCategory } from "@/lib/calc/bmi";
+export type BmiCategory =
+  | "underweight"
+  | "normal"
+  | "overweight"
+  | "obese";
 
 export type Goal = "lose" | "maintain" | "gain";
 

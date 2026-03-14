@@ -7,7 +7,7 @@ export function FloatingChatWidget() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-6 right-6 z-[9999]">
       {open && (
         <div className="mb-4 w-80 rounded-2xl bg-white shadow-2xl border border-gray-200 p-4">
           <div className="flex items-center justify-between">

@@ -64,10 +64,11 @@ export function ModelDiagram() {
           <div className="h-72 w-72 rounded-full bg-emerald-200/30 blur-3xl" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl h-[380px]">
+        {/* Desktop Diagram */}
+        <div className="relative mx-auto max-w-6xl h-[380px] hidden md:block">
 
           {/* Center Engine */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px]">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] z-20">
             <Card className="rounded-3xl shadow-xl">
               <CardHeader>
                 <CardTitle>NutriCare Engine</CardTitle>
@@ -91,7 +92,7 @@ export function ModelDiagram() {
           {nodes
             .filter((n) => n.side === "left")
             .map((n) => (
-              <div key={n.title} className={`absolute left-0 ${n.top}`}>
+              <div key={n.title} className={`absolute left-0 ${n.top} z-10`}>
                 <NodeCard title={n.title} desc={n.desc} icon={n.icon} />
               </div>
             ))}
@@ -100,63 +101,97 @@ export function ModelDiagram() {
           {nodes
             .filter((n) => n.side === "right")
             .map((n) => (
-              <div key={n.title} className={`absolute right-0 ${n.top}`}>
+              <div key={n.title} className={`absolute right-0 ${n.top} z-10`}>
                 <NodeCard title={n.title} desc={n.desc} icon={n.icon} />
               </div>
             ))}
 
           {/* SVG Connections */}
           <svg
-            className="absolute inset-0 pointer-events-none"
+            className="absolute inset-0 pointer-events-none z-0"
             viewBox="0 0 1000 380"
             fill="none"
           >
-            {/* Left → center */}
-            <path
-              d="M200 60 C 380 60, 380 120, 500 160"
+
+            {/* LEFT INPUTS */}
+
+            <path id="left1"
+              d="M200 70 C 360 70, 420 130, 470 160"
               stroke="rgba(239,68,68,0.6)"
               strokeWidth="2"
-              strokeDasharray="5 7"
+              strokeDasharray="6 6"
             />
 
-            <path
-              d="M200 170 C 380 170, 380 190, 500 190"
+            <path id="left2"
+              d="M200 170 C 360 170, 420 190, 470 190"
               stroke="rgba(239,68,68,0.6)"
               strokeWidth="2"
-              strokeDasharray="5 7"
+              strokeDasharray="6 6"
             />
 
-            <path
-              d="M200 300 C 380 300, 380 260, 500 230"
+            <path id="left3"
+              d="M200 300 C 360 300, 420 250, 470 230"
               stroke="rgba(239,68,68,0.6)"
               strokeWidth="2"
-              strokeDasharray="5 7"
+              strokeDasharray="6 6"
             />
 
-            {/* center → right */}
-            <path
-              d="M500 160 C 620 120, 620 60, 800 60"
+            {/* RIGHT OUTPUTS */}
+
+            <path id="right1"
+              d="M530 160 C 580 130, 640 70, 800 70"
               stroke="rgba(34,197,94,0.6)"
               strokeWidth="2"
-              strokeDasharray="5 7"
+              strokeDasharray="6 6"
             />
 
-            <path
-              d="M500 190 C 620 190, 620 170, 800 170"
+            <path id="right2"
+              d="M530 190 C 620 190, 640 170, 800 170"
               stroke="rgba(34,197,94,0.6)"
               strokeWidth="2"
-              strokeDasharray="5 7"
+              strokeDasharray="6 6"
             />
 
-            <path
-              d="M500 230 C 620 260, 620 300, 800 300"
+            <path id="right3"
+              d="M530 230 C 640 260, 660 300, 800 300"
               stroke="rgba(34,197,94,0.6)"
               strokeWidth="2"
-              strokeDasharray="5 7"
+              strokeDasharray="6 6"
             />
+
+            {/* FLOW PARTICLES */}
+
+            {[ "left1","left2","left3","right1","right2","right3" ].map((p) => (
+              <circle key={p} r="3" fill="#94a3b8">
+                <animateMotion
+                  dur="6s"
+                  repeatCount="indefinite"
+                >
+                  <mpath href={`#${p}`} />
+                </animateMotion>
+              </circle>
+            ))}
+
           </svg>
+        </div>
+
+        {/* Mobile Layout */}
+        <div className="grid gap-4 md:hidden mt-6">
+
+          <NodeCard title="BMI" desc="Interpretation + category" icon={Scale} />
+          <NodeCard title="Calories" desc="BMR/TDEE targets" icon={Flame} />
+          <NodeCard title="Tracking" desc="Trend over time" icon={Activity} />
+
+          <div className="rounded-2xl border bg-white p-5 shadow-sm text-center font-semibold">
+            NutriCare Engine
+          </div>
+
+          <NodeCard title="Reports" desc="Partner snapshot" icon={FileText} />
+          <NodeCard title="Safeguards" desc="Privacy-first by design" icon={ShieldCheck} />
+          <NodeCard title="Programs" desc="Pilot-ready outcomes" icon={Users} />
 
         </div>
+
       </div>
     </section>
   );

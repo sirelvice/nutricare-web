@@ -6,7 +6,6 @@ import { Separator } from "@/components/ui/separator";
 
 // New imports
 import { ModelDiagram } from "@/components/marketing/ModelDiagram";
-import { Marquee} from "@/components/marketing/Marquee";
 import { FAQ } from "@/components/marketing/FAQ";
 
 export const metadata = {
@@ -145,9 +144,6 @@ export default function HomePage() {
 
       {/* FAQ - after Trust & credibility */}
       <FAQ />
-
-      {/* Marquee - near bottom, before CTA */}
-      <Marquee />
 
       {/* CTA BAND */}
       <section className="rounded-3xl border bg-white p-8">

@@ -4,6 +4,7 @@ import React from "react";
 
 export default function Pricing() {
   const handleCheckout = async (tier: string) => {
+    alert("Payments will be enabled soon. Stay tuned!");
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
-import { useSession } from "next-auth/react";
+// import { useSession } from "next-auth/react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export default function DashboardPage() {
     getProfileSnapshot,
     getProfileServerSnapshot
   );
-  const { data: session } = useSession();
+  // const { data: session } = useSession();
   const weightEntries = useMemo(() => loadWeightEntries(), []);
   const weightStats = useMemo(() => summarize(weightEntries), [weightEntries]);
   const bmiHistory = useMemo(() => loadBmiHistory(), []);
@@ -83,6 +83,8 @@ export default function DashboardPage() {
    * Pro / Clinic users will see the full dashboard.
    */
   // ── Subscription gate ──────────────────────────────────
+  
+  {/*}
   if (session?.user?.subscriptionTier === "FREE") {
     return (
       <div className="max-w-xl mx-auto mt-20 p-6 text-center rounded-xl border bg-slate-50">
@@ -98,6 +100,7 @@ export default function DashboardPage() {
       </div >
     );
   }
+    */}
 
   // ── Full dashboard ──────────────────────────────────────────────
   return (

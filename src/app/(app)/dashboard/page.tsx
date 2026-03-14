@@ -83,7 +83,7 @@ export default function DashboardPage() {
    * Pro / Clinic users will see the full dashboard.
    */
   // ── Subscription gate ──────────────────────────────────
-  
+
   {/*}
   if (session?.user?.subscriptionTier === "FREE") {
     return (
@@ -346,39 +346,40 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Next Steps */}
-      <Card className="rounded-3xl border bg-slate-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Next steps</CardTitle>
-        </CardHeader>
-        <CardContent className="text-slate-700">
-          <ul className="list-disc space-y-2 pl-5 text-sm">
-            <li>
-              Save your Profile (age, height, goal, activity) so tools can auto-fill.
-            </li>
-            <li>
-              Add weight entries weekly to see trend and BMI snapshot.
-            </li>
-            <li>
-              Next build: history + “export report” (donor/partner friendly).
-            </li>
-          </ul>
+      {/*
+  Next Steps
+  <Card className="rounded-3xl border bg-slate-50">
+    <CardHeader>
+      <CardTitle className="text-lg">Next steps</CardTitle>
+    </CardHeader>
+    <CardContent className="text-slate-700">
+      <ul className="list-disc space-y-2 pl-5 text-sm">
+        <li>
+          Save your Profile (age, height, goal, activity) so tools can auto-fill.
+        </li>
+        <li>
+          Add weight entries weekly to see trend and BMI snapshot.
+        </li>
+        <li>
+          Next build: history + “export report” (donor/partner friendly).
+        </li>
+      </ul>
 
-          {/* Stripe Upgrade Button */}
-          <div className="pt-4">
-            <button
-              onClick={async () => {
-                const res = await fetch("/api/checkout", { method: "POST" });
-                const data = await res.json();
-                window.location.href = data.url;
-              }}
-              className="rounded-xl bg-emerald-600 px-6 py-3 text-white hover:bg-emerald-700 transition"
-            >
-              Upgrade to Pro
-            </button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="pt-4">
+        <button
+          onClick={async () => {
+            const res = await fetch("/api/checkout", { method: "POST" });
+            const data = await res.json();
+            window.location.href = data.url;
+          }}
+          className="rounded-xl bg-emerald-600 px-6 py-3 text-white hover:bg-emerald-700 transition"
+        >
+          Upgrade to Pro
+        </button>
+      </div>
+    </CardContent>
+  </Card>
+*/}
     </div>
   );
 }

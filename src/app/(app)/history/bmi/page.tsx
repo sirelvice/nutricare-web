@@ -43,7 +43,7 @@ export default function BmiHistoryPage() {
                     <Badge variant="secondary">{r.category}</Badge>
                   </div>
                   <div className="mt-1 text-sm text-slate-600">
-                    Height: {r.heightCm} cm • Weight: {r.weightKg} kg • Goal: {r.goal}
+                    Height: {r.heightCm} cm • Weight: {r.weightKg} kg
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
                     {new Date(r.createdAt).toISOString().slice(0, 10)}

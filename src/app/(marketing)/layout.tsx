@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { MarketingNav } from "@/components/layout/MarketingNav";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { MarqueeBanner } from "@/components/marketing/MarqueeBanner";
-import { FloatingChatWidget } from "@/components/ui/FloatingChatWidget";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
@@ -17,7 +16,6 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
       <MarqueeBanner />
 
       <SiteFooter />
-      <FloatingChatWidget />
     </div>
   );
 }

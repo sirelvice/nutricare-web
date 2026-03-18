@@ -7,26 +7,45 @@ export function FloatingChatWidget() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999]">
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end">
+
+      {/* Chat Panel */}
       {open && (
-        <div className="mb-4 w-80 rounded-2xl bg-white shadow-2xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold">NutriCare Support</h4>
+        <div className="mb-3 w-80 rounded-2xl bg-white shadow-2xl border border-emerald-100 overflow-hidden">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-emerald-50">
+            <h4 className="font-semibold text-sm text-slate-900">
+              NutriCare Support
+            </h4>
             <button onClick={() => setOpen(false)}>
-              <X size={18} />
+              <X size={16} className="text-slate-500" />
             </button>
           </div>
-          <p className="mt-3 text-sm text-gray-600">
-            👋 Hi there! How can we help you today?
-          </p>
+
+          {/* Body */}
+          <div className="p-4 text-sm text-slate-600">
+            👋 Hi there! <br />
+            How can we help you today?
+          </div>
+
+          {/* Input (optional but nice) */}
+          <div className="border-t p-3">
+            <input
+              type="text"
+              placeholder="Type a message..."
+              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+            />
+          </div>
         </div>
       )}
 
+      {/* Floating Button */}
       <button
         onClick={() => setOpen(!open)}
         className="rounded-full bg-emerald-600 p-4 text-white shadow-lg hover:scale-105 transition"
       >
-        <MessageCircle size={20} />
+        {open ? <X size={20} /> : <MessageCircle size={20} />}
       </button>
     </div>
   );

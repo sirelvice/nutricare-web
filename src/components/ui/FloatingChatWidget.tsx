@@ -45,7 +45,7 @@ export function FloatingChatWidget() {
 
       // add bot reply
       setMessages((prev) => [...prev, { role: "bot", text: data.reply }]);
-    } catch (err) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         { role: "bot", text: "Something went wrong. Try again." },

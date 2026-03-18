@@ -26,43 +26,47 @@ export function FloatingChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-8 right-8 z-[9999] flex flex-col items-end transition-all duration-300">
+    <div className="fixed bottom-8 right-8 z-[9999] flex flex-col items-end">
 
-      {/* Chat Panel */}
-      {open && (
-        <div className="mb-4 w-80 rounded-2xl bg-white/95 backdrop-blur-lg shadow-2xl border border-emerald-100 overflow-hidden">
-
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-emerald-50">
-            <h4 className="font-semibold text-sm text-slate-900">
-              NutriCare Support
-            </h4>
-            <button onClick={() => setOpen(false)}>
-              <X size={16} className="text-slate-500" />
-            </button>
-          </div>
-
-          {/* Body */}
-          <div className="p-4 text-sm text-slate-600">
-            👋 {getMessage()}
-          </div>
-
-          {/* Input */}
-          <div className="border-t p-3">
-            <input
-              type="text"
-              placeholder="Type a message..."
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-300"
-            />
-          </div>
+      {/* Chat Panel (ALWAYS mounted for animation) */}
+      <div
+        className={`mb-4 w-80 rounded-2xl bg-white/95 backdrop-blur shadow-2xl border border-emerald-100 overflow-hidden transform transition-all duration-300 ease-out ${
+          open
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-4 pointer-events-none"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-emerald-50">
+          <h4 className="font-semibold text-sm text-slate-900">
+            NutriCare Support
+          </h4>
+          <button onClick={() => setOpen(false)}>
+            <X size={16} className="text-slate-500" />
+          </button>
         </div>
-      )}
+
+        {/* Body */}
+        <div className="p-4 text-sm text-slate-600">
+          👋 {getMessage()}
+        </div>
+
+        {/* Input */}
+        <div className="border-t p-3">
+          <input
+            type="text"
+            placeholder="Type a message..."
+            className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-300"
+          />
+        </div>
+      </div>
 
       {/* Floating Button */}
       <button
         onClick={() => setOpen(!open)}
-        className={`rounded-full bg-emerald-600 p-4 text-white shadow-lg transition-transform duration-200 cursor-pointer ${open ? "scale-95" : "hover:scale-105"
-          }`}
+        className={`rounded-full bg-emerald-600 p-4 text-white shadow-lg transition-transform duration-200 cursor-pointer ${
+          open ? "scale-95 rotate-90" : "hover:scale-105"
+        }`}
       >
         {open ? <X size={20} /> : <MessageCircle size={20} />}
       </button>

@@ -1,10 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { MessageCircle, X } from "lucide-react";
 
 export function FloatingChatWidget() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  // 🎯 Context-aware messages
+  const getMessage = () => {
+    if (pathname.includes("/bmi")) {
+      return "Need help understanding your BMI results?";
+    }
+
+    if (pathname.includes("/dashboard")) {
+      return "Want help navigating your health dashboard?";
+    }
+
+    if (pathname.includes("/reports")) {
+      return "Need help with reports or insights?";
+    }
+
+    return "Hi there! How can we help you today?";
+  };
 
   return (
     <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end">
@@ -25,11 +44,10 @@ export function FloatingChatWidget() {
 
           {/* Body */}
           <div className="p-4 text-sm text-slate-600">
-            👋 Hi there! <br />
-            How can we help you today?
+            👋 {getMessage()}
           </div>
 
-          {/* Input (optional but nice) */}
+          {/* Input */}
           <div className="border-t p-3">
             <input
               type="text"

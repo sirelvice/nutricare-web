@@ -140,12 +140,6 @@
   100% { transform: translateX(-50%); }
 }
 
-.animate-marquee {
-  display: inline-block;
-  min-width: 200%;
-  animation: marquee 25s linear infinite;
-}
-
 .premium-card {
   border: 1px solid #e5e7eb;
   border-radius: 1.5rem;
@@ -157,4 +151,15 @@
 .premium-card:hover {
   transform: translateY(-6px);
   box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+
+.marquee-container:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
+.animate-marquee {
+  display: inline-block;
+  min-width: 200%;
+  animation: marquee 25s linear infinite;
+  animation-play-state: running;
 }

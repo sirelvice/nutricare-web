@@ -76,17 +76,19 @@ export function ModelDiagram() {
         <div className="relative mx-auto max-w-6xl h-[380px] hidden md:block">
 
           {/* Engine */}
-          <div className="absolute left-1/2 top-1/2 z-20 w-[380px] -translate-x-1/2 -translate-y-1/2">
-            <Card className="rounded-3xl shadow-xl ring-1 ring-emerald-100">
-              <CardHeader>
-                <CardTitle>NutriCare Engine</CardTitle>
-                <p className="text-sm text-slate-600">
+          <div className="absolute left-1/2 top-[48%] z-20 w-[380px] -translate-x-1/2 -translate-y-1/2">
+            <Card className="rounded-3xl shadow-xl ring-1 ring-emerald-200/60">
+              <CardHeader className="text-center pb-1">
+                <CardTitle className="text-lg font-semibold tracking-tight text-slate-900">
+                  NutriCare Engine
+                </CardTitle>
+                <p className="text-sm text-slate-600 mt-1 max-w-[240px] mx-auto leading-snug">
                   Evidence-based logic • calm UX • privacy-first defaults
                 </p>
               </CardHeader>
 
-              <CardContent>
-                <ul className="space-y-1 text-sm text-slate-600 list-disc pl-5">
+              <CardContent className="pt-1">
+                <ul className="space-y-1.5 text-sm text-slate-700 list-disc list-inside text-left max-w-[260px] mx-auto marker:text-emerald-500">
                   <li>Clear interpretation (not just numbers)</li>
                   <li>Practical nutrition guidance</li>
                   <li>Trends and progress tracking</li>

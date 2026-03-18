@@ -26,12 +26,12 @@ export function FloatingChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end">
+    <div className="fixed bottom-8 right-8 z-[9999] flex flex-col items-end transition-all duration-300">
 
       {/* Chat Panel */}
       {open && (
-        <div className="mb-3 w-80 rounded-2xl bg-white shadow-2xl border border-emerald-100 overflow-hidden">
-          
+        <div className="mb-4 w-80 rounded-2xl bg-white/95 backdrop-blur-lg shadow-2xl border border-emerald-100 overflow-hidden">
+
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b bg-emerald-50">
             <h4 className="font-semibold text-sm text-slate-900">
@@ -52,7 +52,7 @@ export function FloatingChatWidget() {
             <input
               type="text"
               placeholder="Type a message..."
-              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-300"
             />
           </div>
         </div>
@@ -61,7 +61,8 @@ export function FloatingChatWidget() {
       {/* Floating Button */}
       <button
         onClick={() => setOpen(!open)}
-        className="rounded-full bg-emerald-600 p-4 text-white shadow-lg hover:scale-105 transition"
+        className={`rounded-full bg-emerald-600 p-4 text-white shadow-lg transition-transform duration-200 cursor-pointer ${open ? "scale-95" : "hover:scale-105"
+          }`}
       >
         {open ? <X size={20} /> : <MessageCircle size={20} />}
       </button>

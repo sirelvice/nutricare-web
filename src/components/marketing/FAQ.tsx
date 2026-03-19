@@ -39,9 +39,9 @@ export function FAQ() {
             key={f.q}
             className="group rounded-2xl border bg-slate-50 p-5 transition hover:bg-slate-100"
           >
-            <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 flex items-center">
-              {f.q}
-              <span className="ml-auto text-slate-400 transition-transform group-open:rotate-45">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-900 flex items-center justify-between">
+              <span>{f.q}</span>
+              <span className="text-slate-400 transition-transform group-open:rotate-45">
                 +
               </span>
             </summary>

@@ -27,12 +27,12 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
-            NutriCare — nutrition intelligence for healthier lives.
+            NutriCare — nutrition intelligence for healthier lives
           </h1>
 
-          <p className="max-w-2xl text-base text-slate-600 md:text-lg">
-            Assess nutrition-driven health (BMI and more), get practical guidance, and track progress over time —
-            designed for individuals and public-health pilots.
+          <p className="max-w-2xl text-base text-slate-600 md:text-lg leading-relaxed">
+            Assess key health indicators like BMI, receive practical nutrition guidance,
+            and track your progress over time — all in a clear and privacy-first experience designed for real impact.
           </p>
 
           <div className="flex flex-wrap gap-3">
@@ -113,8 +113,7 @@ export default function HomePage() {
         <div className="space-y-2">
           <h2 className="text-xl font-semibold md:text-2xl">Trust & credibility</h2>
           <p className="max-w-3xl text-slate-600">
-            NutriCare is designed with transparent calculations, clean UX, and privacy-first principles —
-            suitable for real deployments and partner reporting.
+            NutriCare is designed with with privacy-first principles and transparent health calculations, so users can trust their results — and partners can trust the foundation for responsible health programs.
           </p>
         </div>
 

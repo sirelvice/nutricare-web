@@ -41,7 +41,7 @@ export function FAQ() {
           >
             <summary className="cursor-pointer text-sm font-semibold text-slate-900 flex items-center justify-between">
               <span>{f.q}</span>
-              <span className="text-slate-400 transition-transform group-open:rotate-45">
+              <span className="text-slate-400 transition-transform group-open:rotate-45 pointer-events-none">
                 +
               </span>
             </summary>

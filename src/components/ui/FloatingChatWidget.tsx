@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, X } from "lucide-react";
+import { MessageCircle, X, Send } from "lucide-react";
 
 export function FloatingChatWidget() {
   const [open, setOpen] = useState(false);
@@ -31,6 +31,12 @@ export function FloatingChatWidget() {
       return "Need help with reports or insights?";
     }
     return "Hi there! How can we help you today?";
+  };
+
+  // ✅ Clear chat
+  const handleClear = () => {
+    setMessages([]);
+    setMessage("");
   };
 
   const handleSend = async () => {
@@ -83,8 +89,12 @@ export function FloatingChatWidget() {
         </div>
 
         {/* Messages */}
-        <div className="p-4 space-y-2 max-h-48 overflow-y-auto text-sm">
-          <div className="text-slate-600">👋 {getMessage()}</div>
+        <div className="p-4 space-y-2 max-h-64 overflow-y-auto text-sm flex flex-col">
+          
+          {/* Greeting (only when empty) */}
+          {messages.length === 0 && (
+            <div className="text-slate-600">👋 {getMessage()}</div>
+          )}
 
           {messages.map((msg, i) => (
             <div
@@ -104,32 +114,46 @@ export function FloatingChatWidget() {
             <div className="text-xs text-slate-400">Typing...</div>
           )}
 
-          {/* Auto scroll anchor */}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="border-t p-3 flex gap-2">
-          <input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="Type a message..."
-            className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-300"
-          />
+        {/* Bottom bar */}
+        <div className="border-t p-3 space-y-2">
 
-          <button
-            onClick={handleSend}
-            disabled={loading}
-            className="bg-emerald-600 text-white px-3 rounded-lg text-sm disabled:opacity-50"
-          >
-            Send
-          </button>
+          {/* Input row */}
+          <div className="flex gap-2">
+            <input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="Type a message..."
+              className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-300"
+            />
+
+            {/* Icon Send Button */}
+            <button
+              onClick={handleSend}
+              disabled={loading}
+              className="bg-emerald-600 text-white p-2 rounded-lg disabled:opacity-50 hover:scale-105 transition"
+            >
+              <Send size={16} />
+            </button>
+          </div>
+
+          {/* Clear button (bottom left) */}
+          {messages.length > 0 && (
+            <button
+              onClick={handleClear}
+              className="text-xs text-slate-400 hover:text-red-500 transition"
+            >
+              Clear conversation
+            </button>
+          )}
         </div>
       </div>
 

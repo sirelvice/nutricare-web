@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { MessageCircle, X } from "lucide-react";
 
@@ -10,8 +10,15 @@ export function FloatingChatWidget() {
   const [messages, setMessages] = useState<
     { role: "user" | "bot"; text: string }[]
   >([]);
+  const [loading, setLoading] = useState(false);
 
   const pathname = usePathname();
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // ✅ Auto scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
   const getMessage = () => {
     if (pathname.includes("/bmi")) {
@@ -31,8 +38,8 @@ export function FloatingChatWidget() {
 
     const userMessage = message;
     setMessage("");
+    setLoading(true);
 
-    // add user message
     setMessages((prev) => [...prev, { role: "user", text: userMessage }]);
 
     try {
@@ -43,13 +50,14 @@ export function FloatingChatWidget() {
 
       const data = await res.json();
 
-      // add bot reply
       setMessages((prev) => [...prev, { role: "bot", text: data.reply }]);
     } catch {
       setMessages((prev) => [
         ...prev,
         { role: "bot", text: "Something went wrong. Try again." },
       ]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -83,13 +91,21 @@ export function FloatingChatWidget() {
               key={i}
               className={`p-2 rounded-lg ${
                 msg.role === "user"
-                  ? "bg-emerald-600 text-white self-end"
-                  : "bg-gray-100 text-slate-700"
+                  ? "bg-emerald-600 text-white self-end ml-auto max-w-[75%]"
+                  : "bg-gray-100 text-slate-700 max-w-[75%]"
               }`}
             >
               {msg.text}
             </div>
           ))}
+
+          {/* Typing indicator */}
+          {loading && (
+            <div className="text-xs text-slate-400">Typing...</div>
+          )}
+
+          {/* Auto scroll anchor */}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}
@@ -97,20 +113,27 @@ export function FloatingChatWidget() {
           <input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             placeholder="Type a message..."
             className="flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-300"
           />
 
           <button
             onClick={handleSend}
-            className="bg-emerald-600 text-white px-3 rounded-lg text-sm"
+            disabled={loading}
+            className="bg-emerald-600 text-white px-3 rounded-lg text-sm disabled:opacity-50"
           >
             Send
           </button>
         </div>
       </div>
 
-      {/* Button */}
+      {/* Floating Button */}
       <button
         onClick={() => setOpen(!open)}
         className={`rounded-full bg-emerald-600 p-4 text-white shadow-lg transition-transform duration-200 cursor-pointer ${

@@ -2,21 +2,27 @@ export async function POST(req: Request) {
   try {
     const { message } = await req.json();
 
-    // Simple placeholder logic
-    let reply = "Thanks for your message!";
+    let reply =
+      "Message received. Our team will review it and get back to you within 24 hours.";
 
     if (message.toLowerCase().includes("bmi")) {
-      reply = "BMI helps assess body weight relative to height. Would you like help interpreting yours?";
+      reply =
+        "Got it 👍 Your BMI question has been received. A nutrition specialist will help you interpret your results shortly.";
     } else if (message.toLowerCase().includes("calories")) {
-      reply = "Calories depend on your BMR and activity level. NutriCare can help estimate this.";
+      reply =
+        "Thanks! Your question about calories has been noted. We'll guide you based on your goals soon.";
     } else if (message.toLowerCase().includes("hello")) {
-      reply = "Hello! 👋 How can I assist you today?";
+      reply =
+        "Hi there 👋 We've received your message. How can we assist you further?";
     }
 
     return Response.json({ reply });
   } catch {
     return Response.json(
-      { reply: "Something went wrong. Please try again." },
+      {
+        reply:
+          "⚠️ We couldn’t process your message. Please try again in a moment.",
+      },
       { status: 500 }
     );
   }

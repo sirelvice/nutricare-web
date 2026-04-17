@@ -3,7 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
+  // Do NOT put url = env("DATABASE_URL") here anymore in Prisma 7
 }
 
 // ── Roles & Subscription Tiers ────────────────────────────────
@@ -26,7 +27,7 @@ model User {
   name               String?
   passwordHash       String
   role               Role              @default(USER)
-  stripeCustomerId   String?           // store Stripe customer ID
+  stripeCustomerId   String?
   subscriptionTier   SubscriptionTier  @default(FREE)
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt

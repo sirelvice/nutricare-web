@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,23 @@ export default function LoginForm() {
   const sp = useSearchParams();
 
   const registered = sp.get("registered") === "1";
-  const nextUrl = sp.get("next"); // Get the intended destination from proxy
+
+  // Safely decode the "next" URL from proxy (with error handling)
+  const nextUrlRaw = sp.get("next");
+  let nextUrl: string | null = null;
+
+  if (nextUrlRaw) {
+    try {
+      nextUrl = decodeURIComponent(nextUrlRaw);
+    } catch {
+      nextUrl = null; // Malformed URL → ignore it
+    }
+  }
+
+  // Safe path validation to prevent open redirects
+  const isSafePath = (url: string): boolean => {
+    return url.startsWith("/") && !url.startsWith("//");
+  };
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,16 +44,13 @@ export default function LoginForm() {
     return e.includes("@") && e.length > 5 && password.length >= 6;
   }, [email, password]);
 
-  // Redirect to intended page after successful login
   const handleSuccessfulLogin = () => {
     setMsg({ type: "success", text: "Welcome back! Redirecting..." });
 
+    const target = nextUrl && isSafePath(nextUrl) ? nextUrl : "/dashboard";
+
     setTimeout(() => {
-      if (nextUrl && nextUrl.startsWith("/")) {
-        router.push(nextUrl);           // Go back to the protected page user tried to visit
-      } else {
-        router.push("/dashboard");      // Default fallback
-      }
+      router.replace(target);   // Use replace to prevent going back to login
     }, 800);
   };
 

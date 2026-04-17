@@ -1,10 +1,12 @@
+// src/auth.ts
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  debug: process.env.NODE_ENV === "development", // Helpful logs in dev only
+  // Remove debug in production, keep only when needed
+  debug: false,   // ← Change to true only when debugging auth issues
 
   session: { strategy: "jwt" },
 
@@ -26,10 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = credentials?.email?.toString().trim().toLowerCase();
         const password = credentials?.password?.toString();
 
-        if (!email || !password) {
-          console.log("❌ Auth: Missing email or password");
-          return null;
-        }
+        if (!email || !password) return null;
 
         try {
           const user = await prisma.user.findUnique({
@@ -58,7 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             subscriptionTier: user.subscriptionTier ?? "FREE",
           };
         } catch (error) {
-          console.error("🚨 Auth error in authorize():", error);
+          console.error("🚨 Auth error:", error);
           return null;
         }
       },
@@ -80,8 +79,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub ?? "";
-        session.user.role = token.role as any ?? "USER";
-        session.user.subscriptionTier = token.subscriptionTier as any ?? "FREE";
+        session.user.role = (token.role as any) ?? "USER";
+        session.user.subscriptionTier = (token.subscriptionTier as any) ?? "FREE";
       }
       return session;
     },

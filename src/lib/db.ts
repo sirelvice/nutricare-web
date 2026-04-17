@@ -1,20 +1,22 @@
-// src/lib/db.ts
 import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-// import Database from "better-sqlite3";
-import path from "path";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 declare global {
   var prisma: PrismaClient | undefined;
 }
 
-const dbPath = path.join(process.cwd(), "prisma/dev.db");
+const connectionString = process.env.DATABASE_URL;
 
-// temporarily commented out to test
-// const sqlite = new Database(dbPath);
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not defined in .env");
+}
 
-const adapter = new PrismaBetterSqlite3({
-  url: `file:${dbPath}`,
+// Create adapter with SSL options to accept self-signed certs
+const adapter = new PrismaPg({
+  connectionString,
+  ssl: {
+    rejectUnauthorized: false,   // ← This is the key line
+  },
 });
 
 export const prisma =

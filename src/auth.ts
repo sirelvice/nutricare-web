@@ -2,8 +2,11 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { Role, SubscriptionTier } from "@prisma/client";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  debug: false,
+
   session: { strategy: "jwt" },
 
   pages: {
@@ -13,11 +16,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   providers: [
     Credentials({
-      name: "Credentials",
-
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        email: { type: "email" },
+        password: { type: "password" },
       },
 
       async authorize(credentials) {
@@ -32,15 +33,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!user) return null;
 
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+        const isValid = await bcrypt.compare(password, user.passwordHash);
+
+        if (!isValid) return null;
 
         return {
           id: user.id,
           email: user.email,
-          name: user.name ?? undefined,
-          role: user.role, // ✅ include role
-          subscriptionTier: user.subscriptionTier ?? "FREE", // ✅ include subscription tier
+          name: user.name,
+          role: user.role,
+          subscriptionTier: user.subscriptionTier,
         };
       },
     }),
@@ -52,19 +54,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.sub = user.id;
         token.email = user.email;
         token.name = user.name;
-        token.role = user.role ?? "USER"; // optional default
-        token.subscriptionTier = user.subscriptionTier ?? "FREE"; // optional default
+        token.role = user.role;
+        token.subscriptionTier = user.subscriptionTier;
       }
-
       return token;
     },
 
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub ?? "";
-            session.user.role = token.role ?? "USER"; // ✅ default if undefined
-            session.user.subscriptionTier = token.subscriptionTier ?? "FREE"; // ✅ default if undefined
-      }
+      if (!session.user) return session;
+
+      const userId = token.sub;
+      if (!userId) throw new Error("Invalid session: missing user id");
+
+      session.user.id = userId;
+      session.user.email = token.email ?? null;
+      session.user.name = token.name ?? null;
+      session.user.role = token.role ?? Role.USER;
+      session.user.subscriptionTier =
+        token.subscriptionTier ?? SubscriptionTier.FREE;
 
       return session;
     },

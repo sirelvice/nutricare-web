@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Leaf, ShieldCheck } from "lucide-react"; // Add these icons if not installed: npm install lucide-react
+import { Eye, EyeOff, Leaf, ShieldCheck } from "lucide-react";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -123,6 +123,16 @@ export default function LoginForm() {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
+              </div>
+
+              {/* Forgot Password Link */}
+              <div className="text-right">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline transition-colors"
+                >
+                  Forgot password?
+                </Link>
               </div>
 
               {msg && (

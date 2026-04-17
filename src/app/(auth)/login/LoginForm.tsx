@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,9 @@ import { Eye, EyeOff, Leaf, ShieldCheck } from "lucide-react";
 export default function LoginForm() {
   const router = useRouter();
   const sp = useSearchParams();
+
   const registered = sp.get("registered") === "1";
+  const nextUrl = sp.get("next"); // Get the intended destination from proxy
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +27,19 @@ export default function LoginForm() {
     const e = email.trim().toLowerCase();
     return e.includes("@") && e.length > 5 && password.length >= 6;
   }, [email, password]);
+
+  // Redirect to intended page after successful login
+  const handleSuccessfulLogin = () => {
+    setMsg({ type: "success", text: "Welcome back! Redirecting..." });
+
+    setTimeout(() => {
+      if (nextUrl && nextUrl.startsWith("/")) {
+        router.push(nextUrl);           // Go back to the protected page user tried to visit
+      } else {
+        router.push("/dashboard");      // Default fallback
+      }
+    }, 800);
+  };
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,11 +61,7 @@ export default function LoginForm() {
       return;
     }
 
-    // Success
-    setMsg({ type: "success", text: "Welcome back! Redirecting..." });
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 800);
+    handleSuccessfulLogin();
   }
 
   return (

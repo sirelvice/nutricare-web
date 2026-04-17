@@ -22,15 +22,15 @@ enum SubscriptionTier {
 
 // ── User Model ────────────────────────────────────────────────
 model User {
-  id                 String            @id @default(cuid())
-  email              String            @unique
-  name               String?
-  passwordHash       String
-  role               Role              @default(USER)
-  stripeCustomerId   String?
-  subscriptionTier   SubscriptionTier  @default(FREE)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  id                  String   @id @default(cuid())
+  email               String   @unique
+  name                String?     // ← Ensure this exists
+  passwordHash        String
+  role                Role     @default(USER)
+  stripeCustomerId    String?
+  subscriptionTier    SubscriptionTier @default(FREE)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 // ── Contact Messages ─────────────────────────────────────────

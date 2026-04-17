@@ -14,10 +14,14 @@
     "jsx": "react-jsx",
     "incremental": true,
     "plugins": [{ "name": "next" }],
+
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+
+    // ✅ FIX: silence TS 6 → 7 deprecation warning
+    "ignoreDeprecations": "6.0"
   },
   "include": [
     "next-env.d.ts",

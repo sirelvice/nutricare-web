@@ -7,13 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Leaf, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Leaf } from "lucide-react";
 
 type ApiRes = { ok: true } | { ok: false; error: string };
 
 export default function RegisterPage() {
   const router = useRouter();
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -21,9 +22,14 @@ export default function RegisterPage() {
   const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   const isValid = useMemo(() => {
-    const e = email.trim().toLowerCase();
-    return e.includes("@") && e.length > 5 && password.length >= 8;
-  }, [email, password]);
+    const trimmedEmail = email.trim().toLowerCase();
+    return (
+      name.trim().length >= 2 &&
+      trimmedEmail.includes("@") &&
+      trimmedEmail.length > 5 &&
+      password.length >= 8
+    );
+  }, [name, email, password]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,36 +42,35 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: email.trim().toLowerCase(), 
-          password 
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
         }),
       });
 
       const json = (await res.json()) as ApiRes;
 
       if (!res.ok || !json.ok) {
-        setMsg({ 
-          type: "error", 
-          text: json.error || "Registration failed. Please try again." 
+        setMsg({
+          type: "error",
+          text: json.error || "Registration failed. Please try again.",
         });
         return;
       }
 
-      // Success
-      setMsg({ 
-        type: "success", 
-        text: "Account created successfully! Redirecting to login..." 
+      setMsg({
+        type: "success",
+        text: "Account created successfully! Redirecting...",
       });
 
       setTimeout(() => {
         router.push("/login?registered=1");
       }, 1200);
-
-    } catch (err) {
-      setMsg({ 
-        type: "error", 
-        text: "Network error. Please check your connection and try again." 
+    } catch {
+      setMsg({
+        type: "error",
+        text: "Network error. Please check your connection and try again.",
       });
     } finally {
       setBusy(false);
@@ -75,7 +80,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50 px-4">
       <div className="w-full max-w-md space-y-8">
-        {/* Header with Brand */}
+        {/* Brand Header */}
         <div className="flex flex-col items-center text-center">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center">
@@ -100,6 +105,19 @@ export default function RegisterPage() {
 
           <CardContent className="px-8 pb-8">
             <form onSubmit={onSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-slate-700">Full name</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="John Doe"
+                  className="h-12 rounded-2xl"
+                  disabled={busy}
+                  required
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-slate-700">Email address</Label>
                 <Input
@@ -178,7 +196,6 @@ export default function RegisterPage() {
           </CardContent>
         </Card>
 
-        {/* Trust signals */}
         <p className="text-center text-xs text-slate-500">
           Your data is secure • End-to-end encrypted
         </p>

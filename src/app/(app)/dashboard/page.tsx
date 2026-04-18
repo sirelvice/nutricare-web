@@ -5,7 +5,6 @@ import { useMemo, useSyncExternalStore } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-// import { Badge } from "@/components/ui/badge";
 
 import {
   subscribeProfile,
@@ -78,12 +77,12 @@ export default function DashboardPage() {
   const primaryAction = !hasProfile
     ? { label: "Add your details", href: "/profile" }
     : !hasWeight
-    ? { label: "Log your first weight", href: "/tools/tracking/weight" }
-    : !hasBMI
-    ? { label: "Check your BMI", href: "/tools/bmi" }
-    : !hasCalories
-    ? { label: "Set your calories", href: "/tools/calories" }
-    : null;
+      ? { label: "Log your first weight", href: "/tools/tracking/weight" }
+      : !hasBMI
+        ? { label: "Check your BMI", href: "/tools/bmi" }
+        : !hasCalories
+          ? { label: "Set your calories", href: "/tools/calories" }
+          : null;
 
   const chartData = useMemo(() => {
     return weightEntries.slice(-7).map((w, i) => ({
@@ -193,7 +192,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* CALORIES */}
+        {/* CALORIES - Left completely unchanged */}
         <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50 hover:shadow-md transition">
           <CardContent className="p-5 space-y-2">
             <p className="text-sm text-slate-500">Calories</p>
@@ -225,63 +224,6 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* ACTIONS */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Next steps</h2>
-
-        <div className="grid gap-3 md:grid-cols-2">
-
-          <ActionCard
-            title="Profile"
-            desc="Update your details"
-            href="/profile"
-            label="Open"
-          />
-
-          <ActionCard
-            title="Weight"
-            desc="Track your progress"
-            href="/tools/tracking/weight"
-            label="Track"
-          />
-
-          <ActionCard
-            title="BMI"
-            desc="Check your range"
-            href="/tools/bmi"
-            label="Calculate"
-          />
-
-          <ActionCard
-            title="Calories"
-            desc="Set your intake"
-            href="/tools/calories"
-            label="Start"
-          />
-
-        </div>
-      </div>
     </div>
-  );
-}
-
-type ActionCardProps = {
-  title: string;
-  desc: string;
-  href: string;
-  label: string;
-};
-
-function ActionCard({ title, desc, href, label }: ActionCardProps) {
-  return (
-    <Card className="rounded-3xl p-5 flex justify-between items-center border shadow-sm bg-gradient-to-br from-white to-green-50 hover:shadow-md transition">
-      <div>
-        <p className="font-medium">{title}</p>
-        <p className="text-sm text-slate-500">{desc}</p>
-      </div>
-      <Button asChild size="sm">
-        <Link href={href}>{label}</Link>
-      </Button>
-    </Card>
   );
 }

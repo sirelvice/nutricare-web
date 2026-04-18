@@ -1,8 +1,6 @@
 "use client";
 
-
 import { useMemo, useState, useSyncExternalStore } from "react";
-//import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -25,8 +23,6 @@ const activityOptions: { value: ActivityLevel; label: string; hint: string }[] =
 ];
 
 export default function ProfilePage() {
-  //const router = useRouter();
-
   const storedProfile = useSyncExternalStore(
     subscribeProfile,
     getProfileSnapshot,
@@ -53,15 +49,10 @@ export default function ProfilePage() {
         : 10 * weightGuess + 6.25 * draft.heightCm - 5 * draft.age - 161;
 
     const multiplier =
-      draft.activity === "sedentary"
-        ? 1.2
-        : draft.activity === "light"
-          ? 1.375
-          : draft.activity === "moderate"
-            ? 1.55
-            : draft.activity === "active"
-              ? 1.725
-              : 1.9;
+      draft.activity === "sedentary" ? 1.2 :
+      draft.activity === "light" ? 1.375 :
+      draft.activity === "moderate" ? 1.55 :
+      draft.activity === "active" ? 1.725 : 1.9;
 
     return Math.round(bmr * multiplier);
   }, [draft]);
@@ -81,7 +72,7 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
 
-      {/* ✅ HEADER FIXED */}
+      {/* HEADER */}
       <div>
         <h1 className="text-2xl font-semibold">Your profile</h1>
         <p className="text-slate-600">
@@ -117,7 +108,7 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* ✅ PREMIUM CALORIE CARD */}
+      {/* PREMIUM CALORIE CARD */}
       {estimatedCalories && (
         <Card className="rounded-3xl border-0 shadow-sm bg-gradient-to-br from-emerald-50 via-white to-white">
           <CardContent className="p-6 flex items-center justify-between">
@@ -168,59 +159,51 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* GENDER */}
+          {/* GENDER - Changed to Select */}
           <div className="space-y-2">
             <Label>Gender</Label>
-            <div className="flex gap-2">
-              {(["male", "female", "other"] as const).map((g) => (
-                <Button
-                  key={g}
-                  type="button"
-                  variant={draft.gender === g ? "default" : "outline"}
-                  onClick={() => update("gender", g)}
-                >
-                  {g === "male" ? "Male" : g === "female" ? "Female" : "Other"}
-                </Button>
-              ))}
-            </div>
+            <select
+              value={draft.gender ?? ""}
+              onChange={(e) => update("gender", e.target.value as "male" | "female" | "other")}
+              className="w-full h-12 rounded-2xl border border-slate-200 px-4 text-sm focus:outline-none focus:border-emerald-600"
+            >
+              <option value="">Select gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
           </div>
 
-          {/* GOAL */}
+          {/* GOAL - Changed to Select */}
           <div className="space-y-2">
             <Label>Your goal</Label>
-            <div className="flex gap-2">
-              {(["lose", "maintain", "gain"] as const).map((g) => (
-                <Button
-                  key={g}
-                  type="button"
-                  variant={draft.goal === g ? "default" : "outline"}
-                  onClick={() => update("goal", g)}
-                >
-                  {g === "lose" ? "Lose weight" : g === "gain" ? "Gain weight" : "Maintain"}
-                </Button>
-              ))}
-            </div>
+            <select
+              value={draft.goal ?? ""}
+              onChange={(e) => update("goal", e.target.value as "lose" | "maintain" | "gain")}
+              className="w-full h-12 rounded-2xl border border-slate-200 px-4 text-sm focus:outline-none focus:border-emerald-600"
+            >
+              <option value="">Select goal</option>
+              <option value="lose">Lose weight</option>
+              <option value="maintain">Maintain weight</option>
+              <option value="gain">Gain weight</option>
+            </select>
           </div>
 
-          {/* ACTIVITY */}
+          {/* ACTIVITY - Changed to Select */}
           <div className="space-y-2">
             <Label>Activity level</Label>
-            <div className="grid gap-2 md:grid-cols-2">
+            <select
+              value={draft.activity ?? ""}
+              onChange={(e) => update("activity", e.target.value as ActivityLevel)}
+              className="w-full h-12 rounded-2xl border border-slate-200 px-4 text-sm focus:outline-none focus:border-emerald-600"
+            >
+              <option value="">Select activity level</option>
               {activityOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => update("activity", opt.value)}
-                  className={`rounded-2xl border p-3 text-left ${draft.activity === opt.value
-                    ? "border-green-600 bg-green-50"
-                    : "hover:bg-slate-50"
-                    }`}
-                >
-                  <div className="font-semibold">{opt.label}</div>
-                  <div className="text-xs text-slate-600">{opt.hint}</div>
-                </button>
+                <option key={opt.value} value={opt.value}>
+                  {opt.label} — {opt.hint}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
           {/* SAVE */}
@@ -236,7 +219,7 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* ✅ PREMIUM CALORIE CARD */}
+      {/* ACTIONABLE NEXT STEP */}
       <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardContent className="p-5">
           <p className="text-sm text-slate-600">
@@ -244,6 +227,6 @@ export default function ProfilePage() {
           </p>
         </CardContent>
       </Card>
-    </div >
+    </div>
   );
 }

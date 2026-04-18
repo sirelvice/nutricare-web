@@ -1,7 +1,8 @@
 "use client";
 
+
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+//import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ const activityOptions: { value: ActivityLevel; label: string; hint: string }[] =
 ];
 
 export default function ProfilePage() {
-  const router = useRouter();
+  //const router = useRouter();
 
   const storedProfile = useSyncExternalStore(
     subscribeProfile,
@@ -210,11 +211,10 @@ export default function ProfilePage() {
                   key={opt.value}
                   type="button"
                   onClick={() => update("activity", opt.value)}
-                  className={`rounded-2xl border p-3 text-left ${
-                    draft.activity === opt.value
-                      ? "border-green-600 bg-green-50"
-                      : "hover:bg-slate-50"
-                  }`}
+                  className={`rounded-2xl border p-3 text-left ${draft.activity === opt.value
+                    ? "border-green-600 bg-green-50"
+                    : "hover:bg-slate-50"
+                    }`}
                 >
                   <div className="font-semibold">{opt.label}</div>
                   <div className="text-xs text-slate-600">{opt.hint}</div>
@@ -236,23 +236,14 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* ✅ ACTIONABLE NEXT STEP */}
-      <Card className="rounded-3xl border bg-muted/40 shadow-sm">
-        <CardContent className="p-6 flex items-center justify-between">
-          <div>
-            <p className="font-medium">Next step</p>
-            <p className="text-sm text-slate-600">
-              Add your first weight entry to see progress over time.
-            </p>
-          </div>
-
-          <Button
-            onClick={() => router.push("/tools/tracking/weight")}
-          >
-            Start tracking weight
-          </Button>
+      {/* ✅ PREMIUM CALORIE CARD */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+        <CardContent className="p-5">
+          <p className="text-sm text-slate-600">
+            Once your profile is complete, you can start tracking your weight and calories from the dashboard.
+          </p>
         </CardContent>
       </Card>
-    </div>
+    </div >
   );
 }

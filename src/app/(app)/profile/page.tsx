@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,8 @@ const activityOptions: { value: ActivityLevel; label: string; hint: string }[] =
 ];
 
 export default function ProfilePage() {
+  const router = useRouter();
+
   const storedProfile = useSyncExternalStore(
     subscribeProfile,
     getProfileSnapshot,
@@ -36,6 +39,30 @@ export default function ProfilePage() {
     const hOk = draft.heightCm === null || (draft.heightCm >= 80 && draft.heightCm <= 250);
     const aOk = draft.age === null || (draft.age >= 10 && draft.age <= 120);
     return hOk && aOk;
+  }, [draft]);
+
+  const estimatedCalories = useMemo(() => {
+    if (!draft.heightCm || !draft.age || !draft.gender) return null;
+
+    const weightGuess = 70;
+
+    const bmr =
+      draft.gender === "male"
+        ? 10 * weightGuess + 6.25 * draft.heightCm - 5 * draft.age + 5
+        : 10 * weightGuess + 6.25 * draft.heightCm - 5 * draft.age - 161;
+
+    const multiplier =
+      draft.activity === "sedentary"
+        ? 1.2
+        : draft.activity === "light"
+          ? 1.375
+          : draft.activity === "moderate"
+            ? 1.55
+            : draft.activity === "active"
+              ? 1.725
+              : 1.9;
+
+    return Math.round(bmr * multiplier);
   }, [draft]);
 
   function update<K extends keyof UserProfile>(key: K, value: UserProfile[K]) {
@@ -53,15 +80,15 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
 
-      {/* HEADER */}
+      {/* ✅ HEADER FIXED */}
       <div>
         <h1 className="text-2xl font-semibold">Your profile</h1>
         <p className="text-slate-600">
-          Tell us about yourself once — we’ll use this to personalize your health insights.
+          Your information helps us calculate your daily needs and recommendations.
         </p>
       </div>
 
-      {/* SUMMARY CARD (NEW — PRODUCT UPGRADE) */}
+      {/* SUMMARY */}
       <Card className="rounded-3xl border bg-gradient-to-br from-green-50 to-white shadow-sm">
         <CardContent className="p-5">
           <p className="text-sm text-slate-600">Current setup</p>
@@ -74,7 +101,13 @@ export default function ProfilePage() {
               Age: {draft.age ?? "—"}
             </span>
             <span className="px-3 py-1 rounded-full bg-white border">
-              Goal: {draft.goal ?? "—"}
+              Goal: {draft.goal === "gain"
+                ? "Gain weight"
+                : draft.goal === "lose"
+                  ? "Lose weight"
+                  : draft.goal === "maintain"
+                    ? "Maintain"
+                    : "—"}
             </span>
             <span className="px-3 py-1 rounded-full bg-white border">
               Activity: {draft.activity ?? "—"}
@@ -83,41 +116,53 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* MAIN FORM */}
+      {/* ✅ PREMIUM CALORIE CARD */}
+      {estimatedCalories && (
+        <Card className="rounded-3xl border-0 shadow-sm bg-gradient-to-br from-emerald-50 via-white to-white">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-600">Estimated daily calories</p>
+              <p className="text-3xl font-bold">~{estimatedCalories} kcal</p>
+              <p className="text-xs text-slate-500">
+                Based on your profile
+              </p>
+            </div>
+
+            <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-lg">
+              🔥
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* FORM */}
       <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
-          <CardTitle className="text-lg">Your details</CardTitle>
+          <CardTitle>Your details</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-6">
 
-          {/* BODY INFO */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="height">Height (cm)</Label>
+              <Label>Height (cm)</Label>
               <Input
-                id="height"
                 value={draft.heightCm ?? ""}
                 onChange={(e) => {
                   const v = e.target.value.trim();
                   update("heightCm", v ? Number(v) : null);
                 }}
-                placeholder="e.g. 172"
-                inputMode="numeric"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="age">Age (years)</Label>
+              <Label>Age (years)</Label>
               <Input
-                id="age"
                 value={draft.age ?? ""}
                 onChange={(e) => {
                   const v = e.target.value.trim();
                   update("age", v ? Number(v) : null);
                 }}
-                placeholder="e.g. 24"
-                inputMode="numeric"
               />
             </div>
           </div>
@@ -125,7 +170,7 @@ export default function ProfilePage() {
           {/* GENDER */}
           <div className="space-y-2">
             <Label>Gender</Label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
               {(["male", "female", "other"] as const).map((g) => (
                 <Button
                   key={g}
@@ -142,7 +187,7 @@ export default function ProfilePage() {
           {/* GOAL */}
           <div className="space-y-2">
             <Label>Your goal</Label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
               {(["lose", "maintain", "gain"] as const).map((g) => (
                 <Button
                   key={g}
@@ -165,24 +210,17 @@ export default function ProfilePage() {
                   key={opt.value}
                   type="button"
                   onClick={() => update("activity", opt.value)}
-                  className={[
-                    "rounded-2xl border p-3 text-left transition",
+                  className={`rounded-2xl border p-3 text-left ${
                     draft.activity === opt.value
                       ? "border-green-600 bg-green-50"
-                      : "hover:bg-slate-50",
-                  ].join(" ")}
+                      : "hover:bg-slate-50"
+                  }`}
                 >
-                  <div className="text-sm font-semibold">{opt.label}</div>
+                  <div className="font-semibold">{opt.label}</div>
                   <div className="text-xs text-slate-600">{opt.hint}</div>
                 </button>
               ))}
             </div>
-
-            {!valid && (
-              <p className="text-xs text-red-600">
-                Enter realistic values (Height 80–250cm, Age 10–120).
-              </p>
-            )}
           </div>
 
           {/* SAVE */}
@@ -198,13 +236,21 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* FUTURE */}
-      <Card className="rounded-3xl border bg-slate-50">
-        <CardHeader>
-          <CardTitle className="text-lg">What’s next</CardTitle>
-        </CardHeader>
-        <CardContent className="text-slate-600">
-          We’ll use your profile to calculate calorie targets and give smarter recommendations.
+      {/* ✅ ACTIONABLE NEXT STEP */}
+      <Card className="rounded-3xl border bg-muted/40 shadow-sm">
+        <CardContent className="p-6 flex items-center justify-between">
+          <div>
+            <p className="font-medium">Next step</p>
+            <p className="text-sm text-slate-600">
+              Add your first weight entry to see progress over time.
+            </p>
+          </div>
+
+          <Button
+            onClick={() => router.push("/tools/tracking/weight")}
+          >
+            Start tracking weight
+          </Button>
         </CardContent>
       </Card>
     </div>

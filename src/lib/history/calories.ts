@@ -7,9 +7,13 @@ export type CaloriesHistoryEntry = {
   gender: "male" | "female" | "other";
   activity: "sedentary" | "light" | "moderate" | "active" | "very_active";
   goal: "lose" | "maintain" | "gain";
-  bmr: number;
-  tdee: number;
+
+  // ✅ NEW CORE FIELD
   targetCalories: number;
+
+  // ⚠️ OPTIONAL (backward compatibility)
+  bmr?: number;
+  tdee?: number;
 };
 
 const KEY = "nutricare.history.calories.v1";
@@ -19,8 +23,14 @@ function safeParse(raw: string | null): CaloriesHistoryEntry[] {
   try {
     const arr = JSON.parse(raw) as CaloriesHistoryEntry[];
     if (!Array.isArray(arr)) return [];
+
     return arr
-      .filter((x) => x && typeof x.createdAt === "number" && typeof x.tdee === "number")
+      .filter(
+        (x) =>
+          x &&
+          typeof x.createdAt === "number" &&
+          typeof x.targetCalories === "number"
+      )
       .slice(0, 500);
   } catch {
     return [];
@@ -38,10 +48,22 @@ export function saveCaloriesHistory(items: CaloriesHistoryEntry[]) {
   window.localStorage.setItem(KEY, JSON.stringify(items.slice(0, 500)));
 }
 
-export function addCaloriesHistory(entry: Omit<CaloriesHistoryEntry, "id" | "createdAt">) {
+export function addCaloriesHistory(
+  entry: Omit<CaloriesHistoryEntry, "id" | "createdAt">
+) {
   const items = loadCaloriesHistory();
-  const id = crypto?.randomUUID ? crypto.randomUUID() : String(Date.now());
-  const next: CaloriesHistoryEntry = { id, createdAt: Date.now(), ...entry };
+
+  const id =
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : String(Date.now());
+
+  const next: CaloriesHistoryEntry = {
+    id,
+    createdAt: Date.now(),
+    ...entry,
+  };
+
   saveCaloriesHistory([next, ...items]);
   return next;
 }

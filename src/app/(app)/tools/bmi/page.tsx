@@ -63,7 +63,7 @@ export default function BMIPage() {
 
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
-  const [goal, setGoal] = useState<Goal>("maintain");
+  const [goal, setGoal] = useState<Goal | "">("");
 
   const [loading, setLoading] = useState(false);
   const [api, setApi] = useState<ApiResponse | null>(null);
@@ -193,7 +193,9 @@ export default function BMIPage() {
               onChange={(e) => onGoalChange(e.target.value as Goal)}
               className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
             >
-              <option value="">Select goal</option>
+              <option value="" disabled>
+                Select goal
+              </option>
               <option value="lose">Lose weight</option>
               <option value="maintain">Maintain weight</option>
               <option value="gain">Gain weight</option>

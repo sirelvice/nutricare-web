@@ -50,9 +50,9 @@ export default function ProfilePage() {
 
     const multiplier =
       draft.activity === "sedentary" ? 1.2 :
-      draft.activity === "light" ? 1.375 :
-      draft.activity === "moderate" ? 1.55 :
-      draft.activity === "active" ? 1.725 : 1.9;
+        draft.activity === "light" ? 1.375 :
+          draft.activity === "moderate" ? 1.55 :
+            draft.activity === "active" ? 1.725 : 1.9;
 
     return Math.round(bmr * multiplier);
   }, [draft]);
@@ -190,7 +190,9 @@ export default function ProfilePage() {
                 }
                 className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
               >
-                <option value="">Select goal</option>
+                <option value="" disabled>
+                  Select goal
+                </option>
                 <option value="lose">Lose weight</option>
                 <option value="maintain">Maintain weight</option>
                 <option value="gain">Gain weight</option>

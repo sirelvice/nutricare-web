@@ -1,20 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { addBmiHistory } from "@/lib/history/bmi";
-{/*import { addMetric } from "@/lib/history/metrics";*/};
-
+import {
+  subscribeProfile,
+  getProfileSnapshot,
+  getProfileServerSnapshot,
+} from "@/lib/profile/storage";
 
 type Goal = "lose" | "maintain" | "gain";
 
 type ApiOk = {
   bmi: number;
   category: { label: string; note: string };
+  targetCalories: number;
   recommendations: {
     bmiLabel: string;
     goal: Goal;
@@ -47,11 +51,16 @@ function categoryKeyFromLabel(label: string): CategoryKey {
   if (x.includes("class i")) return "obese1";
   if (x.includes("class ii")) return "obese2";
   if (x.includes("class iii")) return "obese3";
-  // fallback
   return "normal";
 }
 
 export default function BMIPage() {
+  const profile = useSyncExternalStore(
+    subscribeProfile,
+    getProfileSnapshot,
+    getProfileServerSnapshot
+  );
+
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [goal, setGoal] = useState<Goal>("maintain");
@@ -90,20 +99,23 @@ export default function BMIPage() {
           heightCm: h,
           weightKg: w,
           goal: g,
+          age: profile?.age ?? null,
+          gender: profile?.gender ?? null,
+          activity: profile?.activity ?? null,
         }),
       });
 
       const json = (await res.json()) as ApiResponse;
 
       if (!res.ok) {
-        const err = json && typeof json === "object" && "error" in json
-          ? String(json.error)
-          : "Request failed.";
+        const err =
+          json && typeof json === "object" && "error" in json
+            ? String(json.error)
+            : "Request failed.";
         setApi({ error: err });
       } else {
         setApi(json);
 
-        // Save BMI to History (only when we have a successful result)
         if (isOk(json)) {
           addBmiHistory({
             heightCm: h,
@@ -123,7 +135,6 @@ export default function BMIPage() {
   function onGoalChange(g: Goal) {
     setGoal(g);
 
-    // If already calculated once, refresh immediately with new goal (no useEffect loop)
     if (api && isOk(api) && valid && !loading) {
       fetchRecommendations(g);
     }
@@ -177,7 +188,11 @@ export default function BMIPage() {
                   variant={goal === g ? "default" : "outline"}
                   onClick={() => onGoalChange(g)}
                 >
-                  {g === "lose" ? "Lose weight" : g === "gain" ? "Gain weight" : "Maintain"}
+                  {g === "lose"
+                    ? "Lose weight"
+                    : g === "gain"
+                    ? "Gain weight"
+                    : "Maintain"}
                 </Button>
               ))}
             </div>
@@ -192,11 +207,11 @@ export default function BMIPage() {
               {loading ? "Calculating..." : "Calculate & get recommendations"}
             </Button>
 
-            {!valid ? (
+            {!valid && (
               <p className="mt-2 text-xs text-slate-500">
                 Enter realistic values (Height 80–250cm, Weight 20–350kg).
               </p>
-            ) : null}
+            )}
           </div>
         </CardContent>
       </Card>
@@ -212,7 +227,9 @@ export default function BMIPage() {
 
         <CardContent className="space-y-4">
           {!api ? (
-            <p className="text-slate-600">Fill in your details, then click calculate.</p>
+            <p className="text-slate-600">
+              Fill in your details, then click calculate.
+            </p>
           ) : "error" in api ? (
             <p className="text-slate-600">{api.error}</p>
           ) : (
@@ -225,8 +242,12 @@ export default function BMIPage() {
               <p className="text-slate-600">{api.category.note}</p>
 
               <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="text-sm font-semibold">Nutrition guidance</div>
-                <p className="mt-1 text-sm text-slate-600">{api.recommendations.summary}</p>
+                <div className="text-sm font-semibold">
+                  Nutrition guidance
+                </div>
+                <p className="mt-1 text-sm text-slate-600">
+                  {api.recommendations.summary}
+                </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
@@ -259,8 +280,7 @@ export default function BMIPage() {
               </div>
 
               <p className="text-xs text-slate-500">
-                BMI is a screening tool and doesn’t capture all health factors. If you have medical concerns,
-                consider professional guidance.
+                BMI is a screening tool and doesn’t capture all health factors.
               </p>
             </>
           )}

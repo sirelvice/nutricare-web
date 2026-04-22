@@ -186,33 +186,18 @@ export default function BMIPage() {
 
           {/* Goal */}
           <div className="space-y-1">
-            <Label>Goal</Label>
+            <Label htmlFor="goal">Goal</Label>
 
-            <div className="grid grid-cols-3 gap-2">
-              {(["lose", "maintain", "gain"] as Goal[]).map((g) => {
-                const selected = goal === g;
-
-                return (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => onGoalChange(g)}
-                    className={`h-10 rounded-xl text-sm border transition
-                      ${
-                        selected
-                          ? "bg-emerald-600 text-white border-emerald-600"
-                          : "bg-white hover:bg-slate-50 border-slate-200"
-                      }`}
-                  >
-                    {g === "lose"
-                      ? "Lose"
-                      : g === "gain"
-                      ? "Gain"
-                      : "Maintain"}
-                  </button>
-                );
-              })}
-            </div>
+            <select
+              id="goal"
+              value={goal}
+              onChange={(e) => onGoalChange(e.target.value as Goal)}
+              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm bg-white focus:outline-none focus:border-emerald-600"
+            >
+              <option value="lose">Lose weight</option>
+              <option value="maintain">Maintain weight</option>
+              <option value="gain">Gain weight</option>
+            </select>
           </div>
 
           {/* CTA */}

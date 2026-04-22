@@ -14,6 +14,7 @@ import {
 
 import { loadWeightEntries, summarize } from "@/lib/tracking/weight";
 import { loadCaloriesHistory } from "@/lib/history/calories";
+import { loadBmiHistory } from "@/lib/history/bmi";
 
 import {
   LineChart,
@@ -29,7 +30,6 @@ function getGreeting() {
   return "Good evening";
 }
 
-// nicer goal text
 function formatGoal(goal?: string) {
   if (!goal) return "";
   if (goal === "gain") return "gain weight";
@@ -50,28 +50,14 @@ export default function DashboardPage() {
   const calHistory = useMemo(() => loadCaloriesHistory(), []);
   const latestCalories = calHistory[0] ?? null;
 
-  const bmiInfo = useMemo(() => {
-    if (!profile.heightCm || !weightStats?.last?.weightKg) return null;
-
-    const bmi =
-      weightStats.last.weightKg / Math.pow(profile.heightCm / 100, 2);
-
-    let category = "Healthy";
-    if (bmi < 18.5) category = "Underweight";
-    else if (bmi < 25) category = "Healthy";
-    else if (bmi < 30) category = "Overweight";
-    else category = "Obese";
-
-    return {
-      bmi: Number(bmi.toFixed(1)),
-      category,
-    };
-  }, [profile.heightCm, weightStats?.last?.weightKg]);
+  // ✅ FIX: use BMI history instead of recalculating
+  const bmiHistory = useMemo(() => loadBmiHistory(), []);
+  const latestBMI = bmiHistory[0] ?? null;
 
   // state
   const hasProfile = profile.heightCm && profile.age;
   const hasWeight = !!weightStats?.last;
-  const hasBMI = !!bmiInfo;
+  const hasBMI = !!latestBMI;
   const hasCalories = !!latestCalories;
 
   const primaryAction = !hasProfile
@@ -123,13 +109,13 @@ export default function DashboardPage() {
           <CardContent className="p-5 space-y-2">
             <p className="text-sm text-slate-500">BMI</p>
 
-            {bmiInfo ? (
+            {latestBMI ? (
               <>
                 <div className="text-4xl font-semibold">
-                  {bmiInfo.bmi}
+                  {latestBMI.bmi}
                 </div>
                 <p className="text-sm text-slate-600">
-                  {bmiInfo.category}
+                  {latestBMI.category}
                 </p>
               </>
             ) : (
@@ -192,7 +178,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* CALORIES - Left completely unchanged */}
+        {/* CALORIES */}
         <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50 hover:shadow-md transition">
           <CardContent className="p-5 space-y-2">
             <p className="text-sm text-slate-500">Calories</p>

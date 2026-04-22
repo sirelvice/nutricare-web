@@ -185,6 +185,7 @@ export default function BMIPage() {
           </div>
 
           {/* Goal */}
+          {/* Goal */}
           <div className="space-y-1">
             <Label>Your goal</Label>
             <select

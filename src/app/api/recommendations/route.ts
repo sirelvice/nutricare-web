@@ -1,69 +1,99 @@
 import { NextResponse } from "next/server";
 import { buildRecommendations, type BmiCategory } from "@/lib/reco/engine";
-import { calculateBMI } from "@/lib/calc/bmi";
-import { calculateTDEE } from "@/lib/calc/metabolism";
+
+import { calcBMIKgM, bmiCategoryWHO } from "@/lib/calc/bmi";
+import {
+  calcBMR,
+  calcTDEE,
+  goalCalories,
+  type ActivityLevel,
+  type Gender,
+} from "@/lib/calc/metabolism";
 
 type Goal = "lose" | "maintain" | "gain";
-
-type ActivityLevel =
-  | "sedentary"
-  | "light"
-  | "moderate"
-  | "active"
-  | "very_active";
-
-type Gender = "male" | "female";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
 
   const heightCm = Number(body?.heightCm);
   const weightKg = Number(body?.weightKg);
-  const age = Number(body?.age);
+  const ageYears = Number(body?.age);
   const gender = body?.gender as Gender | undefined;
   const activity = body?.activity as ActivityLevel | undefined;
   const goal = (body?.goal ?? "maintain") as Goal;
 
-  // ✅ Validate required inputs
-  if (
-    !Number.isFinite(heightCm) ||
-    !Number.isFinite(weightKg)
-  ) {
+  // ✅ Validate core inputs
+  if (!Number.isFinite(heightCm) || !Number.isFinite(weightKg)) {
     return NextResponse.json(
       { error: "heightCm and weightKg are required." },
       { status: 400 }
     );
   }
 
-  // ✅ Compute BMI (from shared calc layer)
-  const { bmi, category: rawCategory } = calculateBMI(heightCm, weightKg);
+  // ✅ BMI calculation (your actual function)
+  const bmi = calcBMIKgM(weightKg, heightCm);
 
-  // ✅ Normalize category for recommendation engine
+  if (!bmi) {
+    return NextResponse.json(
+      { error: "Unable to calculate BMI." },
+      { status: 400 }
+    );
+  }
+
+  // ✅ WHO category (your actual function)
+  const categoryInfo = bmiCategoryWHO(bmi);
+
+  // map label → engine category
+  const label = categoryInfo.label.toLowerCase();
+
   const category: BmiCategory =
-    rawCategory === "underweight"
+    label.includes("under")
       ? "underweight"
-      : rawCategory === "normal"
+      : label.includes("normal")
       ? "normal"
-      : rawCategory === "overweight"
+      : label.includes("overweight")
       ? "overweight"
       : "obese";
 
-  // ✅ Safe fallbacks (until fully wired to profile)
-  const safeAge = Number.isFinite(age) ? age : 25;
-  const safeGender: Gender = gender === "female" ? "female" : "male";
+  // ✅ Safe fallbacks (until profile fully wired)
+  const safeAge = Number.isFinite(ageYears) ? ageYears : 25;
+  const safeGender: Gender =
+    gender === "female" || gender === "other" ? gender : "male";
   const safeActivity: ActivityLevel = activity ?? "moderate";
 
-  // ✅ Compute calories (shared logic)
-  const targetCalories = calculateTDEE({
+  // ✅ BMR → TDEE → Goal calories (using your functions)
+  const bmr = calcBMR({
     weightKg,
     heightCm,
-    age: safeAge,
+    ageYears: safeAge,
     gender: safeGender,
+  });
+
+  if (!bmr) {
+    return NextResponse.json(
+      { error: "Unable to calculate BMR." },
+      { status: 400 }
+    );
+  }
+
+  const tdee = calcTDEE({
+    bmr,
     activity: safeActivity,
+  });
+
+  if (!tdee) {
+    return NextResponse.json(
+      { error: "Unable to calculate TDEE." },
+      { status: 400 }
+    );
+  }
+
+  const targetCalories = goalCalories({
+    tdee,
     goal,
   });
 
-  // ✅ Build recommendations
+  // ✅ Recommendations
   const recommendations = buildRecommendations({
     bmi,
     category,
@@ -72,8 +102,8 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({
-    bmi: Number(bmi.toFixed(1)),
-    category: rawCategory,
+    bmi,
+    category: categoryInfo, // includes label + note (nice for UI)
     targetCalories,
     recommendations,
   });

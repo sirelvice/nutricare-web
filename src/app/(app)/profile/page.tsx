@@ -108,7 +108,7 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* PREMIUM CALORIE CARD */}
+      {/* CALORIES */}
       {estimatedCalories && (
         <Card className="rounded-3xl border-0 shadow-sm bg-gradient-to-br from-emerald-50 via-white to-white">
           <CardContent className="p-6 flex items-center justify-between">
@@ -133,12 +133,15 @@ export default function ProfilePage() {
           <CardTitle>Your details</CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        {/* ✅ KEY FIXES ARE HERE */}
+        <CardContent className="space-y-4">
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
+          {/* HEIGHT + AGE */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1">
               <Label>Height (cm)</Label>
               <Input
+                className="h-10 rounded-xl"
                 value={draft.heightCm ?? ""}
                 onChange={(e) => {
                   const v = e.target.value.trim();
@@ -147,9 +150,10 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label>Age (years)</Label>
               <Input
+                className="h-10 rounded-xl"
                 value={draft.age ?? ""}
                 onChange={(e) => {
                   const v = e.target.value.trim();
@@ -159,43 +163,50 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* GENDER - Changed to Select */}
-          <div className="space-y-2">
-            <Label>Gender</Label>
-            <select
-              value={draft.gender ?? ""}
-              onChange={(e) => update("gender", e.target.value as "male" | "female" | "other")}
-              className="w-full h-12 rounded-2xl border border-slate-200 px-4 text-sm focus:outline-none focus:border-emerald-600"
-            >
-              <option value="">Select gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
+          {/* GENDER + GOAL (SIDE BY SIDE) */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Gender</Label>
+              <select
+                value={draft.gender ?? ""}
+                onChange={(e) =>
+                  update("gender", e.target.value as "male" | "female" | "other")
+                }
+                className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
+              >
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Your goal</Label>
+              <select
+                value={draft.goal ?? ""}
+                onChange={(e) =>
+                  update("goal", e.target.value as "lose" | "maintain" | "gain")
+                }
+                className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
+              >
+                <option value="">Select goal</option>
+                <option value="lose">Lose weight</option>
+                <option value="maintain">Maintain weight</option>
+                <option value="gain">Gain weight</option>
+              </select>
+            </div>
           </div>
 
-          {/* GOAL - Changed to Select */}
-          <div className="space-y-2">
-            <Label>Your goal</Label>
-            <select
-              value={draft.goal ?? ""}
-              onChange={(e) => update("goal", e.target.value as "lose" | "maintain" | "gain")}
-              className="w-full h-12 rounded-2xl border border-slate-200 px-4 text-sm focus:outline-none focus:border-emerald-600"
-            >
-              <option value="">Select goal</option>
-              <option value="lose">Lose weight</option>
-              <option value="maintain">Maintain weight</option>
-              <option value="gain">Gain weight</option>
-            </select>
-          </div>
-
-          {/* ACTIVITY - Changed to Select */}
-          <div className="space-y-2">
+          {/* ACTIVITY */}
+          <div className="space-y-1">
             <Label>Activity level</Label>
             <select
               value={draft.activity ?? ""}
-              onChange={(e) => update("activity", e.target.value as ActivityLevel)}
-              className="w-full h-12 rounded-2xl border border-slate-200 px-4 text-sm focus:outline-none focus:border-emerald-600"
+              onChange={(e) =>
+                update("activity", e.target.value as ActivityLevel)
+              }
+              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
             >
               <option value="">Select activity level</option>
               {activityOptions.map((opt) => (
@@ -207,7 +218,7 @@ export default function ProfilePage() {
           </div>
 
           {/* SAVE */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pt-2">
             <Button onClick={onSave} disabled={!valid}>
               {saved ? "Saved ✓" : "Save profile"}
             </Button>
@@ -216,10 +227,11 @@ export default function ProfilePage() {
               Your data stays on this device.
             </span>
           </div>
+
         </CardContent>
       </Card>
 
-      {/* ACTIONABLE NEXT STEP */}
+      {/* FOOTER */}
       <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardContent className="p-5">
           <p className="text-sm text-slate-600">

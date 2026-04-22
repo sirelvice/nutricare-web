@@ -63,7 +63,7 @@ export default function BMIPage() {
 
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
-  const [goal, setGoal] = useState<Goal | "">("");
+  const [goal, setGoal] = useState<Goal>("maintain");
 
   const [loading, setLoading] = useState(false);
   const [api, setApi] = useState<ApiResponse | null>(null);
@@ -184,7 +184,6 @@ export default function BMIPage() {
             />
           </div>
 
-          {/* Goal */}
           {/* Goal */}
           <div className="space-y-1">
             <Label>Your goal</Label>

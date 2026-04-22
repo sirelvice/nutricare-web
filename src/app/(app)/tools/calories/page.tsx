@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useSyncExternalStore } from "react";
+import { useMemo, useState, useEffect, useSyncExternalStore, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,10 +42,16 @@ export default function CaloriesToolPage() {
 
   const valid = useMemo(() => {
     const w = Number(weightKg);
-    return !!w && w >= 20 && w <= 350 && profile.heightCm && profile.age;
+    return (
+      !!w &&
+      w >= 20 &&
+      w <= 350 &&
+      profile.heightCm != null &&
+      profile.age != null
+    );
   }, [weightKg, profile]);
 
-  async function calculate() {
+  const calculate = useCallback(async () => {
     if (!valid) {
       setApi({ error: "Missing required profile or weight." });
       return;
@@ -56,9 +62,9 @@ export default function CaloriesToolPage() {
 
     try {
       const payload = {
-        heightCm: profile.heightCm,
+        heightCm: profile.heightCm as number,
         weightKg: Number(weightKg),
-        age: profile.age,
+        age: profile.age as number,
         gender: profile.gender,
         activity: profile.activity,
         goal: profile.goal,
@@ -77,31 +83,36 @@ export default function CaloriesToolPage() {
       } else {
         setApi(json);
 
-        const ok = json as ApiOk;
-
-        addCaloriesHistory({
-          heightCm: payload.heightCm,
-          weightKg: payload.weightKg,
-          ageYears: payload.age,
-          gender: payload.gender,
-          activity: payload.activity,
-          goal: payload.goal,
-          targetCalories: ok.targetCalories,
-        });
+        // ✅ SAFE SAVE (no nulls allowed)
+        if (
+          profile.heightCm != null &&
+          profile.age != null &&
+          "targetCalories" in json
+        ) {
+          addCaloriesHistory({
+            heightCm: profile.heightCm,
+            weightKg: payload.weightKg,
+            ageYears: profile.age,
+            gender: payload.gender,
+            activity: payload.activity,
+            goal: payload.goal,
+            targetCalories: json.targetCalories,
+          });
+        }
       }
     } catch {
       setApi({ error: "Network error. Please try again." });
     } finally {
       setLoading(false);
     }
-  }
+  }, [valid, weightKg, profile]);
 
-  // ✅ AUTO RUN when possible
+  // ✅ AUTO RUN (safe, no lint error, no loop)
   useEffect(() => {
     if (valid && !api) {
       calculate();
     }
-  }, [valid]);
+  }, [valid, api, calculate]);
 
   return (
     <div className="space-y-6">
@@ -134,11 +145,11 @@ export default function CaloriesToolPage() {
           </div>
 
           <div className="md:col-span-2 flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">Height: {profile.heightCm}</Badge>
-            <Badge variant="secondary">Age: {profile.age}</Badge>
-            <Badge variant="secondary">Gender: {profile.gender}</Badge>
-            <Badge variant="secondary">Activity: {profile.activity}</Badge>
-            <Badge variant="secondary">Goal: {profile.goal}</Badge>
+            <Badge variant="secondary">Height: {profile.heightCm ?? "-"}</Badge>
+            <Badge variant="secondary">Age: {profile.age ?? "-"}</Badge>
+            <Badge variant="secondary">Gender: {profile.gender ?? "-"}</Badge>
+            <Badge variant="secondary">Activity: {profile.activity ?? "-"}</Badge>
+            <Badge variant="secondary">Goal: {profile.goal ?? "-"}</Badge>
           </div>
 
           <div className="md:col-span-3">

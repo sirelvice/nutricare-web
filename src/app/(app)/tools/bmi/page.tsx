@@ -186,7 +186,7 @@ export default function BMIPage() {
 
           {/* Goal */}
           <div className="space-y-1">
-            <Label>Your goal</Label>
+            <Label>Goal</Label>
             <select
               value={goal}
               onChange={(e) => onGoalChange(e.target.value as Goal)}

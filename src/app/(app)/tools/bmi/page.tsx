@@ -186,18 +186,26 @@ export default function BMIPage() {
 
           {/* Goal */}
           <div className="space-y-1">
-            <Label htmlFor="goal">Goal</Label>
+            <Label htmlFor="goal">Your goal</Label>
 
-            <select
-              id="goal"
-              value={goal}
-              onChange={(e) => onGoalChange(e.target.value as Goal)}
-              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm bg-white focus:outline-none focus:border-emerald-600"
-            >
-              <option value="lose">Lose weight</option>
-              <option value="maintain">Maintain weight</option>
-              <option value="gain">Gain weight</option>
-            </select>
+            <div className="relative">
+              <select
+                id="goal"
+                value={goal}
+                onChange={(e) => onGoalChange(e.target.value as Goal)}
+                className="w-full h-12 rounded-2xl border border-slate-200 bg-white px-4 pr-10 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 transition"
+              >
+                <option value="">Select goal</option>
+                <option value="lose">Lose weight</option>
+                <option value="maintain">Maintain weight</option>
+                <option value="gain">Gain weight</option>
+              </select>
+
+              {/* custom dropdown arrow */}
+              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500">
+                ▼
+              </div>
+            </div>
           </div>
 
           {/* CTA */}

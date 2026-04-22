@@ -151,15 +151,19 @@ export default function BMIPage() {
       </div>
 
       {/* Inputs */}
-      <Card className="rounded-3xl">
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Your details</CardTitle>
         </CardHeader>
+
         <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
+
+          {/* Height */}
+          <div className="space-y-1">
             <Label htmlFor="height">Height (cm)</Label>
             <Input
               id="height"
+              className="h-10 rounded-xl"
               value={heightCm}
               onChange={(e) => setHeightCm(e.target.value)}
               placeholder="e.g. 172"
@@ -167,10 +171,12 @@ export default function BMIPage() {
             />
           </div>
 
-          <div className="space-y-2">
+          {/* Weight */}
+          <div className="space-y-1">
             <Label htmlFor="weight">Weight (kg)</Label>
             <Input
               id="weight"
+              className="h-10 rounded-xl"
               value={weightKg}
               onChange={(e) => setWeightKg(e.target.value)}
               placeholder="e.g. 70"
@@ -178,26 +184,38 @@ export default function BMIPage() {
             />
           </div>
 
-          <div className="space-y-2">
+          {/* Goal */}
+          <div className="space-y-1">
             <Label>Goal</Label>
-            <div className="flex flex-wrap gap-2">
-              {(["lose", "maintain", "gain"] as Goal[]).map((g) => (
-                <Button
-                  key={g}
-                  type="button"
-                  variant={goal === g ? "default" : "outline"}
-                  onClick={() => onGoalChange(g)}
-                >
-                  {g === "lose"
-                    ? "Lose weight"
-                    : g === "gain"
-                    ? "Gain weight"
-                    : "Maintain"}
-                </Button>
-              ))}
+
+            <div className="grid grid-cols-3 gap-2">
+              {(["lose", "maintain", "gain"] as Goal[]).map((g) => {
+                const selected = goal === g;
+
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => onGoalChange(g)}
+                    className={`h-10 rounded-xl text-sm border transition
+                      ${
+                        selected
+                          ? "bg-emerald-600 text-white border-emerald-600"
+                          : "bg-white hover:bg-slate-50 border-slate-200"
+                      }`}
+                  >
+                    {g === "lose"
+                      ? "Lose"
+                      : g === "gain"
+                      ? "Gain"
+                      : "Maintain"}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
+          {/* CTA */}
           <div className="md:col-span-3">
             <Button
               onClick={() => fetchRecommendations()}
@@ -213,11 +231,12 @@ export default function BMIPage() {
               </p>
             )}
           </div>
+
         </CardContent>
       </Card>
 
       {/* Result */}
-      <Card className="rounded-3xl">
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-lg">Result</CardTitle>
           <Button asChild variant="outline" size="sm">

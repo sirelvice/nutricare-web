@@ -8,6 +8,13 @@ export type Goal = "lose" | "maintain" | "gain";
 
 export type Recommendation = {
   summary: string;
+
+  // ✅ UI contract (what frontend expects)
+  focus: string[];
+  limit: string[];
+  mealIdeas: string[];
+
+  // ✅ extended/internal (future use)
   priorities: string[];
   foodsToFocus: string[];
   foodsToLimit: string[];
@@ -15,8 +22,6 @@ export type Recommendation = {
 };
 
 function macrosFromCalories(targetCalories: number, goal: Goal) {
-  // Simple macro rule of thumb (v1)
-  // protein: 25–30% (higher on lose), fat: 25%, carbs: rest
   const proteinPct = goal === "lose" ? 0.3 : 0.25;
   const fatPct = 0.25;
   const carbsPct = 1 - proteinPct - fatPct;
@@ -33,7 +38,9 @@ export function buildRecommendations(params: {
   category: BmiCategory;
   goal: Goal;
   targetCalories: number;
-}): Recommendation & { macros: { proteinG: number; carbsG: number; fatG: number } } {
+}): Recommendation & {
+  macros: { proteinG: number; carbsG: number; fatG: number };
+} {
   const { bmi, category, goal, targetCalories } = params;
   const macros = macrosFromCalories(targetCalories, goal);
 
@@ -94,17 +101,39 @@ export function buildRecommendations(params: {
     );
   }
 
-  // Goal-specific tune
-  if (goal === "lose") nextSteps.unshift("Follow your target calories and track 3–4 days/week for awareness");
-  if (goal === "gain") nextSteps.unshift("Follow your target calories and prioritize protein + strength training");
-  if (goal === "maintain") nextSteps.unshift("Follow target calories and keep activity consistent");
+  // Goal-specific tuning
+  if (goal === "lose") {
+    nextSteps.unshift(
+      "Follow your target calories and track 3–4 days/week for awareness"
+    );
+  }
+
+  if (goal === "gain") {
+    nextSteps.unshift(
+      "Follow your target calories and prioritize protein + strength training"
+    );
+  }
+
+  if (goal === "maintain") {
+    nextSteps.unshift(
+      "Follow target calories and keep activity consistent"
+    );
+  }
 
   return {
     summary: `${summary} (BMI: ${bmi.toFixed(1)})`,
+
+    // ✅ FIX: align with UI
+    focus: common.foodsToFocus,
+    limit: common.foodsToLimit,
+    mealIdeas: nextSteps,
+
+    // keep extended fields
     priorities: common.priorities,
     foodsToFocus: common.foodsToFocus,
     foodsToLimit: common.foodsToLimit,
     nextSteps,
+
     macros,
   };
 }

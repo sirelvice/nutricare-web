@@ -83,7 +83,6 @@ export default function CaloriesToolPage() {
       } else {
         setApi(json);
 
-        // ✅ SAFE SAVE (no nulls allowed)
         if (
           profile.heightCm != null &&
           profile.age != null &&
@@ -107,7 +106,6 @@ export default function CaloriesToolPage() {
     }
   }, [valid, weightKg, profile]);
 
-  // ✅ AUTO RUN (safe, no lint error, no loop)
   useEffect(() => {
     if (valid && !api) {
       calculate();
@@ -116,6 +114,8 @@ export default function CaloriesToolPage() {
 
   return (
     <div className="space-y-6">
+
+      {/* Header */}
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Calories</h1>
@@ -129,21 +129,26 @@ export default function CaloriesToolPage() {
         </Button>
       </div>
 
-      <Card className="rounded-3xl">
+      {/* Inputs */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
-          <CardTitle className="text-lg">Inputs</CardTitle>
+          <CardTitle className="text-lg">Your inputs</CardTitle>
         </CardHeader>
+
         <CardContent className="grid gap-4 md:grid-cols-3">
 
-          <div className="space-y-2">
+          {/* Weight */}
+          <div className="space-y-1">
             <Label>Weight (kg)</Label>
             <Input
               value={weightKg}
               onChange={(e) => setWeightKg(e.target.value)}
               inputMode="numeric"
+              className="h-10 rounded-xl"
             />
           </div>
 
+          {/* Profile badges */}
           <div className="md:col-span-2 flex flex-wrap items-center gap-2">
             <Badge variant="secondary">Height: {profile.heightCm ?? "-"}</Badge>
             <Badge variant="secondary">Age: {profile.age ?? "-"}</Badge>
@@ -152,31 +157,52 @@ export default function CaloriesToolPage() {
             <Badge variant="secondary">Goal: {profile.goal ?? "-"}</Badge>
           </div>
 
+          {/* CTA */}
           <div className="md:col-span-3">
             <Button onClick={calculate} disabled={!valid || loading}>
               {loading ? "Calculating..." : "Recalculate"}
             </Button>
+
+            {!valid && (
+              <p className="mt-2 text-xs text-slate-500">
+                Ensure profile is complete and weight is valid.
+              </p>
+            )}
           </div>
 
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl">
+      {/* Result */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Result</CardTitle>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="space-y-4">
+
           {!api ? (
             <p className="text-slate-600">Calculating...</p>
           ) : "error" in api ? (
             <p className="text-slate-600">{api.error}</p>
           ) : (
-            <div className="text-3xl font-semibold">
-              {api.targetCalories} kcal/day
-            </div>
+            <>
+              <div className="text-3xl font-semibold">
+                {api.targetCalories} kcal/day
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-600">
+                  This estimate is based on your profile, activity level, and goal.
+                  Adjust over time based on progress.
+                </p>
+              </div>
+            </>
           )}
+
         </CardContent>
       </Card>
+
     </div>
   );
 }

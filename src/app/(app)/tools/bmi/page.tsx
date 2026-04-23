@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,12 +61,20 @@ export default function BMIPage() {
     getProfileServerSnapshot
   );
 
-  const [heightCm, setHeightCm] = useState("");
+  const [heightCm, setHeightCm] = useState<string>(
+    profile?.heightCm ? String(profile.heightCm) : ""
+  );
   const [weightKg, setWeightKg] = useState("");
   const [goal, setGoal] = useState<Goal>("maintain");
 
   const [loading, setLoading] = useState(false);
   const [api, setApi] = useState<ApiResponse | null>(null);
+
+  useEffect(() => {
+    if (profile?.heightCm && !heightCm) {
+      setHeightCm(String(profile.heightCm));
+    }
+  }, [profile?.heightCm]);
 
   const valid = useMemo(() => {
     const h = Number(heightCm);

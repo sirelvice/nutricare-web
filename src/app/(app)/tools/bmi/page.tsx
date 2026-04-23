@@ -12,6 +12,7 @@ import {
   getProfileSnapshot,
   getProfileServerSnapshot,
 } from "@/lib/profile/storage";
+import { loadWeightEntries } from "@/lib/tracking/weight";
 
 type Goal = "lose" | "maintain" | "gain";
 
@@ -64,7 +65,14 @@ export default function BMIPage() {
   const [heightCm, setHeightCm] = useState<string>(
     profile?.heightCm ? String(profile.heightCm) : ""
   );
-  const [weightKg, setWeightKg] = useState("");
+
+  const weightEntries = useMemo(() => loadWeightEntries(), []);
+  const latestWeight = weightEntries[0]?.weightKg ?? null;
+
+  const [weightKg, setWeightKg] = useState<string>(
+    latestWeight ? String(latestWeight) : ""
+  );
+
   const [goal, setGoal] = useState<Goal>("maintain");
 
   const [loading, setLoading] = useState(false);

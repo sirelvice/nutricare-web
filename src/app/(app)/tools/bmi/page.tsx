@@ -275,7 +275,7 @@ export default function BMIPage() {
                 </div>
 
                 <div className="rounded-2xl border p-4">
-                  <div className="text-sm font-semibold">Meal ideas</div>
+                  <div className="text-sm font-semibold">Next steps</div>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
                     {api.recommendations?.mealIdeas?.map((x) => (
                       <li key={x}>{x}</li>

@@ -50,15 +50,24 @@ export default function DashboardPage() {
   const calHistory = useMemo(() => loadCaloriesHistory(), []);
   const latestCalories = calHistory[0] ?? null;
 
-  // ✅ FIX: use BMI history instead of recalculating
   const bmiHistory = useMemo(() => loadBmiHistory(), []);
   const latestBMI = bmiHistory[0] ?? null;
 
-  // state
-  const hasProfile = profile.heightCm && profile.age;
+  // state flags
+  const hasProfile = !!(profile.heightCm && profile.age);
   const hasWeight = !!weightStats?.last;
   const hasBMI = !!latestBMI;
   const hasCalories = !!latestCalories;
+
+  // progress %
+  const progress = [
+    hasProfile,
+    hasWeight,
+    hasBMI,
+    hasCalories,
+  ].filter(Boolean).length;
+
+  const progressPercent = Math.round((progress / 4) * 100);
 
   const primaryAction = !hasProfile
     ? { label: "Add your details", href: "/profile" }
@@ -89,6 +98,19 @@ export default function DashboardPage() {
             ? `Goal: ${formatGoal(profile.goal)}`
             : "Add your details to get started"}
         </p>
+
+        {/* Progress */}
+        <div className="mt-4">
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 transition-all"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Setup progress: {progressPercent}%
+          </p>
+        </div>
 
         {primaryAction && (
           <div className="mt-4">

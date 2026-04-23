@@ -259,7 +259,7 @@ export default function BMIPage() {
                 <div className="rounded-2xl border p-4">
                   <div className="text-sm font-semibold">Focus on</div>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    {api.recommendations.focus.map((x) => (
+                    {api.recommendations?.focus?.map((x) => (
                       <li key={x}>{x}</li>
                     ))}
                   </ul>
@@ -268,7 +268,7 @@ export default function BMIPage() {
                 <div className="rounded-2xl border p-4">
                   <div className="text-sm font-semibold">Limit</div>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    {api.recommendations.limit.map((x) => (
+                    {api.recommendations?.limit?.map((x) => (
                       <li key={x}>{x}</li>
                     ))}
                   </ul>
@@ -277,7 +277,7 @@ export default function BMIPage() {
                 <div className="rounded-2xl border p-4">
                   <div className="text-sm font-semibold">Meal ideas</div>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    {api.recommendations.mealIdeas.map((x) => (
+                    {api.recommendations?.mealIdeas?.map((x) => (
                       <li key={x}>{x}</li>
                     ))}
                   </ul>

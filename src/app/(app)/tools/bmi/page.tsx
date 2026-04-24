@@ -79,9 +79,12 @@ export default function BMIPage() {
   const [api, setApi] = useState<ApiResponse | null>(null);
 
   useEffect(() => {
-    if (profile?.heightCm && !heightCm) {
-      setHeightCm(String(profile.heightCm));
-    }
+    if (!profile?.heightCm) return;
+
+    setHeightCm((prev) => {
+      if (prev) return prev; // don't override user input
+      return String(profile.heightCm);
+    });
   }, [profile?.heightCm]);
 
   const valid = useMemo(() => {

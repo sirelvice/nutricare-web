@@ -51,6 +51,15 @@ function macrosFromCalories(target: number, goal: string) {
   };
 }
 
+function normalizeBmiCategory(
+  raw: string
+): "underweight" | "normal" | "overweight" | "obese" {
+  if (raw === "underweight") return "underweight";
+  if (raw === "normal") return "normal";
+  if (raw === "overweight") return "overweight";
+  return "obese"; // obese1, obese2, obese3 → obese
+}
+
 export default function DashboardPage() {
   const profile = useSyncExternalStore(
     subscribeProfile,
@@ -78,12 +87,12 @@ export default function DashboardPage() {
   const primaryAction = !hasProfile
     ? { label: "Add your details", href: "/profile" }
     : !hasWeight
-    ? { label: "Log your first weight", href: "/tools/tracking/weight" }
-    : !hasBMI
-    ? { label: "Check your BMI", href: "/tools/bmi" }
-    : !hasCalories
-    ? { label: "Set your calories", href: "/tools/calories" }
-    : null;
+      ? { label: "Log your first weight", href: "/tools/tracking/weight" }
+      : !hasBMI
+        ? { label: "Check your BMI", href: "/tools/bmi" }
+        : !hasCalories
+          ? { label: "Set your calories", href: "/tools/calories" }
+          : null;
 
   const chartData = weightEntries.slice(-7).map((w, i) => ({
     name: `${i + 1}`,
@@ -100,11 +109,11 @@ export default function DashboardPage() {
   const rec =
     latestBMI && profile.goal && latestCalories
       ? buildRecommendations({
-          bmi: latestBMI.bmi,
-          category: latestBMI.category,
-          goal: profile.goal,
-          targetCalories: latestCalories.targetCalories,
-        })
+        bmi: latestBMI.bmi,
+        category: normalizeBmiCategory(latestBMI.category),
+        goal: profile.goal,
+        targetCalories: latestCalories.targetCalories,
+      })
       : null;
 
   return (

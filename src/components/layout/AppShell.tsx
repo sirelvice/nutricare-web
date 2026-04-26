@@ -56,30 +56,34 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Menu size={24} />
           </button>
 
-          <div className="hidden text-sm text-slate-600 md:block">
-            Tools • Profile • Tracking
+          <div className="hidden md:flex items-center gap-2 text-sm text-slate-500">
+            <span className="text-slate-400">/</span>
+            <span>
+              {nav.find(
+                (item) =>
+                  pathname === item.href ||
+                  pathname.startsWith(item.href + "/")
+              )?.label ?? "Dashboard"}
+            </span>
           </div>
         </header>
 
         {/* MOBILE NAV (FIXED VERSION) */}
         <div
-          className={`fixed inset-0 z-50 md:hidden ${
-            open ? "pointer-events-auto" : "pointer-events-none"
-          }`}
+          className={`fixed inset-0 z-50 md:hidden ${open ? "pointer-events-auto" : "pointer-events-none"
+            }`}
         >
           {/* BACKDROP */}
           <div
-            className={`absolute inset-0 bg-black/40 transition-opacity ${
-              open ? "opacity-100" : "opacity-0"
-            }`}
+            className={`absolute inset-0 bg-black/40 transition-opacity ${open ? "opacity-100" : "opacity-0"
+              }`}
             onClick={() => setOpen(false)}
           />
 
           {/* SIDEBAR */}
           <aside
-            className={`absolute left-0 top-0 h-full w-64 bg-white p-4 shadow-xl transform transition-transform ${
-              open ? "translate-x-0" : "-translate-x-full"
-            }`}
+            className={`absolute left-0 top-0 h-full w-64 bg-white p-4 shadow-xl transform transition-transform ${open ? "translate-x-0" : "-translate-x-full"
+              }`}
           >
             <div className="mb-4 flex items-center justify-between">
               <span className="font-semibold">Menu</span>

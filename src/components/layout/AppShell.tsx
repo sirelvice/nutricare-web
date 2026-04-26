@@ -14,7 +14,6 @@ import {
   Clock,
   FileDown,
   PieChart,
-  List,
 } from "lucide-react";
 
 const nav = [
@@ -28,15 +27,12 @@ const nav = [
   { href: "/tools/recommendations", label: "Recommendations", icon: Sparkles },
   { href: "/tools/tracking/weight", label: "Weight Tracking", icon: Scale },
 
-  // History
+  // Unified History
   { href: "/history", label: "History", icon: Clock },
-  { href: "/history/bmi", label: "BMI history", icon: List },
-  { href: "/history/calories", label: "Calories history", icon: List },
 
   // Reports
   { href: "/report", label: "Export Report", icon: FileDown },
 ];
-
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -55,7 +51,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             />
           </Link>
 
-
           <div className="text-sm text-slate-600">
             Tools • Profile • Tracking
           </div>
@@ -66,7 +61,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <nav className="space-y-1">
               {nav.map((item) => {
                 const active =
-                  pathname === item.href || pathname.startsWith(item.href + "/");
+                  pathname === item.href ||
+                  pathname.startsWith(item.href + "/");
                 const Icon = item.icon;
 
                 return (
@@ -86,13 +82,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 );
               })}
             </nav>
-
-            <div className="mt-4 rounded-2xl bg-slate-50 p-3 text-xs text-slate-600">
-              <div className="font-semibold text-slate-700">NutriCare MVP</div>
-              <div className="mt-1">
-                Profile • BMI • Calories • Recommendations • Tracking
-              </div>
-            </div>
           </aside>
 
           <main className="rounded-3xl border bg-white p-5 md:p-6">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import {
   LayoutDashboard,
@@ -14,32 +14,32 @@ import {
   Clock,
   FileDown,
   PieChart,
+  Menu,
+  X,
 } from "lucide-react";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/profile", label: "Profile", icon: User },
 
-  // Tools
   { href: "/tools/bmi", label: "BMI", icon: Ruler },
   { href: "/tools/calories", label: "Calories", icon: Flame },
   { href: "/tools/macros", label: "Macros", icon: PieChart },
   { href: "/tools/recommendations", label: "Recommendations", icon: Sparkles },
   { href: "/tools/tracking/weight", label: "Weight Tracking", icon: Scale },
 
-  // Unified History
   { href: "/history", label: "History", icon: Clock },
-
-  // Reports
   { href: "/report", label: "Export Report", icon: FileDown },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto max-w-6xl px-4 py-6">
+        {/* HEADER */}
         <header className="mb-6 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -51,13 +51,68 @@ export function AppShell({ children }: { children: ReactNode }) {
             />
           </Link>
 
-          <div className="text-sm text-slate-600">
+          {/* MOBILE MENU BUTTON */}
+          <button
+            className="md:hidden"
+            onClick={() => setOpen(true)}
+          >
+            <Menu size={24} />
+          </button>
+
+          <div className="hidden text-sm text-slate-600 md:block">
             Tools • Profile • Tracking
           </div>
         </header>
 
+        {/* MOBILE OVERLAY */}
+        {open && (
+          <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setOpen(false)} />
+        )}
+
+        {/* MOBILE SIDEBAR */}
+        <aside
+          className={`fixed top-0 left-0 z-50 h-full w-64 transform bg-white p-4 transition-transform md:hidden ${
+            open ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <span className="font-semibold">Menu</span>
+            <button onClick={() => setOpen(false)}>
+              <X size={20} />
+            </button>
+          </div>
+
+          <nav className="space-y-1">
+            {nav.map((item) => {
+              const active =
+                pathname === item.href ||
+                pathname.startsWith(item.href + "/");
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={[
+                    "flex items-center gap-3 rounded-2xl px-3 py-2 text-sm",
+                    active
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-700 hover:bg-slate-50",
+                  ].join(" ")}
+                >
+                  <Icon size={18} />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {/* DESKTOP LAYOUT */}
         <div className="grid gap-6 md:grid-cols-[240px_1fr]">
-          <aside className="h-fit rounded-3xl border bg-white p-3">
+          {/* DESKTOP SIDEBAR */}
+          <aside className="hidden h-fit rounded-3xl border bg-white p-3 md:block">
             <nav className="space-y-1">
               {nav.map((item) => {
                 const active =
@@ -70,20 +125,21 @@ export function AppShell({ children }: { children: ReactNode }) {
                     key={item.href}
                     href={item.href}
                     className={[
-                      "flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition",
+                      "flex items-center gap-3 rounded-2xl px-3 py-2 text-sm",
                       active
                         ? "bg-slate-900 text-white"
                         : "text-slate-700 hover:bg-slate-50",
                     ].join(" ")}
                   >
                     <Icon size={18} />
-                    <span>{item.label}</span>
+                    {item.label}
                   </Link>
                 );
               })}
             </nav>
           </aside>
 
+          {/* MAIN */}
           <main className="rounded-3xl border bg-white p-5 md:p-6">
             {children}
           </main>

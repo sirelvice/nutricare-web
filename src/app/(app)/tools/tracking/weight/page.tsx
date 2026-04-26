@@ -6,7 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { addWeightEntry, deleteWeightEntry, loadWeightEntries, summarize, type WeightEntry } from "@/lib/tracking/weight";
+
+import {
+  addWeightEntry,
+  deleteWeightEntry,
+  loadWeightEntries,
+  summarize,
+  type WeightEntry,
+} from "@/lib/tracking/weight";
 
 function todayISO() {
   const d = new Date();
@@ -17,7 +24,9 @@ function todayISO() {
 }
 
 export default function WeightTrackingPage() {
-  const [entries, setEntries] = useState<WeightEntry[]>(() => loadWeightEntries());
+  const [entries, setEntries] = useState<WeightEntry[]>(() =>
+    loadWeightEntries()
+  );
   const stats = useMemo(() => summarize(entries), [entries]);
 
   const [date, setDate] = useState(todayISO());
@@ -35,8 +44,15 @@ export default function WeightTrackingPage() {
       setError("Enter a valid date and weight (20–350kg).");
       return;
     }
+
     setError("");
-    addWeightEntry({ date, weightKg: Number(weightKg), note: note.trim() ? note.trim() : undefined });
+
+    addWeightEntry({
+      date,
+      weightKg: Number(weightKg),
+      note: note.trim() ? note.trim() : undefined,
+    });
+
     setEntries(loadWeightEntries());
     setWeightKg("");
     setNote("");
@@ -49,27 +65,33 @@ export default function WeightTrackingPage() {
 
   return (
     <div className="space-y-6">
+      {/* HEADER */}
       <div>
         <h1 className="text-2xl font-semibold">Weight tracking</h1>
         <p className="text-slate-600">
-          Track your weight over time to see progress. (Local for now — backend sync comes later.)
+          Track your weight over time to see progress.
         </p>
       </div>
 
-      <Card className="rounded-3xl">
+      {/* ADD ENTRY */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Add entry</CardTitle>
         </CardHeader>
+
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Input id="date" value={date} onChange={(e) => setDate(e.target.value)} placeholder="YYYY-MM-DD" />
+            <Label>Date</Label>
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="weight">Weight (kg)</Label>
+            <Label>Weight (kg)</Label>
             <Input
-              id="weight"
               value={weightKg}
               onChange={(e) => setWeightKg(e.target.value)}
               inputMode="decimal"
@@ -78,53 +100,87 @@ export default function WeightTrackingPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="note">Note (optional)</Label>
-            <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. after workout" />
+            <Label>Note (optional)</Label>
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="e.g. after workout"
+            />
           </div>
 
           <div className="md:col-span-3 flex flex-wrap items-center gap-2">
             <Button onClick={onAdd} disabled={!valid}>
               Add entry
             </Button>
-            {error ? <span className="text-sm text-red-600">{error}</span> : null}
+
+            {error && (
+              <span className="text-sm text-red-600">{error}</span>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl">
+      {/* SUMMARY */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Summary</CardTitle>
         </CardHeader>
+
         <CardContent className="flex flex-wrap gap-2 text-slate-700">
           {stats ? (
             <>
               <Badge variant="secondary">Entries: {stats.count}</Badge>
-              <Badge variant="secondary">First: {stats.first.weightKg}kg ({stats.first.date})</Badge>
-              <Badge variant="secondary">Latest: {stats.last.weightKg}kg ({stats.last.date})</Badge>
-              <Badge variant="secondary">Change: {stats.change > 0 ? "+" : ""}{stats.change}kg</Badge>
+              <Badge variant="secondary">
+                First: {stats.first.weightKg}kg ({stats.first.date})
+              </Badge>
+              <Badge variant="secondary">
+                Latest: {stats.last.weightKg}kg ({stats.last.date})
+              </Badge>
+              <Badge variant="secondary">
+                Change: {stats.change > 0 ? "+" : ""}
+                {stats.change}kg
+              </Badge>
             </>
           ) : (
-            <p className="text-slate-600">No entries yet.</p>
+            <p className="text-sm text-slate-400">
+              No entries yet — add your first weight above
+            </p>
           )}
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl">
+      {/* ENTRIES */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Entries</CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-3">
           {entries.length === 0 ? (
-            <p className="text-slate-600">Add your first entry above.</p>
+            <p className="text-sm text-slate-400">
+              Your weight history will appear here
+            </p>
           ) : (
-            <div className="divide-y rounded-2xl border">
+            <div className="divide-y rounded-2xl border bg-white">
               {entries.map((e) => (
-                <div key={e.id} className="flex items-center justify-between gap-3 p-4">
+                <div
+                  key={e.id}
+                  className="flex items-center justify-between gap-3 p-4"
+                >
                   <div>
-                    <div className="font-semibold">{e.weightKg} kg</div>
-                    <div className="text-sm text-slate-600">{e.date}{e.note ? ` • ${e.note}` : ""}</div>
+                    <div className="font-semibold">
+                      {e.weightKg} kg
+                    </div>
+                    <div className="text-sm text-slate-600">
+                      {e.date}
+                      {e.note ? ` • ${e.note}` : ""}
+                    </div>
                   </div>
-                  <Button variant="outline" onClick={() => onDelete(e.id)}>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => onDelete(e.id)}
+                  >
                     Delete
                   </Button>
                 </div>

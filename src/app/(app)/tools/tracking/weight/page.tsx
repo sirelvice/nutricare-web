@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 import {
   addWeightEntry,
@@ -87,9 +86,7 @@ export default function WeightTrackingPage() {
     const last = sorted[sorted.length - 1];
     const prev = sorted[sorted.length - 2];
 
-    const diff = Number((last.weightKg - prev.weightKg).toFixed(1));
-
-    return diff;
+    return Number((last.weightKg - prev.weightKg).toFixed(1));
   }, [entries, stats]);
 
   return (
@@ -149,42 +146,60 @@ export default function WeightTrackingPage() {
         </CardContent>
       </Card>
 
-      {/* SUMMARY */}
+      {/* SUMMARY (REDESIGNED) */}
       <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Summary</CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-3 text-slate-700">
+        <CardContent className="space-y-4">
           {stats ? (
             <>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Entries: {stats.count}</Badge>
-                <Badge variant="secondary">
-                  First: {stats.first.weightKg}kg ({stats.first.date})
-                </Badge>
-                <Badge variant="secondary">
-                  Latest: {stats.last.weightKg}kg ({stats.last.date})
-                </Badge>
-                <Badge variant="secondary">
-                  Change: {stats.change > 0 ? "+" : ""}
-                  {stats.change}kg
-                </Badge>
-
-                {/* 🔥 Delta badge */}
-                {latestDelta !== null && (
-                  <Badge variant="secondary">
-                    Δ {latestDelta > 0 ? "+" : ""}
-                    {latestDelta}kg (last entry)
-                  </Badge>
-                )}
+              {/* MAIN STAT */}
+              <div>
+                <p className="text-sm text-slate-500">Latest weight</p>
+                <div className="text-4xl font-semibold">
+                  {stats.last.weightKg} kg
+                </div>
+                <p className="text-xs text-slate-500">
+                  {stats.last.date}
+                </p>
               </div>
 
-              {/* 🧠 Trend message */}
+              {/* METRICS */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-2xl border p-3 text-center">
+                  <p className="text-xs text-slate-500">Start</p>
+                  <p className="font-semibold">
+                    {stats.first.weightKg} kg
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border p-3 text-center">
+                  <p className="text-xs text-slate-500">Change</p>
+                  <p className="font-semibold">
+                    {stats.change > 0 ? "+" : ""}
+                    {stats.change} kg
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border p-3 text-center">
+                  <p className="text-xs text-slate-500">Last Δ</p>
+                  <p className="font-semibold">
+                    {latestDelta !== null
+                      ? `${latestDelta > 0 ? "+" : ""}${latestDelta} kg`
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* TREND */}
               {trendMessage && (
-                <p className="text-sm text-slate-600">
-                  {trendMessage}
-                </p>
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="text-sm text-slate-600">
+                    {trendMessage}
+                  </p>
+                </div>
               )}
             </>
           ) : (
@@ -212,7 +227,9 @@ export default function WeightTrackingPage() {
                 <div
                   key={e.id}
                   className={`flex items-center justify-between gap-3 p-4 ${
-                    i === 0 ? "bg-emerald-50 border-l-4 border-emerald-500" : ""
+                    i === 0
+                      ? "bg-emerald-50 border-l-4 border-emerald-500"
+                      : ""
                   }`}
                 >
                   <div>

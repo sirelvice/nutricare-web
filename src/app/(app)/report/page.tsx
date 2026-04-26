@@ -11,20 +11,8 @@ import { loadWeightEntries, summarize } from "@/lib/tracking/weight";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
 export default function ReportPage() {
-  const reportRef = useRef<HTMLDivElement>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   const bmi = loadBmiHistory();
   const cal = loadCaloriesHistory();
@@ -34,20 +22,26 @@ export default function ReportPage() {
   const latestCal = cal[0];
   const weightStats = summarize(weight);
 
-  async function onDownloadJSON() {
-    const res = await fetch("/api/report", { method: "GET" });
-    const json = await res.json();
+  const weightTrend = weightStats
+    ? weightStats.change > 0
+      ? `+${weightStats.change} kg`
+      : `${weightStats.change} kg`
+    : "—";
 
-    const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    download(`nutricare-report-${ts}.json`, JSON.stringify(json, null, 2));
-  }
+  const weightInsight = weightStats
+    ? weightStats.change < 0
+      ? "Weight trending down — good progress"
+      : weightStats.change > 0
+      ? "Weight increasing — review intake"
+      : "Weight stable — maintain consistency"
+    : "No data";
 
   async function onDownloadPDF() {
-    if (!reportRef.current) return;
+    if (!pdfRef.current) return;
 
-    const canvas = await html2canvas(reportRef.current, {
+    const canvas = await html2canvas(pdfRef.current, {
       scale: 2,
-      useCORS: true,
+      backgroundColor: "#ffffff",
     });
 
     const imgData = canvas.toDataURL("image/png");
@@ -57,29 +51,23 @@ export default function ReportPage() {
     const imgWidth = 210;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+    let position = 0;
+
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+
+    while (imgHeight + position > 297) {
+      position -= 297;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    }
 
     const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
     pdf.save(`nutricare-report-${ts}.pdf`);
   }
 
-  const weightTrend = weightStats
-    ? weightStats.change > 0
-      ? `+${weightStats.change} kg`
-      : `${weightStats.change} kg`
-    : null;
-
-  const weightInsight = weightStats
-    ? weightStats.change < 0
-      ? "Weight trending down — good progress"
-      : weightStats.change > 0
-      ? "Weight increasing — review intake"
-      : "Weight stable — maintain consistency"
-    : null;
-
   return (
     <div className="space-y-6">
-      {/* HEADER */}
+      {/* UI HEADER */}
       <div>
         <h1 className="text-2xl font-semibold">Health Report</h1>
         <p className="text-slate-600">
@@ -87,108 +75,119 @@ export default function ReportPage() {
         </p>
       </div>
 
-      {/* REPORT CONTENT (EXPORT TARGET) */}
-      <div ref={reportRef} className="space-y-6 bg-white p-4 rounded-3xl">
-        {/* OVERVIEW */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
-            <CardHeader>
-              <CardTitle className="text-sm">BMI</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {latestBmi ? (
-                <>
-                  <div className="text-3xl font-semibold">
-                    {latestBmi.bmi.toFixed(1)}
-                  </div>
-                  <p className="text-sm text-slate-600">
-                    {latestBmi.category}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-slate-400">No data</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
-            <CardHeader>
-              <CardTitle className="text-sm">Calories</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {latestCal ? (
-                <>
-                  <div className="text-3xl font-semibold">
-                    {latestCal.targetCalories}
-                  </div>
-                  <p className="text-sm text-slate-600">
-                    Goal: {latestCal.goal}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-slate-400">No data</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
-            <CardHeader>
-              <CardTitle className="text-sm">Weight Trend</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {weightStats ? (
-                <>
-                  <div className="text-3xl font-semibold">
-                    {weightTrend}
-                  </div>
-                  <p className="text-sm text-slate-600">
-                    {weightInsight}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-slate-400">No data</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* INSIGHTS */}
+      {/* UI CARDS */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
           <CardHeader>
-            <CardTitle className="text-lg">Insights</CardTitle>
+            <CardTitle className="text-sm">BMI</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-slate-700">
-            {latestBmi && (
-              <p>
-                Your BMI is <strong>{latestBmi.category}</strong>.
-              </p>
+          <CardContent>
+            {latestBmi ? (
+              <>
+                <div className="text-3xl font-semibold">
+                  {latestBmi.bmi.toFixed(1)}
+                </div>
+                <p className="text-sm text-slate-600">
+                  {latestBmi.category}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-slate-400">No data</p>
             )}
-            {weightInsight && <p>{weightInsight}</p>}
-            {latestCal && (
-              <p>
-                Daily target:{" "}
-                <strong>{latestCal.targetCalories} kcal</strong>
-              </p>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
+          <CardHeader>
+            <CardTitle className="text-sm">Calories</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {latestCal ? (
+              <>
+                <div className="text-3xl font-semibold">
+                  {latestCal.targetCalories}
+                </div>
+                <p className="text-sm text-slate-600">
+                  Goal: {latestCal.goal}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-slate-400">No data</p>
             )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
+          <CardHeader>
+            <CardTitle className="text-sm">Weight</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold">{weightTrend}</div>
+            <p className="text-sm text-slate-600">{weightInsight}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* ACTIONS */}
+      {/* EXPORT BUTTON */}
       <Card className="rounded-3xl">
         <CardHeader>
           <CardTitle className="text-lg">Export</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
+        <CardContent>
           <Button onClick={onDownloadPDF}>
-            Download PDF
-          </Button>
-
-          <Button variant="outline" onClick={onDownloadJSON}>
-            Download JSON
+            Download PDF Report
           </Button>
         </CardContent>
       </Card>
+
+      {/* ================= PDF LAYOUT (HIDDEN) ================= */}
+      <div className="fixed left-[-9999px] top-0">
+        <div
+          ref={pdfRef}
+          style={{
+            width: "794px",
+            padding: "40px",
+            background: "#ffffff",
+            color: "#0f172a",
+            fontFamily: "Inter, sans-serif",
+          }}
+        >
+          {/* HEADER */}
+          <h1 style={{ fontSize: "24px", marginBottom: "8px" }}>
+            NutriCare Health Report
+          </h1>
+          <p style={{ color: "#64748b", marginBottom: "24px" }}>
+            Generated on {new Date().toLocaleDateString()}
+          </p>
+
+          {/* SECTION */}
+          <div style={{ marginBottom: "24px" }}>
+            <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
+              Overview
+            </h2>
+            <p>BMI: {latestBmi?.bmi?.toFixed(1) ?? "—"}</p>
+            <p>Category: {latestBmi?.category ?? "—"}</p>
+            <p>Calories: {latestCal?.targetCalories ?? "—"} kcal</p>
+            <p>Goal: {latestCal?.goal ?? "—"}</p>
+          </div>
+
+          <div style={{ marginBottom: "24px" }}>
+            <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
+              Weight Trend
+            </h2>
+            <p>{weightTrend}</p>
+            <p>{weightInsight}</p>
+          </div>
+
+          <div>
+            <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
+              Insights
+            </h2>
+            <p>Your BMI status: {latestBmi?.category ?? "—"}</p>
+            <p>{weightInsight}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

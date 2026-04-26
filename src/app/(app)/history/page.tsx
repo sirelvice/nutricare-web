@@ -41,12 +41,15 @@ type Tab = "bmi" | "calories";
 export default function HistoryPage() {
   const [tab, setTab] = useState<Tab>("bmi");
 
-  const [bmi, setBmi] = useState(() => loadBmiHistory());
-  const [cal, setCal] = useState(() => loadCaloriesHistory());
+  const [bmi, setBmi] = useState<BmiHistoryEntry[]>(() =>
+    loadBmiHistory()
+  );
+  const [cal, setCal] = useState<CaloriesHistoryEntry[]>(() =>
+    loadCaloriesHistory()
+  );
 
-  const active = tab === "bmi" ? bmi : cal;
-
-  const latest = useMemo(() => active[0] ?? null, [active]);
+  const latestBmi = useMemo(() => bmi[0] ?? null, [bmi]);
+  const latestCal = useMemo(() => cal[0] ?? null, [cal]);
 
   function refresh() {
     setBmi(loadBmiHistory());
@@ -64,11 +67,9 @@ export default function HistoryPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={refresh}>
-            Refresh
-          </Button>
-        </div>
+        <Button variant="outline" onClick={refresh}>
+          Refresh
+        </Button>
       </div>
 
       {/* TOGGLE */}
@@ -94,30 +95,34 @@ export default function HistoryPage() {
         </CardHeader>
 
         <CardContent>
-          {!latest ? (
-            <p className="text-slate-500">No history yet.</p>
-          ) : tab === "bmi" ? (
-            <div className="space-y-1">
-              <div className="text-3xl font-semibold">
-                {latest.bmi.toFixed(1)}
+          {tab === "bmi" ? (
+            !latestBmi ? (
+              <p className="text-slate-500">No BMI history yet.</p>
+            ) : (
+              <div className="space-y-1">
+                <div className="text-3xl font-semibold">
+                  {latestBmi.bmi.toFixed(1)}
+                </div>
+                <p className="text-sm text-slate-600">
+                  {catLabel[latestBmi.category]}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {fmtTime(latestBmi.createdAt)}
+                </p>
               </div>
-              <p className="text-sm text-slate-600">
-                {catLabel[latest.category]}
-              </p>
-              <p className="text-xs text-slate-500">
-                {fmtTime(latest.createdAt)}
-              </p>
-            </div>
+            )
+          ) : !latestCal ? (
+            <p className="text-slate-500">No calories history yet.</p>
           ) : (
             <div className="space-y-1">
               <div className="text-3xl font-semibold">
-                {latest.targetCalories} kcal
+                {latestCal.targetCalories} kcal
               </div>
               <p className="text-sm text-slate-600">
-                Goal: {latest.goal}
+                Goal: {latestCal.goal}
               </p>
               <p className="text-xs text-slate-500">
-                {fmtTime(latest.createdAt)}
+                {fmtTime(latestCal.createdAt)}
               </p>
             </div>
           )}
@@ -130,15 +135,54 @@ export default function HistoryPage() {
           <CardTitle className="text-lg">
             {tab === "bmi" ? "BMI history" : "Calories history"}
           </CardTitle>
-          <Badge variant="secondary">{active.length}</Badge>
+          <Badge variant="secondary">
+            {tab === "bmi" ? bmi.length : cal.length}
+          </Badge>
         </CardHeader>
 
         <CardContent className="space-y-3">
-          {active.length === 0 ? (
+          {tab === "bmi" ? (
+            bmi.length === 0 ? (
+              <p className="text-slate-500">No entries yet.</p>
+            ) : (
+              <div className="divide-y rounded-2xl border bg-white">
+                {bmi.slice(0, 25).map((e, i) => (
+                  <div
+                    key={e.id}
+                    className={`flex items-center justify-between gap-3 p-4 ${
+                      i === 0
+                        ? "bg-emerald-50 border-l-4 border-emerald-500"
+                        : ""
+                    }`}
+                  >
+                    <div>
+                      <div className="font-semibold">
+                        BMI {e.bmi.toFixed(1)} • {catLabel[e.category]}
+                      </div>
+                      <div className="text-sm text-slate-600">
+                        {fmtTime(e.createdAt)} • {e.heightCm}cm •{" "}
+                        {e.weightKg}kg
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        deleteBmiHistory(e.id);
+                        setBmi(loadBmiHistory());
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : cal.length === 0 ? (
             <p className="text-slate-500">No entries yet.</p>
           ) : (
             <div className="divide-y rounded-2xl border bg-white">
-              {active.slice(0, 25).map((e: any, i) => (
+              {cal.slice(0, 25).map((e, i) => (
                 <div
                   key={e.id}
                   className={`flex items-center justify-between gap-3 p-4 ${
@@ -148,39 +192,20 @@ export default function HistoryPage() {
                   }`}
                 >
                   <div>
-                    {tab === "bmi" ? (
-                      <>
-                        <div className="font-semibold">
-                          BMI {e.bmi.toFixed(1)} • {catLabel[e.category]}
-                        </div>
-                        <div className="text-sm text-slate-600">
-                          {fmtTime(e.createdAt)} • {e.heightCm}cm •{" "}
-                          {e.weightKg}kg
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="font-semibold">
-                          {e.targetCalories} kcal • Goal: {e.goal}
-                        </div>
-                        <div className="text-sm text-slate-600">
-                          {fmtTime(e.createdAt)} • {e.weightKg}kg •{" "}
-                          {e.heightCm}cm
-                        </div>
-                      </>
-                    )}
+                    <div className="font-semibold">
+                      {e.targetCalories} kcal • Goal: {e.goal}
+                    </div>
+                    <div className="text-sm text-slate-600">
+                      {fmtTime(e.createdAt)} • {e.weightKg}kg •{" "}
+                      {e.heightCm}cm
+                    </div>
                   </div>
 
                   <Button
                     variant="outline"
                     onClick={() => {
-                      if (tab === "bmi") {
-                        deleteBmiHistory(e.id);
-                        setBmi(loadBmiHistory());
-                      } else {
-                        deleteCaloriesHistory(e.id);
-                        setCal(loadCaloriesHistory());
-                      }
+                      deleteCaloriesHistory(e.id);
+                      setCal(loadCaloriesHistory());
                     }}
                   >
                     Delete
@@ -203,7 +228,7 @@ export default function HistoryPage() {
                   setCal(loadCaloriesHistory());
                 }
               }}
-              disabled={active.length === 0}
+              disabled={tab === "bmi" ? bmi.length === 0 : cal.length === 0}
             >
               Clear {tab === "bmi" ? "BMI" : "Calories"}
             </Button>

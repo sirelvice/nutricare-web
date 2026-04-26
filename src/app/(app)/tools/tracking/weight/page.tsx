@@ -63,6 +63,35 @@ export default function WeightTrackingPage() {
     setEntries(loadWeightEntries());
   }
 
+  // 🧠 Trend insight
+  const trendMessage = useMemo(() => {
+    if (!stats) return null;
+
+    if (stats.change < 0) {
+      return "You're losing weight — keep going 👍";
+    }
+    if (stats.change > 0) {
+      return "Weight increasing — review intake ⚠️";
+    }
+    return "Weight stable — maintain consistency";
+  }, [stats]);
+
+  // 🔥 Today vs last delta
+  const latestDelta = useMemo(() => {
+    if (!stats || stats.count < 2) return null;
+
+    const sorted = [...entries].sort((a, b) =>
+      a.date > b.date ? 1 : -1
+    );
+
+    const last = sorted[sorted.length - 1];
+    const prev = sorted[sorted.length - 2];
+
+    const diff = Number((last.weightKg - prev.weightKg).toFixed(1));
+
+    return diff;
+  }, [entries, stats]);
+
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -126,20 +155,37 @@ export default function WeightTrackingPage() {
           <CardTitle className="text-lg">Summary</CardTitle>
         </CardHeader>
 
-        <CardContent className="flex flex-wrap gap-2 text-slate-700">
+        <CardContent className="space-y-3 text-slate-700">
           {stats ? (
             <>
-              <Badge variant="secondary">Entries: {stats.count}</Badge>
-              <Badge variant="secondary">
-                First: {stats.first.weightKg}kg ({stats.first.date})
-              </Badge>
-              <Badge variant="secondary">
-                Latest: {stats.last.weightKg}kg ({stats.last.date})
-              </Badge>
-              <Badge variant="secondary">
-                Change: {stats.change > 0 ? "+" : ""}
-                {stats.change}kg
-              </Badge>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">Entries: {stats.count}</Badge>
+                <Badge variant="secondary">
+                  First: {stats.first.weightKg}kg ({stats.first.date})
+                </Badge>
+                <Badge variant="secondary">
+                  Latest: {stats.last.weightKg}kg ({stats.last.date})
+                </Badge>
+                <Badge variant="secondary">
+                  Change: {stats.change > 0 ? "+" : ""}
+                  {stats.change}kg
+                </Badge>
+
+                {/* 🔥 Delta badge */}
+                {latestDelta !== null && (
+                  <Badge variant="secondary">
+                    Δ {latestDelta > 0 ? "+" : ""}
+                    {latestDelta}kg (last entry)
+                  </Badge>
+                )}
+              </div>
+
+              {/* 🧠 Trend message */}
+              {trendMessage && (
+                <p className="text-sm text-slate-600">
+                  {trendMessage}
+                </p>
+              )}
             </>
           ) : (
             <p className="text-sm text-slate-400">
@@ -162,10 +208,12 @@ export default function WeightTrackingPage() {
             </p>
           ) : (
             <div className="divide-y rounded-2xl border bg-white">
-              {entries.map((e) => (
+              {entries.map((e, i) => (
                 <div
                   key={e.id}
-                  className="flex items-center justify-between gap-3 p-4"
+                  className={`flex items-center justify-between gap-3 p-4 ${
+                    i === 0 ? "bg-emerald-50 border-l-4 border-emerald-500" : ""
+                  }`}
                 >
                   <div>
                     <div className="font-semibold">

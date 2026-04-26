@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+//import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -27,7 +27,7 @@ export default function ReportPage() {
 
   const latestBmi = bmi[0];
   const latestCal = cal[0];
-  const weightStats = useMemo(() => summarize(weight), [weight]);
+  const weightStats = summarize(weight);
 
   async function onDownload() {
     const res = await fetch("/api/report", { method: "GET" });

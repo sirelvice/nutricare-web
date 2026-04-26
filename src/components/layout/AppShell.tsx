@@ -52,10 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           {/* MOBILE MENU BUTTON */}
-          <button
-            className="md:hidden"
-            onClick={() => setOpen(true)}
-          >
+          <button className="md:hidden" onClick={() => setOpen(true)}>
             <Menu size={24} />
           </button>
 
@@ -64,50 +61,60 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* MOBILE OVERLAY */}
-        {open && (
-          <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setOpen(false)} />
-        )}
-
-        {/* MOBILE SIDEBAR */}
-        <aside
-          className={`fixed top-0 left-0 z-50 h-full w-64 transform bg-white p-4 transition-transform md:hidden ${
-            open ? "translate-x-0" : "-translate-x-full"
+        {/* MOBILE NAV (FIXED VERSION) */}
+        <div
+          className={`fixed inset-0 z-50 md:hidden ${
+            open ? "pointer-events-auto" : "pointer-events-none"
           }`}
         >
-          <div className="mb-4 flex items-center justify-between">
-            <span className="font-semibold">Menu</span>
-            <button onClick={() => setOpen(false)}>
-              <X size={20} />
-            </button>
-          </div>
+          {/* BACKDROP */}
+          <div
+            className={`absolute inset-0 bg-black/40 transition-opacity ${
+              open ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={() => setOpen(false)}
+          />
 
-          <nav className="space-y-1">
-            {nav.map((item) => {
-              const active =
-                pathname === item.href ||
-                pathname.startsWith(item.href + "/");
-              const Icon = item.icon;
+          {/* SIDEBAR */}
+          <aside
+            className={`absolute left-0 top-0 h-full w-64 bg-white p-4 shadow-xl transform transition-transform ${
+              open ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <span className="font-semibold">Menu</span>
+              <button onClick={() => setOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={[
-                    "flex items-center gap-3 rounded-2xl px-3 py-2 text-sm",
-                    active
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-700 hover:bg-slate-50",
-                  ].join(" ")}
-                >
-                  <Icon size={18} />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
+            <nav className="space-y-1">
+              {nav.map((item) => {
+                const active =
+                  pathname === item.href ||
+                  pathname.startsWith(item.href + "/");
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={[
+                      "flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm",
+                      active
+                        ? "bg-slate-900 text-white"
+                        : "text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    <Icon size={18} />
+                    <span className="flex-1">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </aside>
+        </div>
 
         {/* DESKTOP LAYOUT */}
         <div className="grid gap-6 md:grid-cols-[240px_1fr]">
@@ -125,14 +132,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                     key={item.href}
                     href={item.href}
                     className={[
-                      "flex items-center gap-3 rounded-2xl px-3 py-2 text-sm",
+                      "flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm",
                       active
                         ? "bg-slate-900 text-white"
                         : "text-slate-700 hover:bg-slate-50",
                     ].join(" ")}
                   >
                     <Icon size={18} />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
                   </Link>
                 );
               })}

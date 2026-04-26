@@ -83,9 +83,12 @@ export default function MacrosPage() {
       });
 
       const json = (await res.json()) as ApiResponse;
-      if (!res.ok)
+
+      if (!res.ok) {
         setApi({ error: (json as ApiErr).error ?? "Request failed." });
-      else setApi(json);
+      } else {
+        setApi(json);
+      }
     } catch {
       setApi({ error: "Network error. Please try again." });
     } finally {
@@ -107,7 +110,9 @@ export default function MacrosPage() {
         <CardHeader>
           <CardTitle className="text-lg">Inputs</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          {/* Calories */}
           <div className="space-y-2">
             <Label>Target calories (kcal/day)</Label>
             <Input
@@ -121,27 +126,24 @@ export default function MacrosPage() {
             </p>
           </div>
 
-          <div className="space-y-2 md:col-span-2">
+          {/* Goal dropdown ✅ */}
+          <div className="space-y-2">
             <Label>Goal</Label>
-            <div className="flex flex-wrap gap-2">
-              {(["lose", "maintain", "gain"] as Goal[]).map((g) => (
-                <Button
-                  key={g}
-                  type="button"
-                  variant={goal === g ? "default" : "outline"}
-                  onClick={() => setGoal(g)}
-                >
-                  {g === "lose"
-                    ? "Lose weight"
-                    : g === "gain"
-                    ? "Gain weight"
-                    : "Maintain"}
-                </Button>
-              ))}
-            </div>
+            <select
+              value={goal}
+              onChange={(e) =>
+                setGoal(e.target.value as "lose" | "maintain" | "gain")
+              }
+              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
+            >
+              <option value="lose">Lose weight</option>
+              <option value="maintain">Maintain weight</option>
+              <option value="gain">Gain weight</option>
+            </select>
           </div>
 
-          <div className="md:col-span-3">
+          {/* Button */}
+          <div className="md:col-span-2">
             <Button onClick={calculate} disabled={!valid || loading}>
               {loading ? "Calculating..." : "Calculate macros"}
             </Button>
@@ -154,6 +156,7 @@ export default function MacrosPage() {
         <CardHeader>
           <CardTitle className="text-lg">Result</CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-4">
           {!api ? (
             <p className="text-slate-600">Enter calories and calculate.</p>
@@ -175,12 +178,14 @@ export default function MacrosPage() {
                     {api.grams.protein} g
                   </div>
                 </div>
+
                 <div className="rounded-2xl border p-4">
                   <div className="text-xs text-slate-500">Carbs</div>
                   <div className="text-2xl font-semibold">
                     {api.grams.carbs} g
                   </div>
                 </div>
+
                 <div className="rounded-2xl border p-4">
                   <div className="text-xs text-slate-500">Fat</div>
                   <div className="text-2xl font-semibold">

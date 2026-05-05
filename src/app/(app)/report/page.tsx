@@ -42,6 +42,7 @@ export default function ReportPage() {
     const canvas = await html2canvas(pdfRef.current, {
       scale: 2,
       backgroundColor: "#ffffff",
+      logging: false,
     });
 
     const imgData = canvas.toDataURL("image/png");
@@ -77,7 +78,7 @@ export default function ReportPage() {
 
       {/* UI CARDS */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
+        <Card className="rounded-3xl bg-white border">
           <CardHeader>
             <CardTitle className="text-sm">BMI</CardTitle>
           </CardHeader>
@@ -97,7 +98,7 @@ export default function ReportPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
+        <Card className="rounded-3xl bg-white border">
           <CardHeader>
             <CardTitle className="text-sm">Calories</CardTitle>
           </CardHeader>
@@ -117,7 +118,7 @@ export default function ReportPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
+        <Card className="rounded-3xl bg-white border">
           <CardHeader>
             <CardTitle className="text-sm">Weight</CardTitle>
           </CardHeader>
@@ -128,7 +129,7 @@ export default function ReportPage() {
         </Card>
       </div>
 
-      {/* EXPORT BUTTON */}
+      {/* EXPORT */}
       <Card className="rounded-3xl">
         <CardHeader>
           <CardTitle className="text-lg">Export</CardTitle>
@@ -140,38 +141,41 @@ export default function ReportPage() {
         </CardContent>
       </Card>
 
-      {/* ================= PDF LAYOUT (HIDDEN) ================= */}
-      <div className="fixed left-[-9999px] top-0">
+      {/* ================= PDF LAYOUT (ISOLATED) ================= */}
+      <div style={{ position: "fixed", left: "-9999px", top: 0 }}>
         <div
           ref={pdfRef}
           style={{
             width: "794px",
             padding: "40px",
-            background: "#ffffff",
-            color: "#0f172a",
-            fontFamily: "Inter, sans-serif",
+            backgroundColor: "#ffffff",
+            color: "#000000",
+            fontFamily: "Arial, sans-serif",
           }}
         >
           {/* HEADER */}
-          <h1 style={{ fontSize: "24px", marginBottom: "8px" }}>
-            NutriCare Health Report
-          </h1>
-          <p style={{ color: "#64748b", marginBottom: "24px" }}>
-            Generated on {new Date().toLocaleDateString()}
-          </p>
-
-          {/* SECTION */}
           <div style={{ marginBottom: "24px" }}>
+            <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>
+              NutriCare Health Report
+            </h1>
+            <p style={{ fontSize: "12px", color: "#555" }}>
+              Generated on {new Date().toLocaleDateString()}
+            </p>
+          </div>
+
+          {/* OVERVIEW */}
+          <div style={{ marginBottom: "20px" }}>
             <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
               Overview
             </h2>
-            <p>BMI: {latestBmi?.bmi?.toFixed(1) ?? "—"}</p>
-            <p>Category: {latestBmi?.category ?? "—"}</p>
-            <p>Calories: {latestCal?.targetCalories ?? "—"} kcal</p>
-            <p>Goal: {latestCal?.goal ?? "—"}</p>
+            <p><strong>BMI:</strong> {latestBmi?.bmi?.toFixed(1) ?? "—"}</p>
+            <p><strong>Category:</strong> {latestBmi?.category ?? "—"}</p>
+            <p><strong>Calories:</strong> {latestCal?.targetCalories ?? "—"} kcal</p>
+            <p><strong>Goal:</strong> {latestCal?.goal ?? "—"}</p>
           </div>
 
-          <div style={{ marginBottom: "24px" }}>
+          {/* WEIGHT */}
+          <div style={{ marginBottom: "20px" }}>
             <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
               Weight Trend
             </h2>
@@ -179,6 +183,7 @@ export default function ReportPage() {
             <p>{weightInsight}</p>
           </div>
 
+          {/* INSIGHTS */}
           <div>
             <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
               Insights

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +13,7 @@ import jsPDF from "jspdf";
 
 export default function ReportPage() {
   const pdfRef = useRef<HTMLDivElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const bmi = loadBmiHistory();
   const cal = loadCaloriesHistory();
@@ -39,38 +40,48 @@ export default function ReportPage() {
   async function onDownloadPDF() {
     if (!pdfRef.current) return;
 
+    setIsGenerating(true);
+
     try {
+      // Small delay to ensure element is rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const canvas = await html2canvas(pdfRef.current, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
+        allowTaint: true,
       });
 
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/png", 1.0);
       const pdf = new jsPDF("p", "mm", "a4");
 
-      const imgWidth = 210;
-      const pageHeight = 295;
+      const pdfWidth = 210;
+      const pdfHeight = 295;
+      const imgWidth = pdfWidth;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
       let heightLeft = imgHeight;
       let position = 0;
 
       pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      heightLeft -= pdfHeight;
 
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
         pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        heightLeft -= pdfHeight;
       }
 
-      const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-      pdf.save(`nutricare-report-${ts}.pdf`);
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      pdf.save(`nutricare-report-${timestamp}.pdf`);
     } catch (error) {
-      console.error("PDF generation failed:", error);
-      alert("Failed to generate PDF. Please try again.");
+      console.error("PDF generation error:", error);
+      alert("Failed to generate PDF. Please make sure the page is fully loaded and try again.");
+    } finally {
+      setIsGenerating(false);
     }
   }
 
@@ -140,39 +151,40 @@ export default function ReportPage() {
       {/* EXPORT BUTTON */}
       <Card className="rounded-3xl">
         <CardHeader>
-          <CardTitle className="text-lg">Export</CardTitle>
+          <CardTitle className="text-lg">Export Full Report</CardTitle>
         </CardHeader>
         <CardContent>
-          <Button onClick={onDownloadPDF} className="rounded-2xl">
-            Download PDF Report
+          <Button 
+            onClick={onDownloadPDF} 
+            disabled={isGenerating}
+            className="rounded-2xl"
+          >
+            {isGenerating ? "Generating PDF..." : "Download PDF Report"}
           </Button>
         </CardContent>
       </Card>
 
-      {/* ================= PDF LAYOUT (HIDDEN) ================= */}
-      <div className="fixed left-[-9999px] top-0 overflow-hidden">
+      {/* HIDDEN PDF TEMPLATE */}
+      <div className="fixed -left-[9999px] top-0">
         <div
           ref={pdfRef}
           style={{
             width: "794px",
-            padding: "40px",
-            background: "#ffffff",
+            padding: "50px 40px",
+            backgroundColor: "#ffffff",
             color: "#0f172a",
-            fontFamily: "system-ui, -apple-system, sans-serif",
-            lineHeight: "1.6",
+            fontFamily: "system-ui, Arial, sans-serif",
           }}
         >
-          <h1 style={{ fontSize: "28px", marginBottom: "8px", fontWeight: 600 }}>
+          <h1 style={{ fontSize: "28px", fontWeight: "600", marginBottom: "8px" }}>
             NutriCare Health Report
           </h1>
-          <p style={{ color: "#64748b", marginBottom: "32px" }}>
+          <p style={{ color: "#64748b", marginBottom: "40px" }}>
             Generated on {new Date().toLocaleDateString()}
           </p>
 
           <div style={{ marginBottom: "32px" }}>
-            <h2 style={{ fontSize: "18px", marginBottom: "12px", fontWeight: 600 }}>
-              Overview
-            </h2>
+            <h2 style={{ fontSize: "20px", marginBottom: "12px" }}>Overview</h2>
             <p>BMI: {latestBmi?.bmi?.toFixed(1) ?? "—"}</p>
             <p>Category: {latestBmi?.category ?? "—"}</p>
             <p>Daily Calories: {latestCal?.targetCalories ?? "—"} kcal</p>
@@ -180,17 +192,13 @@ export default function ReportPage() {
           </div>
 
           <div style={{ marginBottom: "32px" }}>
-            <h2 style={{ fontSize: "18px", marginBottom: "12px", fontWeight: 600 }}>
-              Weight Trend
-            </h2>
-            <p style={{ fontSize: "17px" }}>{weightTrend}</p>
+            <h2 style={{ fontSize: "20px", marginBottom: "12px" }}>Weight Trend</h2>
+            <p style={{ fontSize: "18px" }}>{weightTrend}</p>
             <p>{weightInsight}</p>
           </div>
 
           <div>
-            <h2 style={{ fontSize: "18px", marginBottom: "12px", fontWeight: 600 }}>
-              Insights
-            </h2>
+            <h2 style={{ fontSize: "20px", marginBottom: "12px" }}>Insights</h2>
             <p>Your current BMI status: {latestBmi?.category ?? "—"}</p>
             <p>{weightInsight}</p>
           </div>

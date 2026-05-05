@@ -1,16 +1,25 @@
 "use client";
 
-import { useState, useMemo, useSyncExternalStore } from "react";
+import {
+  useState,
+  useMemo,
+  useSyncExternalStore,
+  useEffect,
+} from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
 import {
   getProfileSnapshot,
   getProfileServerSnapshot,
   subscribeProfile,
 } from "@/lib/profile/storage";
+
+import { loadBmiHistory } from "@/lib/history/bmi";
+import { loadCaloriesHistory } from "@/lib/history/calories";
 
 type Category =
   | "underweight"
@@ -32,26 +41,40 @@ type ApiOk = {
 type ApiErr = { error: string };
 type ApiResponse = ApiOk | ApiErr;
 
-const categories: { value: Category; label: string }[] = [
-  { value: "underweight", label: "Underweight" },
-  { value: "normal", label: "Normal" },
-  { value: "overweight", label: "Overweight" },
-  { value: "obese1", label: "Obese Class I" },
-  { value: "obese2", label: "Obese Class II" },
-  { value: "obese3", label: "Obese Class III" },
-];
-
 export default function RecommendationsPage() {
   const prof = useSyncExternalStore(
     subscribeProfile,
     getProfileSnapshot,
     getProfileServerSnapshot
   );
+
+  const bmiHistory = useMemo(() => loadBmiHistory(), []);
+  const latestBMI = bmiHistory[0] ?? null;
+
+  const calHistory = useMemo(() => loadCaloriesHistory(), []);
+  const latestCalories = calHistory[0] ?? null;
+
   const [bmi, setBmi] = useState("");
   const [category, setCategory] = useState<Category>("normal");
   const [targetCalories, setTargetCalories] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [api, setApi] = useState<ApiResponse | null>(null);
+
+  // ✅ Prefill BMI + category
+  useEffect(() => {
+    if (latestBMI && !bmi) {
+      setBmi(String(latestBMI.bmi));
+      setCategory(latestBMI.category);
+    }
+  }, [latestBMI, bmi]);
+
+  // ✅ Prefill calories
+  useEffect(() => {
+    if (latestCalories && !targetCalories) {
+      setTargetCalories(String(latestCalories.targetCalories));
+    }
+  }, [latestCalories, targetCalories]);
 
   const valid = useMemo(() => {
     const b = Number(bmi);
@@ -83,8 +106,12 @@ export default function RecommendationsPage() {
       });
 
       const json = (await res.json()) as ApiResponse;
-      if (!res.ok) setApi({ error: (json as ApiErr).error ?? "Request failed." });
-      else setApi(json);
+
+      if (!res.ok) {
+        setApi({ error: (json as ApiErr).error ?? "Request failed." });
+      } else {
+        setApi(json);
+      }
     } catch {
       setApi({ error: "Network error. Please try again." });
     } finally {
@@ -97,114 +124,144 @@ export default function RecommendationsPage() {
       <div>
         <h1 className="text-2xl font-semibold">Recommendations</h1>
         <p className="text-slate-600">
-          A practical plan based on BMI, calorie target, and your goal.
+          Generate a custom plan based on different inputs.
         </p>
       </div>
 
-      <Card className="rounded-3xl">
+      {/* INPUT */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Inputs</CardTitle>
         </CardHeader>
+
         <CardContent className="grid gap-4 md:grid-cols-3">
+          {/* BMI */}
           <div className="space-y-2">
-            <Label htmlFor="bmi">BMI</Label>
-            <Input id="bmi" value={bmi} onChange={(e) => setBmi(e.target.value)} inputMode="decimal" placeholder="e.g. 24.6" />
+            <Label>BMI</Label>
+            <Input
+              value={bmi}
+              onChange={(e) => setBmi(e.target.value)}
+              inputMode="decimal"
+              placeholder="e.g. 24.6"
+            />
           </div>
 
+          {/* Category dropdown ✅ */}
           <div className="space-y-2">
             <Label>Category</Label>
-            <div className="grid gap-2">
-              {categories.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setCategory(c.value)}
-                  className={[
-                    "rounded-2xl border px-3 py-2 text-left text-sm",
-                    category === c.value ? "border-slate-900 bg-slate-50" : "hover:bg-slate-50",
-                  ].join(" ")}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
+            <select
+              value={category}
+              onChange={(e) =>
+                setCategory(e.target.value as Category)
+              }
+              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
+            >
+              <option value="underweight">Underweight</option>
+              <option value="normal">Normal</option>
+              <option value="overweight">Overweight</option>
+              <option value="obese1">Obese Class I</option>
+              <option value="obese2">Obese Class II</option>
+              <option value="obese3">Obese Class III</option>
+            </select>
           </div>
 
+          {/* Calories */}
           <div className="space-y-2">
-            <Label htmlFor="cal">Target calories (kcal/day)</Label>
-            <Input id="cal" value={targetCalories} onChange={(e) => setTargetCalories(e.target.value)} inputMode="numeric" placeholder="e.g. 2100" />
-            <div className="pt-2">
+            <Label>Target calories (kcal/day)</Label>
+            <Input
+              value={targetCalories}
+              onChange={(e) => setTargetCalories(e.target.value)}
+              inputMode="numeric"
+              placeholder="e.g. 2100"
+            />
+            <div className="pt-1">
               <Badge variant="secondary">Goal: {prof.goal}</Badge>
             </div>
           </div>
 
+          {/* Button */}
           <div className="md:col-span-3">
-            <Button onClick={generate} disabled={!valid || loading} className="w-full md:w-auto">
+            <Button onClick={generate} disabled={!valid || loading}>
               {loading ? "Generating..." : "Generate recommendations"}
             </Button>
-            {!valid ? (
-              <p className="mt-2 text-xs text-slate-500">
-                Valid BMI: 10–70. Calories: 1000–6000.
-              </p>
-            ) : null}
           </div>
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl">
+      {/* RESULT */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Your plan</CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-4">
           {!api ? (
-            <p className="text-slate-600">Enter inputs and generate your plan.</p>
+            <p className="text-slate-600">
+              Enter inputs and generate your plan.
+            </p>
           ) : "error" in api ? (
             <p className="text-slate-600">{api.error}</p>
           ) : (
             <>
               <p className="text-slate-700">{api.summary}</p>
 
+              {/* Macros */}
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl border p-4">
                   <div className="text-xs text-slate-500">Protein</div>
-                  <div className="text-2xl font-semibold">{api.macros.proteinG}g</div>
+                  <div className="text-2xl font-semibold">
+                    {api.macros.proteinG}g
+                  </div>
                 </div>
                 <div className="rounded-2xl border p-4">
                   <div className="text-xs text-slate-500">Carbs</div>
-                  <div className="text-2xl font-semibold">{api.macros.carbsG}g</div>
+                  <div className="text-2xl font-semibold">
+                    {api.macros.carbsG}g
+                  </div>
                 </div>
                 <div className="rounded-2xl border p-4">
                   <div className="text-xs text-slate-500">Fat</div>
-                  <div className="text-2xl font-semibold">{api.macros.fatG}g</div>
+                  <div className="text-2xl font-semibold">
+                    {api.macros.fatG}g
+                  </div>
                 </div>
               </div>
 
+              {/* Lists */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <h3 className="text-sm font-semibold">Top priorities</h3>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
-                    {api.priorities.map((x) => <li key={x}>{x}</li>)}
+                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
+                    {api.priorities.map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
                   </ul>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-semibold">Next steps</h3>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
-                    {api.nextSteps.map((x) => <li key={x}>{x}</li>)}
+                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
+                    {api.nextSteps.map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
                   </ul>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-semibold">Foods to focus</h3>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
-                    {api.foodsToFocus.map((x) => <li key={x}>{x}</li>)}
+                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
+                    {api.foodsToFocus.map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
                   </ul>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-semibold">Foods to limit</h3>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
-                    {api.foodsToLimit.map((x) => <li key={x}>{x}</li>)}
+                  <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
+                    {api.foodsToLimit.map((x) => (
+                      <li key={x}>{x}</li>
+                    ))}
                   </ul>
                 </div>
               </div>

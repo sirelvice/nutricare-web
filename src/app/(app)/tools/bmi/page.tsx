@@ -1,20 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { addBmiHistory } from "@/lib/history/bmi";
-{/*import { addMetric } from "@/lib/history/metrics";*/};
-
+import {
+  subscribeProfile,
+  getProfileSnapshot,
+  getProfileServerSnapshot,
+} from "@/lib/profile/storage";
+import { loadWeightEntries } from "@/lib/tracking/weight";
 
 type Goal = "lose" | "maintain" | "gain";
 
 type ApiOk = {
   bmi: number;
   category: { label: string; note: string };
+  targetCalories: number;
   recommendations: {
     bmiLabel: string;
     goal: Goal;
@@ -47,17 +52,40 @@ function categoryKeyFromLabel(label: string): CategoryKey {
   if (x.includes("class i")) return "obese1";
   if (x.includes("class ii")) return "obese2";
   if (x.includes("class iii")) return "obese3";
-  // fallback
   return "normal";
 }
 
 export default function BMIPage() {
-  const [heightCm, setHeightCm] = useState("");
-  const [weightKg, setWeightKg] = useState("");
+  const profile = useSyncExternalStore(
+    subscribeProfile,
+    getProfileSnapshot,
+    getProfileServerSnapshot
+  );
+
+  const [heightCm, setHeightCm] = useState<string>(
+    profile?.heightCm ? String(profile.heightCm) : ""
+  );
+
+  const weightEntries = useMemo(() => loadWeightEntries(), []);
+  const latestWeight = weightEntries[0]?.weightKg ?? null;
+
+  const [weightKg, setWeightKg] = useState<string>(
+    latestWeight ? String(latestWeight) : ""
+  );
+
   const [goal, setGoal] = useState<Goal>("maintain");
 
   const [loading, setLoading] = useState(false);
   const [api, setApi] = useState<ApiResponse | null>(null);
+
+  useEffect(() => {
+    if (!profile?.heightCm) return;
+
+    setHeightCm((prev) => {
+      if (prev) return prev; // don't override user input
+      return String(profile.heightCm);
+    });
+  }, [profile?.heightCm]);
 
   const valid = useMemo(() => {
     const h = Number(heightCm);
@@ -90,20 +118,23 @@ export default function BMIPage() {
           heightCm: h,
           weightKg: w,
           goal: g,
+          age: profile?.age ?? null,
+          gender: profile?.gender ?? null,
+          activity: profile?.activity ?? null,
         }),
       });
 
       const json = (await res.json()) as ApiResponse;
 
       if (!res.ok) {
-        const err = json && typeof json === "object" && "error" in json
-          ? String(json.error)
-          : "Request failed.";
+        const err =
+          json && typeof json === "object" && "error" in json
+            ? String(json.error)
+            : "Request failed.";
         setApi({ error: err });
       } else {
         setApi(json);
 
-        // Save BMI to History (only when we have a successful result)
         if (isOk(json)) {
           addBmiHistory({
             heightCm: h,
@@ -123,7 +154,6 @@ export default function BMIPage() {
   function onGoalChange(g: Goal) {
     setGoal(g);
 
-    // If already calculated once, refresh immediately with new goal (no useEffect loop)
     if (api && isOk(api) && valid && !loading) {
       fetchRecommendations(g);
     }
@@ -140,15 +170,19 @@ export default function BMIPage() {
       </div>
 
       {/* Inputs */}
-      <Card className="rounded-3xl">
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Your details</CardTitle>
         </CardHeader>
+
         <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
+
+          {/* Height */}
+          <div className="space-y-1">
             <Label htmlFor="height">Height (cm)</Label>
             <Input
               id="height"
+              className="h-10 rounded-xl"
               value={heightCm}
               onChange={(e) => setHeightCm(e.target.value)}
               placeholder="e.g. 172"
@@ -156,10 +190,12 @@ export default function BMIPage() {
             />
           </div>
 
-          <div className="space-y-2">
+          {/* Weight */}
+          <div className="space-y-1">
             <Label htmlFor="weight">Weight (kg)</Label>
             <Input
               id="weight"
+              className="h-10 rounded-xl"
               value={weightKg}
               onChange={(e) => setWeightKg(e.target.value)}
               placeholder="e.g. 70"
@@ -167,22 +203,24 @@ export default function BMIPage() {
             />
           </div>
 
-          <div className="space-y-2">
+          {/* Goal */}
+          <div className="space-y-1">
             <Label>Goal</Label>
-            <div className="flex flex-wrap gap-2">
-              {(["lose", "maintain", "gain"] as Goal[]).map((g) => (
-                <Button
-                  key={g}
-                  type="button"
-                  variant={goal === g ? "default" : "outline"}
-                  onClick={() => onGoalChange(g)}
-                >
-                  {g === "lose" ? "Lose weight" : g === "gain" ? "Gain weight" : "Maintain"}
-                </Button>
-              ))}
-            </div>
+            <select
+              value={goal}
+              onChange={(e) => onGoalChange(e.target.value as Goal)}
+              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
+            >
+              <option value="" disabled>
+                Select goal
+              </option>
+              <option value="lose">Lose weight</option>
+              <option value="maintain">Maintain weight</option>
+              <option value="gain">Gain weight</option>
+            </select>
           </div>
 
+          {/* CTA */}
           <div className="md:col-span-3">
             <Button
               onClick={() => fetchRecommendations()}
@@ -192,17 +230,18 @@ export default function BMIPage() {
               {loading ? "Calculating..." : "Calculate & get recommendations"}
             </Button>
 
-            {!valid ? (
+            {!valid && (
               <p className="mt-2 text-xs text-slate-500">
                 Enter realistic values (Height 80–250cm, Weight 20–350kg).
               </p>
-            ) : null}
+            )}
           </div>
+
         </CardContent>
       </Card>
 
       {/* Result */}
-      <Card className="rounded-3xl">
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-lg">Result</CardTitle>
           <Button asChild variant="outline" size="sm">
@@ -212,7 +251,9 @@ export default function BMIPage() {
 
         <CardContent className="space-y-4">
           {!api ? (
-            <p className="text-slate-600">Fill in your details, then click calculate.</p>
+            <p className="text-slate-600">
+              Fill in your details, then click calculate.
+            </p>
           ) : "error" in api ? (
             <p className="text-slate-600">{api.error}</p>
           ) : (
@@ -225,15 +266,19 @@ export default function BMIPage() {
               <p className="text-slate-600">{api.category.note}</p>
 
               <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="text-sm font-semibold">Nutrition guidance</div>
-                <p className="mt-1 text-sm text-slate-600">{api.recommendations.summary}</p>
+                <div className="text-sm font-semibold">
+                  Nutrition guidance
+                </div>
+                <p className="mt-1 text-sm text-slate-600">
+                  {api.recommendations.summary}
+                </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-2xl border p-4">
                   <div className="text-sm font-semibold">Focus on</div>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    {api.recommendations.focus.map((x) => (
+                    {api.recommendations?.focus?.map((x) => (
                       <li key={x}>{x}</li>
                     ))}
                   </ul>
@@ -242,16 +287,16 @@ export default function BMIPage() {
                 <div className="rounded-2xl border p-4">
                   <div className="text-sm font-semibold">Limit</div>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    {api.recommendations.limit.map((x) => (
+                    {api.recommendations?.limit?.map((x) => (
                       <li key={x}>{x}</li>
                     ))}
                   </ul>
                 </div>
 
                 <div className="rounded-2xl border p-4">
-                  <div className="text-sm font-semibold">Meal ideas</div>
+                  <div className="text-sm font-semibold">Next steps</div>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    {api.recommendations.mealIdeas.map((x) => (
+                    {api.recommendations?.mealIdeas?.map((x) => (
                       <li key={x}>{x}</li>
                     ))}
                   </ul>
@@ -259,8 +304,7 @@ export default function BMIPage() {
               </div>
 
               <p className="text-xs text-slate-500">
-                BMI is a screening tool and doesn’t capture all health factors. If you have medical concerns,
-                consider professional guidance.
+                BMI is a screening tool and doesn’t capture all health factors.
               </p>
             </>
           )}

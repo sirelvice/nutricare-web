@@ -1,11 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+  useEffect,
+  useSyncExternalStore,
+} from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
+import {
+  subscribeProfile,
+  getProfileSnapshot,
+  getProfileServerSnapshot,
+} from "@/lib/profile/storage";
+
+import { loadCaloriesHistory } from "@/lib/history/calories";
 
 type Goal = "lose" | "maintain" | "gain";
 
@@ -20,10 +33,33 @@ type ApiErr = { error: string };
 type ApiResponse = ApiOk | ApiErr;
 
 export default function MacrosPage() {
+  const profile = useSyncExternalStore(
+    subscribeProfile,
+    getProfileSnapshot,
+    getProfileServerSnapshot
+  );
+
+  const calHistory = useMemo(() => loadCaloriesHistory(), []);
+  const latestCalories = calHistory[0] ?? null;
+
   const [targetCalories, setTargetCalories] = useState("");
   const [goal, setGoal] = useState<Goal>("maintain");
   const [loading, setLoading] = useState(false);
   const [api, setApi] = useState<ApiResponse | null>(null);
+
+  // ✅ Prefill calories
+  useEffect(() => {
+    if (latestCalories && !targetCalories) {
+      setTargetCalories(String(latestCalories.targetCalories));
+    }
+  }, [latestCalories, targetCalories]);
+
+  // ✅ Prefill goal
+  useEffect(() => {
+    if (profile.goal) {
+      setGoal(profile.goal);
+    }
+  }, [profile.goal]);
 
   const valid = useMemo(() => {
     const c = Number(targetCalories);
@@ -47,8 +83,12 @@ export default function MacrosPage() {
       });
 
       const json = (await res.json()) as ApiResponse;
-      if (!res.ok) setApi({ error: (json as ApiErr).error ?? "Request failed." });
-      else setApi(json);
+
+      if (!res.ok) {
+        setApi({ error: (json as ApiErr).error ?? "Request failed." });
+      } else {
+        setApi(json);
+      }
     } catch {
       setApi({ error: "Network error. Please try again." });
     } finally {
@@ -61,58 +101,62 @@ export default function MacrosPage() {
       <div>
         <h1 className="text-2xl font-semibold">Macros</h1>
         <p className="text-slate-600">
-          Convert target calories into practical daily protein, carbs, and fat goals.
+          Explore macro splits for different calorie targets.
         </p>
       </div>
 
-      <Card className="rounded-3xl">
+      {/* INPUT */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Inputs</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          {/* Calories */}
           <div className="space-y-2">
-            <Label htmlFor="cal">Target calories (kcal/day)</Label>
+            <Label>Target calories (kcal/day)</Label>
             <Input
-              id="cal"
               value={targetCalories}
               onChange={(e) => setTargetCalories(e.target.value)}
               placeholder="e.g. 2200"
               inputMode="numeric"
             />
-            <p className="text-xs text-slate-500">Tip: use the Calories tool result.</p>
+            <p className="text-xs text-slate-500">
+              Auto-filled from your dashboard.
+            </p>
           </div>
 
-          <div className="space-y-2 md:col-span-2">
+          {/* Goal dropdown ✅ */}
+          <div className="space-y-2">
             <Label>Goal</Label>
-            <div className="flex flex-wrap gap-2">
-              {(["lose", "maintain", "gain"] as Goal[]).map((g) => (
-                <Button
-                  key={g}
-                  type="button"
-                  variant={goal === g ? "default" : "outline"}
-                  onClick={() => setGoal(g)}
-                >
-                  {g === "lose" ? "Lose weight" : g === "gain" ? "Gain weight" : "Maintain"}
-                </Button>
-              ))}
-            </div>
+            <select
+              value={goal}
+              onChange={(e) =>
+                setGoal(e.target.value as "lose" | "maintain" | "gain")
+              }
+              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
+            >
+              <option value="lose">Lose weight</option>
+              <option value="maintain">Maintain weight</option>
+              <option value="gain">Gain weight</option>
+            </select>
           </div>
 
-          <div className="md:col-span-3">
-            <Button onClick={calculate} disabled={!valid || loading} className="w-full md:w-auto">
+          {/* Button */}
+          <div className="md:col-span-2">
+            <Button onClick={calculate} disabled={!valid || loading}>
               {loading ? "Calculating..." : "Calculate macros"}
             </Button>
-            {!valid ? (
-              <p className="mt-2 text-xs text-slate-500">Enter target calories between 800 and 6000.</p>
-            ) : null}
           </div>
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl">
+      {/* RESULT */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
           <CardTitle className="text-lg">Result</CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-4">
           {!api ? (
             <p className="text-slate-600">Enter calories and calculate.</p>
@@ -120,33 +164,37 @@ export default function MacrosPage() {
             <p className="text-slate-600">{api.error}</p>
           ) : (
             <>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Badge variant="secondary">Goal: {api.goal}</Badge>
-                <Badge variant="secondary">Target: {api.targetCalories} kcal/day</Badge>
                 <Badge variant="secondary">
-                  Split: P {api.splitPercent.protein}% • C {api.splitPercent.carbs}% • F {api.splitPercent.fat}%
+                  {api.targetCalories} kcal/day
                 </Badge>
               </div>
 
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl border p-4">
                   <div className="text-xs text-slate-500">Protein</div>
-                  <div className="text-2xl font-semibold">{api.grams.protein} g</div>
-                  <div className="text-xs text-slate-500">per day</div>
+                  <div className="text-2xl font-semibold">
+                    {api.grams.protein} g
+                  </div>
                 </div>
+
                 <div className="rounded-2xl border p-4">
                   <div className="text-xs text-slate-500">Carbs</div>
-                  <div className="text-2xl font-semibold">{api.grams.carbs} g</div>
-                  <div className="text-xs text-slate-500">per day</div>
+                  <div className="text-2xl font-semibold">
+                    {api.grams.carbs} g
+                  </div>
                 </div>
+
                 <div className="rounded-2xl border p-4">
                   <div className="text-xs text-slate-500">Fat</div>
-                  <div className="text-2xl font-semibold">{api.grams.fat} g</div>
-                  <div className="text-xs text-slate-500">per day</div>
+                  <div className="text-2xl font-semibold">
+                    {api.grams.fat} g
+                  </div>
                 </div>
               </div>
 
-              <ul className="list-disc space-y-1 pl-5 text-sm text-slate-600">
+              <ul className="list-disc pl-5 text-sm text-slate-600">
                 {api.notes.map((n) => (
                   <li key={n}>{n}</li>
                 ))}

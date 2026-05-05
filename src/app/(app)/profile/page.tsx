@@ -15,15 +15,14 @@ import {
 } from "@/lib/profile/storage";
 
 const activityOptions: { value: ActivityLevel; label: string; hint: string }[] = [
-  { value: "sedentary", label: "Sedentary", hint: "Little or no exercise" },
+  { value: "sedentary", label: "Sedentary", hint: "Little or no activity" },
   { value: "light", label: "Light", hint: "1–3 days/week" },
   { value: "moderate", label: "Moderate", hint: "3–5 days/week" },
   { value: "active", label: "Active", hint: "6–7 days/week" },
-  { value: "very_active", label: "Very active", hint: "Hard exercise / physical job" },
+  { value: "very_active", label: "Very active", hint: "Very intense / physical job" },
 ];
 
 export default function ProfilePage() {
-  // Hydration-safe external store pattern (no useEffect, no lint error)
   const storedProfile = useSyncExternalStore(
     subscribeProfile,
     getProfileSnapshot,
@@ -33,13 +32,29 @@ export default function ProfilePage() {
   const [draft, setDraft] = useState<UserProfile>(storedProfile);
   const [saved, setSaved] = useState(false);
 
-  // If storage changes (another tab / future feature), keep draft aligned
-  // (simple approach: when user refreshes, it loads from snapshot anyway)
-
   const valid = useMemo(() => {
     const hOk = draft.heightCm === null || (draft.heightCm >= 80 && draft.heightCm <= 250);
     const aOk = draft.age === null || (draft.age >= 10 && draft.age <= 120);
     return hOk && aOk;
+  }, [draft]);
+
+  const estimatedCalories = useMemo(() => {
+    if (!draft.heightCm || !draft.age || !draft.gender) return null;
+
+    const weightGuess = 70;
+
+    const bmr =
+      draft.gender === "male"
+        ? 10 * weightGuess + 6.25 * draft.heightCm - 5 * draft.age + 5
+        : 10 * weightGuess + 6.25 * draft.heightCm - 5 * draft.age - 161;
+
+    const multiplier =
+      draft.activity === "sedentary" ? 1.2 :
+        draft.activity === "light" ? 1.375 :
+          draft.activity === "moderate" ? 1.55 :
+            draft.activity === "active" ? 1.725 : 1.9;
+
+    return Math.round(bmr * multiplier);
   }, [draft]);
 
   function update<K extends keyof UserProfile>(key: K, value: UserProfile[K]) {
@@ -56,125 +71,174 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
+
+      {/* HEADER */}
       <div>
-        <h1 className="text-2xl font-semibold">Profile</h1>
+        <h1 className="text-2xl font-semibold">Your profile</h1>
         <p className="text-slate-600">
-          Save your basic details once. NutriCare will use them for smarter tools (BMR/TDEE, targets, tracking).
+          Your information helps us calculate your daily needs and recommendations.
         </p>
       </div>
 
-      <Card className="rounded-3xl">
-        <CardHeader>
-          <CardTitle className="text-lg">Your details</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="height">Height (cm)</Label>
-            <Input
-              id="height"
-              value={draft.heightCm ?? ""}
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                update("heightCm", v ? Number(v) : null);
-              }}
-              placeholder="e.g. 172"
-              inputMode="numeric"
-            />
-            <p className="text-xs text-slate-500">Used for BMI and other calculations.</p>
-          </div>
+      {/* SUMMARY */}
+      <Card className="rounded-3xl border bg-gradient-to-br from-green-50 to-white shadow-sm">
+        <CardContent className="p-5">
+          <p className="text-sm text-slate-600">Current setup</p>
 
-          <div className="space-y-2">
-            <Label htmlFor="age">Age (years)</Label>
-            <Input
-              id="age"
-              value={draft.age ?? ""}
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                update("age", v ? Number(v) : null);
-              }}
-              placeholder="e.g. 24"
-              inputMode="numeric"
-            />
-            <p className="text-xs text-slate-500">Used for BMR/TDEE.</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Gender</Label>
-            <div className="flex flex-wrap gap-2">
-              {(["male", "female", "other"] as const).map((g) => (
-                <Button
-                  key={g}
-                  type="button"
-                  variant={draft.gender === g ? "default" : "outline"}
-                  onClick={() => update("gender", g)}
-                >
-                  {g === "male" ? "Male" : g === "female" ? "Female" : "Other"}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Goal</Label>
-            <div className="flex flex-wrap gap-2">
-              {(["lose", "maintain", "gain"] as const).map((g) => (
-                <Button
-                  key={g}
-                  type="button"
-                  variant={draft.goal === g ? "default" : "outline"}
-                  onClick={() => update("goal", g)}
-                >
-                  {g === "lose" ? "Lose weight" : g === "gain" ? "Gain weight" : "Maintain"}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label>Activity level</Label>
-            <div className="grid gap-2 md:grid-cols-2">
-              {activityOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => update("activity", opt.value)}
-                  className={[
-                    "rounded-2xl border p-3 text-left",
-                    draft.activity === opt.value ? "border-slate-900 bg-slate-50" : "hover:bg-slate-50",
-                  ].join(" ")}
-                >
-                  <div className="text-sm font-semibold">{opt.label}</div>
-                  <div className="text-xs text-slate-600">{opt.hint}</div>
-                </button>
-              ))}
-            </div>
-
-            {!valid ? (
-              <p className="text-xs text-red-600">
-                Please enter realistic values (Height 80–250cm, Age 10–120).
-              </p>
-            ) : null}
-          </div>
-
-          <div className="md:col-span-2 flex items-center gap-3">
-            <Button onClick={onSave} disabled={!valid}>
-              {saved ? "Saved ✓" : "Save profile"}
-            </Button>
-
-            {/* Optional: show what's currently stored */}
-            <span className="text-xs text-slate-500">
-              Stored goal: <span className="font-medium">{storedProfile.goal}</span>
+          <div className="mt-2 flex flex-wrap gap-3 text-sm">
+            <span className="px-3 py-1 rounded-full bg-white border">
+              Height: {draft.heightCm ?? "—"} cm
+            </span>
+            <span className="px-3 py-1 rounded-full bg-white border">
+              Age: {draft.age ?? "—"}
+            </span>
+            <span className="px-3 py-1 rounded-full bg-white border">
+              Goal: {draft.goal === "gain"
+                ? "Gain weight"
+                : draft.goal === "lose"
+                  ? "Lose weight"
+                  : draft.goal === "maintain"
+                    ? "Maintain"
+                    : "—"}
+            </span>
+            <span className="px-3 py-1 rounded-full bg-white border">
+              Activity: {draft.activity ?? "—"}
             </span>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border bg-slate-50">
+      {/* CALORIES */}
+      {estimatedCalories && (
+        <Card className="rounded-3xl border-0 shadow-sm bg-gradient-to-br from-emerald-50 via-white to-white">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-600">Estimated daily calories</p>
+              <p className="text-3xl font-bold">~{estimatedCalories} kcal</p>
+              <p className="text-xs text-slate-500">
+                Based on your profile
+              </p>
+            </div>
+
+            <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-lg">
+              🔥
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* FORM */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
-          <CardTitle className="text-lg">Coming soon</CardTitle>
+          <CardTitle>Your details</CardTitle>
         </CardHeader>
-        <CardContent className="text-slate-600">
-          Calorie targets (BMR/TDEE) and smarter recommendations based on your profile.
+
+        {/* ✅ KEY FIXES ARE HERE */}
+        <CardContent className="space-y-4">
+
+          {/* HEIGHT + AGE */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Height (cm)</Label>
+              <Input
+                className="h-10 rounded-xl"
+                value={draft.heightCm ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  update("heightCm", v ? Number(v) : null);
+                }}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Age (years)</Label>
+              <Input
+                className="h-10 rounded-xl"
+                value={draft.age ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  update("age", v ? Number(v) : null);
+                }}
+              />
+            </div>
+          </div>
+
+          {/* GENDER + GOAL (SIDE BY SIDE) */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Gender</Label>
+              <select
+                value={draft.gender ?? ""}
+                onChange={(e) =>
+                  update("gender", e.target.value as "male" | "female" | "other")
+                }
+                className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
+              >
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Your goal</Label>
+              <select
+                value={draft.goal ?? ""}
+                onChange={(e) =>
+                  update("goal", e.target.value as "lose" | "maintain" | "gain")
+                }
+                className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
+              >
+                <option value="" disabled>
+                  Select goal
+                </option>
+                <option value="lose">Lose weight</option>
+                <option value="maintain">Maintain weight</option>
+                <option value="gain">Gain weight</option>
+              </select>
+            </div>
+          </div>
+
+          {/* ACTIVITY */}
+          <div className="space-y-1">
+            <Label>Activity level</Label>
+            <select
+              value={draft.activity ?? ""}
+              onChange={(e) =>
+                update("activity", e.target.value as ActivityLevel)
+              }
+              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
+            >
+              <option value="">Select activity level</option>
+              {activityOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label} — {opt.hint}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* SAVE */}
+          <div className="flex items-center gap-3 pt-2">
+            <Button onClick={onSave} disabled={!valid}>
+              {saved ? "Saved ✓" : "Save profile"}
+            </Button>
+
+            <span className="text-xs text-slate-500">
+              Your data stays on this device.
+            </span>
+          </div>
+
+        </CardContent>
+      </Card>
+
+      {/* FOOTER */}
+      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+        <CardContent className="p-5">
+          <p className="text-sm text-slate-600">
+            Once your profile is complete, you can start tracking your weight and calories from the dashboard.
+          </p>
         </CardContent>
       </Card>
     </div>

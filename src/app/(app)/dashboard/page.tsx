@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 import {
   subscribeProfile,
@@ -14,23 +13,53 @@ import {
 } from "@/lib/profile/storage";
 
 import { loadWeightEntries, summarize } from "@/lib/tracking/weight";
-import { loadBmiHistory } from "@/lib/history/bmi";
 import { loadCaloriesHistory } from "@/lib/history/calories";
+import { loadBmiHistory } from "@/lib/history/bmi";
 
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-function fmtTime(ts: number) {
-  try {
-    return new Date(ts).toLocaleString();
-  } catch {
-    return String(ts);
-  }
+import { buildRecommendations } from "@/lib/reco/engine";
+
+import {
+  LineChart,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
 }
 
-// ─────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────
+function formatGoal(goal?: string) {
+  if (!goal) return "";
+  if (goal === "gain") return "gain weight";
+  if (goal === "lose") return "lose weight";
+  return goal;
+}
+
+function macrosFromCalories(target: number, goal: string) {
+  const proteinPct = goal === "lose" ? 0.3 : 0.25;
+  const fatPct = 0.25;
+  const carbsPct = 1 - proteinPct - fatPct;
+
+  return {
+    protein: Math.round((target * proteinPct) / 4),
+    fat: Math.round((target * fatPct) / 9),
+    carbs: Math.round((target * carbsPct) / 4),
+  };
+}
+
+function normalizeBmiCategory(
+  raw: string
+): "underweight" | "normal" | "overweight" | "obese" {
+  if (raw === "underweight") return "underweight";
+  if (raw === "normal") return "normal";
+  if (raw === "overweight") return "overweight";
+  return "obese"; // obese1, obese2, obese3 → obese
+}
+
 export default function DashboardPage() {
   const profile = useSyncExternalStore(
     subscribeProfile,
@@ -41,217 +70,211 @@ export default function DashboardPage() {
   const weightEntries = useMemo(() => loadWeightEntries(), []);
   const weightStats = useMemo(() => summarize(weightEntries), [weightEntries]);
 
-  const bmiHistory = useMemo(() => loadBmiHistory(), []);
   const calHistory = useMemo(() => loadCaloriesHistory(), []);
-
-  const latestBmi = bmiHistory[0] ?? null;
   const latestCalories = calHistory[0] ?? null;
 
-  const bmiInfo = useMemo(() => {
-    if (!profile.heightCm || !weightStats?.last?.weightKg) return null;
+  const bmiHistory = useMemo(() => loadBmiHistory(), []);
+  const latestBMI = bmiHistory[0] ?? null;
 
-    const bmi =
-      weightStats.last.weightKg / Math.pow(profile.heightCm / 100, 2);
+  const hasProfile = !!(profile.heightCm && profile.age);
+  const hasWeight = !!weightStats?.last;
+  const hasBMI = !!latestBMI;
+  const hasCalories = !!latestCalories;
 
-    let category = "Unknown";
-    if (bmi < 18.5) category = "Underweight";
-    else if (bmi < 25) category = "Normal";
-    else if (bmi < 30) category = "Overweight";
-    else category = "Obese";
+  const progress = [hasProfile, hasWeight, hasBMI, hasCalories].filter(Boolean).length;
+  const progressPercent = Math.round((progress / 4) * 100);
 
-    return {
-      bmi: Number(bmi.toFixed(1)),
-      category,
-    };
-  }, [profile.heightCm, weightStats?.last?.weightKg]);
+  const primaryAction = !hasProfile
+    ? { label: "Add your details", href: "/profile" }
+    : !hasWeight
+      ? { label: "Log your first weight", href: "/tools/tracking/weight" }
+      : !hasBMI
+        ? { label: "Check your BMI", href: "/tools/bmi" }
+        : !hasCalories
+          ? { label: "Set your calories", href: "/tools/calories" }
+          : null;
+
+  const chartData = weightEntries.slice(-7).map((w, i) => ({
+    name: `${i + 1}`,
+    weight: w.weightKg,
+  }));
+
+  // 🥗 Macros
+  const macros =
+    latestCalories && profile.goal
+      ? macrosFromCalories(latestCalories.targetCalories, profile.goal)
+      : null;
+
+  // 🧠 Recommendations
+  const rec =
+    latestBMI && profile.goal && latestCalories
+      ? buildRecommendations({
+        bmi: latestBMI.bmi,
+        category: normalizeBmiCategory(latestBMI.category),
+        goal: profile.goal,
+        targetCalories: latestCalories.targetCalories,
+      })
+      : null;
 
   return (
-    <div className="space-y-10">
-      {/* ───────── HEADER ───────── */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold">Dashboard</h1>
-          <p className="text-slate-600">
-            Your health overview — track progress, review activity, and take action.
+    <div className="space-y-12">
+
+      {/* HERO */}
+      <div className="rounded-3xl bg-gradient-to-br from-green-50 via-white to-green-50 p-6 border shadow-sm">
+        <h1 className="text-2xl font-semibold">{getGreeting()}</h1>
+
+        <p className="text-slate-600 mt-1">
+          {hasProfile
+            ? `Goal: ${formatGoal(profile.goal)}`
+            : "Add your details to get started"}
+        </p>
+
+        <div className="mt-4">
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-500"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Setup progress: {progressPercent}%
           </p>
         </div>
 
-        <div className="flex gap-3 flex-wrap">
-          <Button asChild size="sm">
-            <Link href="/tools/bmi">Calculate BMI</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/tools/calories">Calories</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/profile">Profile</Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* ───────── OVERVIEW (TOP PRIORITY) ───────── */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Overview</h2>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* BMI */}
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle>BMI</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {bmiInfo ? (
-                <>
-                  <div className="text-3xl font-bold">{bmiInfo.bmi}</div>
-                  <div className="text-sm text-slate-500">
-                    {bmiInfo.category}
-                  </div>
-                </>
-              ) : (
-                <p className="text-slate-600 text-sm">
-                  Add weight + height to see BMI.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Weight */}
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle>Weight Trend</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {weightStats ? (
-                <>
-                  <div className="text-sm">
-                    Latest:{" "}
-                    <b>{weightStats.last.weightKg} kg</b>
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    Change: {weightStats.change > 0 ? "+" : ""}
-                    {weightStats.change} kg
-                  </div>
-                </>
-              ) : (
-                <p className="text-slate-600 text-sm">
-                  No data yet.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* ───────── PROFILE CONTEXT ───────── */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Your Profile</h2>
-
-        <Card className="rounded-3xl">
-          <CardContent className="space-y-3">
-            <div className="flex gap-2 flex-wrap">
-              <Badge>Goal: {profile.goal}</Badge>
-              <Badge>Activity: {profile.activity}</Badge>
-              <Badge>Gender: {profile.gender}</Badge>
-            </div>
-
-            <div className="text-sm text-slate-600">
-              Height: {profile.heightCm ?? "—"} cm • Age: {profile.age ?? "—"}
-            </div>
-
-            <Button asChild variant="outline">
-              <Link href="/profile">Update Profile</Link>
+        {primaryAction && (
+          <div className="mt-4">
+            <Button asChild>
+              <Link href={primaryAction.href}>{primaryAction.label}</Link>
             </Button>
+          </div>
+        )}
+      </div>
+
+      {/* CORE */}
+      <div className="grid gap-4 md:grid-cols-3">
+
+        {/* BMI */}
+        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+          <CardContent className="p-5">
+            <p className="text-sm text-slate-500">BMI</p>
+            {latestBMI ? (
+              <>
+                <div className="text-4xl font-semibold">{latestBMI.bmi}</div>
+                <p className="text-sm text-slate-600">{latestBMI.category}</p>
+              </>
+            ) : (
+              <Link href="/tools/bmi" className="text-green-600 text-sm">
+                Calculate →
+              </Link>
+            )}
           </CardContent>
         </Card>
+
+        {/* WEIGHT */}
+        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+          <CardContent className="p-5 space-y-3">
+            <p className="text-sm text-slate-500">Weight</p>
+
+            {weightStats ? (
+              <>
+                <div className="text-4xl font-semibold">
+                  {weightStats.last.weightKg} kg
+                </div>
+
+                <div className="h-20">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <Line dataKey="weight" strokeWidth={2} dot={false} />
+                      <Tooltip />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            ) : (
+              <Link href="/tools/tracking/weight" className="text-green-600 text-sm">
+                Add weight →
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* CALORIES */}
+        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+          <CardContent className="p-5">
+            <p className="text-sm text-slate-500">Calories</p>
+            {latestCalories ? (
+              <div className="text-4xl font-semibold">
+                {latestCalories.targetCalories}
+              </div>
+            ) : (
+              <Link href="/tools/calories" className="text-green-600 text-sm">
+                Set →
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+
       </div>
 
-      {/* ───────── ACTIVITY ───────── */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Recent Activity</h2>
+      {/* INSIGHTS */}
+      <div className="grid gap-4 md:grid-cols-2">
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* BMI history */}
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle>Recent BMI</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!latestBmi ? (
-                <p className="text-slate-600 text-sm">
-                  No BMI history yet.
+        {/* MACROS */}
+        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+          <CardContent className="p-5 space-y-3">
+            <p className="text-sm text-slate-500">Macros</p>
+
+            {macros ? (
+              <div className="grid grid-cols-3 text-center">
+                <div>
+                  <div className="text-xl font-semibold">{macros.protein}g</div>
+                  <p className="text-xs text-slate-500">Protein</p>
+                </div>
+                <div>
+                  <div className="text-xl font-semibold">{macros.carbs}g</div>
+                  <p className="text-xs text-slate-500">Carbs</p>
+                </div>
+                <div>
+                  <div className="text-xl font-semibold">{macros.fat}g</div>
+                  <p className="text-xs text-slate-500">Fat</p>
+                </div>
+              </div>
+            ) : (
+              <Link href="/tools/calories" className="text-green-600 text-sm">
+                Calculate macros →
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* RECOMMENDATIONS */}
+        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+          <CardContent className="p-5 space-y-3">
+            <p className="text-sm text-slate-500">Recommendations</p>
+
+            {rec ? (
+              <>
+                <p className="text-sm text-slate-600 line-clamp-3">
+                  {rec.summary}
                 </p>
-              ) : (
-                <>
-                  <div className="font-semibold">
-                    BMI {latestBmi.bmi.toFixed(1)}
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    {fmtTime(latestBmi.createdAt)}
-                  </div>
-                </>
-              )}
 
-              <Button asChild variant="link" className="p-0 mt-2">
-                <Link href="/history/bmi">View history →</Link>
-              </Button>
-            </CardContent>
-          </Card>
+                <Link
+                  href="/tools/recommendations"
+                  className="text-green-600 text-sm"
+                >
+                  View full →
+                </Link>
+              </>
+            ) : (
+              <Link href="/tools/bmi" className="text-green-600 text-sm">
+                Generate →
+              </Link>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Calories */}
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle>Recent Calories</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!latestCalories ? (
-                <p className="text-slate-600 text-sm">
-                  No calorie data yet.
-                </p>
-              ) : (
-                <>
-                  <div className="font-semibold">
-                    {latestCalories.targetCalories} kcal target
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    {fmtTime(latestCalories.createdAt)}
-                  </div>
-                </>
-              )}
-
-              <Button asChild variant="link" className="p-0 mt-2">
-                <Link href="/history/calories">View history →</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
-      {/* ───────── ACTIONS ───────── */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Take Action</h2>
-
-        <div className="grid gap-3 md:grid-cols-3">
-          <Button asChild variant="outline">
-            <Link href="/tools/bmi">BMI Calculator</Link>
-          </Button>
-
-          <Button asChild variant="outline">
-            <Link href="/tools/calories">Calories Tool</Link>
-          </Button>
-
-          <Button asChild variant="outline">
-            <Link href="/tools/macros">Macros</Link>
-          </Button>
-
-          <Button asChild variant="outline">
-            <Link href="/tools/recommendations">Recommendations</Link>
-          </Button>
-
-          <Button asChild variant="outline">
-            <Link href="/tools/tracking/weight">Track Weight</Link>
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -39,31 +39,39 @@ export default function ReportPage() {
   async function onDownloadPDF() {
     if (!pdfRef.current) return;
 
-    const canvas = await html2canvas(pdfRef.current, {
-      scale: 2,
-      backgroundColor: "#ffffff",
-      logging: false,
-    });
+    try {
+      const canvas = await html2canvas(pdfRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
 
-    const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
 
-    const pdf = new jsPDF("p", "mm", "a4");
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
 
-    const imgWidth = 210;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    let position = 0;
-
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-
-    while (imgHeight + position > 297) {
-      position -= 297;
-      pdf.addPage();
       pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    }
+      heightLeft -= pageHeight;
 
-    const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    pdf.save(`nutricare-report-${ts}.pdf`);
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      pdf.save(`nutricare-report-${ts}.pdf`);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      alert("Failed to generate PDF. Please try again.");
+    }
   }
 
   return (
@@ -78,7 +86,7 @@ export default function ReportPage() {
 
       {/* UI CARDS */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="rounded-3xl bg-white border">
+        <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
           <CardHeader>
             <CardTitle className="text-sm">BMI</CardTitle>
           </CardHeader>
@@ -98,7 +106,7 @@ export default function ReportPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl bg-white border">
+        <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
           <CardHeader>
             <CardTitle className="text-sm">Calories</CardTitle>
           </CardHeader>
@@ -118,7 +126,7 @@ export default function ReportPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl bg-white border">
+        <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
           <CardHeader>
             <CardTitle className="text-sm">Weight</CardTitle>
           </CardHeader>
@@ -129,66 +137,61 @@ export default function ReportPage() {
         </Card>
       </div>
 
-      {/* EXPORT */}
+      {/* EXPORT BUTTON */}
       <Card className="rounded-3xl">
         <CardHeader>
           <CardTitle className="text-lg">Export</CardTitle>
         </CardHeader>
         <CardContent>
-          <Button onClick={onDownloadPDF}>
+          <Button onClick={onDownloadPDF} className="rounded-2xl">
             Download PDF Report
           </Button>
         </CardContent>
       </Card>
 
-      {/* ================= PDF LAYOUT (ISOLATED) ================= */}
-      <div style={{ position: "fixed", left: "-9999px", top: 0 }}>
+      {/* ================= PDF LAYOUT (HIDDEN) ================= */}
+      <div className="fixed left-[-9999px] top-0 overflow-hidden">
         <div
           ref={pdfRef}
           style={{
             width: "794px",
             padding: "40px",
-            backgroundColor: "#ffffff",
-            color: "#000000",
-            fontFamily: "Arial, sans-serif",
+            background: "#ffffff",
+            color: "#0f172a",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            lineHeight: "1.6",
           }}
         >
-          {/* HEADER */}
-          <div style={{ marginBottom: "24px" }}>
-            <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>
-              NutriCare Health Report
-            </h1>
-            <p style={{ fontSize: "12px", color: "#555" }}>
-              Generated on {new Date().toLocaleDateString()}
-            </p>
-          </div>
+          <h1 style={{ fontSize: "28px", marginBottom: "8px", fontWeight: 600 }}>
+            NutriCare Health Report
+          </h1>
+          <p style={{ color: "#64748b", marginBottom: "32px" }}>
+            Generated on {new Date().toLocaleDateString()}
+          </p>
 
-          {/* OVERVIEW */}
-          <div style={{ marginBottom: "20px" }}>
-            <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
+          <div style={{ marginBottom: "32px" }}>
+            <h2 style={{ fontSize: "18px", marginBottom: "12px", fontWeight: 600 }}>
               Overview
             </h2>
-            <p><strong>BMI:</strong> {latestBmi?.bmi?.toFixed(1) ?? "—"}</p>
-            <p><strong>Category:</strong> {latestBmi?.category ?? "—"}</p>
-            <p><strong>Calories:</strong> {latestCal?.targetCalories ?? "—"} kcal</p>
-            <p><strong>Goal:</strong> {latestCal?.goal ?? "—"}</p>
+            <p>BMI: {latestBmi?.bmi?.toFixed(1) ?? "—"}</p>
+            <p>Category: {latestBmi?.category ?? "—"}</p>
+            <p>Daily Calories: {latestCal?.targetCalories ?? "—"} kcal</p>
+            <p>Goal: {latestCal?.goal ?? "—"}</p>
           </div>
 
-          {/* WEIGHT */}
-          <div style={{ marginBottom: "20px" }}>
-            <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
+          <div style={{ marginBottom: "32px" }}>
+            <h2 style={{ fontSize: "18px", marginBottom: "12px", fontWeight: 600 }}>
               Weight Trend
             </h2>
-            <p>{weightTrend}</p>
+            <p style={{ fontSize: "17px" }}>{weightTrend}</p>
             <p>{weightInsight}</p>
           </div>
 
-          {/* INSIGHTS */}
           <div>
-            <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>
+            <h2 style={{ fontSize: "18px", marginBottom: "12px", fontWeight: 600 }}>
               Insights
             </h2>
-            <p>Your BMI status: {latestBmi?.category ?? "—"}</p>
+            <p>Your current BMI status: {latestBmi?.category ?? "—"}</p>
             <p>{weightInsight}</p>
           </div>
         </div>

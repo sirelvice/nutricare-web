@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
+import { DeleteWeightEntryService } from "@/lib/tracking/services/delete-weight-entry";
 
 export async function DELETE(
   _req: Request,
@@ -25,9 +26,11 @@ export async function DELETE(
     );
   }
 
-  const repository = new PrismaWeightRepository(prisma);
+  const service = new DeleteWeightEntryService(
+    new PrismaWeightRepository(prisma),
+  );
 
-  await repository.delete(session.user.id, id);
+  await service.execute(session.user.id, id);
 
   return new NextResponse(null, { status: 204 });
 }

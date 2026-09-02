@@ -7,6 +7,7 @@ import {
   RecordWeightEntryService,
 } from "@/lib/tracking/services/record-weight-entry";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
+import { ListWeightEntriesService } from "@/lib/tracking/services/list-weight-entries";
 
 const createWeightEntrySchema = z.object({
   date: z.string(),
@@ -70,9 +71,11 @@ export async function GET() {
     );
   }
 
-  const repository = new PrismaWeightRepository(prisma);
+  const service = new ListWeightEntriesService(
+    new PrismaWeightRepository(prisma),
+  );
 
-  const entries = await repository.findByUserId(session.user.id);
+  const entries = await service.execute(session.user.id);
 
   return NextResponse.json(entries, { status: 200 });
 }

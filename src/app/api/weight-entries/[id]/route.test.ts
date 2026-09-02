@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const { mockAuth, mockDelete } = vi.hoisted(() => ({
+const { mockAuth, mockDeleteExecute } = vi.hoisted(() => ({
   mockAuth: vi.fn(),
-  mockDelete: vi.fn(),
+  mockDeleteExecute: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -14,8 +14,12 @@ vi.mock("@/lib/db", () => ({
 }));
 
 vi.mock("@/lib/tracking/repositories/prisma-weight-repository", () => ({
-  PrismaWeightRepository: class PrismaWeightRepository {
-    delete = mockDelete;
+  PrismaWeightRepository: class PrismaWeightRepository {},
+}));
+
+vi.mock("@/lib/tracking/services/delete-weight-entry", () => ({
+  DeleteWeightEntryService: class DeleteWeightEntryService {
+    execute = mockDeleteExecute;
   },
 }));
 
@@ -40,7 +44,7 @@ describe("DELETE /api/weight-entries/:id", () => {
     expect(await response.json()).toEqual({
       error: "Authentication required.",
     });
-    expect(mockDelete).not.toHaveBeenCalled();
+    expect(mockDeleteExecute).not.toHaveBeenCalled();
   });
 
   it("returns 400 when the entry ID is missing", async () => {
@@ -59,7 +63,7 @@ describe("DELETE /api/weight-entries/:id", () => {
     expect(await response.json()).toEqual({
       error: "Weight entry ID is required.",
     });
-    expect(mockDelete).not.toHaveBeenCalled();
+    expect(mockDeleteExecute).not.toHaveBeenCalled();
   });
 
   it("deletes the entry using the authenticated user's ID", async () => {
@@ -67,7 +71,7 @@ describe("DELETE /api/weight-entries/:id", () => {
       user: { id: "user-1" },
     });
 
-    mockDelete.mockResolvedValue(undefined);
+    mockDeleteExecute.mockResolvedValue(undefined);
 
     const response = await DELETE(
       new Request("http://localhost/api/weight-entries/entry-1", {
@@ -77,6 +81,6 @@ describe("DELETE /api/weight-entries/:id", () => {
     );
 
     expect(response.status).toBe(204);
-    expect(mockDelete).toHaveBeenCalledWith("user-1", "entry-1");
+    expect(mockDeleteExecute).toHaveBeenCalledWith("user-1", "entry-1");
   });
 });

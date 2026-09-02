@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-const { mockAuth, mockExecute, mockFindByUserId } = vi.hoisted(() => ({
+const { mockAuth, mockExecute, mockListExecute } = vi.hoisted(() => ({
   mockAuth: vi.fn(),
   mockExecute: vi.fn(),
-  mockFindByUserId: vi.fn(),
+  mockListExecute: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -22,8 +22,12 @@ vi.mock("@/lib/tracking/services/record-weight-entry", () => ({
 }));
 
 vi.mock("@/lib/tracking/repositories/prisma-weight-repository", () => ({
-  PrismaWeightRepository: class PrismaWeightRepository {
-    findByUserId = mockFindByUserId;
+  PrismaWeightRepository: class PrismaWeightRepository {},
+}));
+
+vi.mock("@/lib/tracking/services/list-weight-entries", () => ({
+  ListWeightEntriesService: class ListWeightEntriesService {
+    execute = mockListExecute;
   },
 }));
 
@@ -135,7 +139,7 @@ describe("GET /api/weight-entries", () => {
     expect(await response.json()).toEqual({
       error: "Authentication required.",
     });
-    expect(mockFindByUserId).not.toHaveBeenCalled();
+    expect(mockListExecute).not.toHaveBeenCalled();
   });
 
   it("returns entries for the authenticated user", async () => {
@@ -151,12 +155,12 @@ describe("GET /api/weight-entries", () => {
       },
     ];
 
-    mockFindByUserId.mockResolvedValue(entries);
+    mockListExecute.mockResolvedValue(entries);
 
     const response = await GET();
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(entries);
-    expect(mockFindByUserId).toHaveBeenCalledWith("user-123");
+    expect(mockListExecute).toHaveBeenCalledWith("user-123");
   });
 });

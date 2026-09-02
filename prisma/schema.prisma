@@ -44,18 +44,6 @@ model ContactMessage {
   updatedAt DateTime @updatedAt
 }
 
-enum Role {
-  USER
-  CLINICIAN
-  ADMIN
-}
-
-enum SubscriptionTier {
-  FREE
-  PRO
-  CLINIC
-}
-
 enum Gender {
   MALE
   FEMALE
@@ -74,4 +62,16 @@ enum Goal {
   LOSE
   MAINTAIN
   GAIN
+}
+
+enum Role {
+  USER
+  CLINICIAN
+  ADMIN
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  CLINIC
 }

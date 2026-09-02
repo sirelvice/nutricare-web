@@ -1,18 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import {
-  addWeightEntry,
-  deleteWeightEntry,
-  loadWeightEntries,
-  summarize,
-  type WeightEntry,
-} from "@/lib/tracking/weight";
+import { summarize, type WeightEntry } from "@/lib/tracking/weight";
 
 function todayISO() {
   const d = new Date();
@@ -23,43 +17,118 @@ function todayISO() {
 }
 
 export default function WeightTrackingPage() {
-  const [entries, setEntries] = useState<WeightEntry[]>(() =>
-    loadWeightEntries()
-  );
+  const [entries, setEntries] = useState<WeightEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    async function loadEntries() {
+      try {
+        const response = await fetch("/api/weight-entries");
+
+        if (!response.ok) {
+          throw new Error("Unable to load weight entries.");
+        }
+
+        const data = (await response.json()) as WeightEntry[];
+        setEntries(data);
+      } catch {
+        setLoadError("Unable to load your weight history.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadEntries();
+  }, []);
+
   const stats = useMemo(() => summarize(entries), [entries]);
 
   const [date, setDate] = useState(todayISO());
   const [weightKg, setWeightKg] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const valid = useMemo(() => {
     const w = Number(weightKg);
     return date.length === 10 && Number.isFinite(w) && w >= 20 && w <= 350;
   }, [date, weightKg]);
 
-  function onAdd() {
-    if (!valid) {
-      setError("Enter a valid date and weight (20–350kg).");
+  async function onAdd() {
+    if (!valid || saving) {
+      if (!valid) {
+        setError("Enter a valid date and weight (20–350kg).");
+      }
       return;
     }
 
     setError("");
+    setSaving(true);
 
-    addWeightEntry({
-      date,
-      weightKg: Number(weightKg),
-      note: note.trim() ? note.trim() : undefined,
-    });
+    try {
+      const response = await fetch("/api/weight-entries", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          date,
+          weightKg: Number(weightKg),
+          note: note.trim() ? note.trim() : undefined,
+        }),
+      });
 
-    setEntries(loadWeightEntries());
-    setWeightKg("");
-    setNote("");
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+
+        throw new Error(data?.error || "Unable to add weight entry.");
+      }
+
+      const entry = (await response.json()) as WeightEntry;
+
+      setEntries((current) =>
+        [entry, ...current].sort((a, b) => b.date.localeCompare(a.date)),
+      );
+      setWeightKg("");
+      setNote("");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Unable to add weight entry.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function onDelete(id: string) {
-    deleteWeightEntry(id);
-    setEntries(loadWeightEntries());
+  async function onDelete(id: string) {
+    setError("");
+
+    try {
+      const response = await fetch(`/api/weight-entries/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+
+        throw new Error(data?.error || "Unable to delete weight entry.");
+      }
+
+      setEntries((current) => current.filter((entry) => entry.id !== id));
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Unable to delete weight entry.",
+      );
+    }
   }
 
   // 🧠 Trend insight
@@ -99,6 +168,16 @@ export default function WeightTrackingPage() {
         </p>
       </div>
 
+      {loading && (
+        <p className="text-sm text-slate-500">Loading your weight history...</p>
+      )}
+
+      {loadError && (
+        <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
+          {loadError}
+        </div>
+      )}
+
       {/* ADD ENTRY */}
       <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
@@ -135,7 +214,7 @@ export default function WeightTrackingPage() {
           </div>
 
           <div className="md:col-span-3 flex flex-wrap items-center gap-2">
-            <Button onClick={onAdd} disabled={!valid}>
+            <Button onClick={onAdd} disabled={!valid || saving}>
               Add entry
             </Button>
 

@@ -1,18 +1,12 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  type ActivityLevel,
-  type UserProfile,
-  saveProfile,
-  subscribeProfile,
-  getProfileSnapshot,
-  getProfileServerSnapshot,
-} from "@/lib/profile/storage";
+import type { ActivityLevel } from "@/lib/calc/metabolism";
+import type { UserProfile } from "@/lib/profile/domain";
 
 const activityOptions: { value: ActivityLevel; label: string; hint: string }[] = [
   { value: "sedentary", label: "Sedentary", hint: "Little or no activity" },
@@ -23,14 +17,41 @@ const activityOptions: { value: ActivityLevel; label: string; hint: string }[] =
 ];
 
 export default function ProfilePage() {
-  const storedProfile = useSyncExternalStore(
-    subscribeProfile,
-    getProfileSnapshot,
-    getProfileServerSnapshot
-  );
-
-  const [draft, setDraft] = useState<UserProfile>(storedProfile);
+  const [draft, setDraft] = useState<UserProfile>({
+    heightCm: null,
+    gender: "other",
+    age: null,
+    activity: "sedentary",
+    goal: "maintain",
+  });
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const response = await fetch("/api/profile");
+
+        if (!response.ok) {
+          throw new Error("Unable to load profile.");
+        }
+
+        const data = (await response.json()) as UserProfile | null;
+
+        if (data) {
+          setDraft(data);
+        }
+      } catch {
+        setLoadError("Unable to load your profile.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProfile();
+  }, []);
 
   const valid = useMemo(() => {
     const hOk = draft.heightCm === null || (draft.heightCm >= 80 && draft.heightCm <= 250);
@@ -38,35 +59,51 @@ export default function ProfilePage() {
     return hOk && aOk;
   }, [draft]);
 
-  const estimatedCalories = useMemo(() => {
-    if (!draft.heightCm || !draft.age || !draft.gender) return null;
 
-    const weightGuess = 70;
-
-    const bmr =
-      draft.gender === "male"
-        ? 10 * weightGuess + 6.25 * draft.heightCm - 5 * draft.age + 5
-        : 10 * weightGuess + 6.25 * draft.heightCm - 5 * draft.age - 161;
-
-    const multiplier =
-      draft.activity === "sedentary" ? 1.2 :
-        draft.activity === "light" ? 1.375 :
-          draft.activity === "moderate" ? 1.55 :
-            draft.activity === "active" ? 1.725 : 1.9;
-
-    return Math.round(bmr * multiplier);
-  }, [draft]);
 
   function update<K extends keyof UserProfile>(key: K, value: UserProfile[K]) {
     setSaved(false);
     setDraft((p) => ({ ...p, [key]: value }));
   }
 
-  function onSave() {
-    if (!valid) return;
-    saveProfile(draft);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 1500);
+  async function onSave() {
+    if (!valid || saving) return;
+
+    setSaved(false);
+    setSaving(true);
+    setLoadError("");
+
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(draft),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+
+        throw new Error(data?.error || "Unable to save profile.");
+      }
+
+      const profile = (await response.json()) as UserProfile;
+      setDraft(profile);
+      setSaved(true);
+
+      window.setTimeout(() => setSaved(false), 1500);
+    } catch (error) {
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "Unable to save profile.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -79,6 +116,16 @@ export default function ProfilePage() {
           Your information helps us calculate your daily needs and recommendations.
         </p>
       </div>
+
+      {loading && (
+        <p className="text-sm text-slate-500">Loading your profile...</p>
+      )}
+
+      {loadError && (
+        <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
+          {loadError}
+        </div>
+      )}
 
       {/* SUMMARY */}
       <Card className="rounded-3xl border bg-gradient-to-br from-green-50 to-white shadow-sm">
@@ -109,23 +156,7 @@ export default function ProfilePage() {
       </Card>
 
       {/* CALORIES */}
-      {estimatedCalories && (
-        <Card className="rounded-3xl border-0 shadow-sm bg-gradient-to-br from-emerald-50 via-white to-white">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-600">Estimated daily calories</p>
-              <p className="text-3xl font-bold">~{estimatedCalories} kcal</p>
-              <p className="text-xs text-slate-500">
-                Based on your profile
-              </p>
-            </div>
 
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-lg">
-              🔥
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* FORM */}
       <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
@@ -221,12 +252,12 @@ export default function ProfilePage() {
 
           {/* SAVE */}
           <div className="flex items-center gap-3 pt-2">
-            <Button onClick={onSave} disabled={!valid}>
-              {saved ? "Saved ✓" : "Save profile"}
+            <Button onClick={onSave} disabled={!valid || saving}>
+              {saving ? "Saving..." : saved ? "Saved ✓" : "Save profile"}
             </Button>
 
             <span className="text-xs text-slate-500">
-              Your data stays on this device.
+              Your profile is securely saved to your account.
             </span>
           </div>
 

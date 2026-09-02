@@ -4,10 +4,46 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // Do NOT put url = env("DATABASE_URL") here anymore in Prisma 7
 }
 
-// ── Roles & Subscription Tiers ────────────────────────────────
+model User {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  name             String?
+  passwordHash     String
+  role             Role             @default(USER)
+  stripeCustomerId String?
+  subscriptionTier SubscriptionTier @default(FREE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  profile          Profile?
+}
+
+model Profile {
+  id          String        @id @default(cuid())
+  userId      String        @unique
+  heightCm    Float?
+  age         Int?
+  gender      Gender
+  activity    ActivityLevel
+  goal        Goal
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 enum Role {
   USER
   CLINICIAN
@@ -20,26 +56,22 @@ enum SubscriptionTier {
   CLINIC
 }
 
-// ── User Model ────────────────────────────────────────────────
-model User {
-  id                  String   @id @default(cuid())
-  email               String   @unique
-  name                String?     // ← Ensure this exists
-  passwordHash        String
-  role                Role     @default(USER)
-  stripeCustomerId    String?
-  subscriptionTier    SubscriptionTier @default(FREE)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 }
 
-// ── Contact Messages ─────────────────────────────────────────
-model ContactMessage {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  phone     String?
-  message   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum Goal {
+  LOSE
+  MAINTAIN
+  GAIN
 }

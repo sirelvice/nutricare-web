@@ -1,10 +1,10 @@
+import type { Goal } from "@/lib/profile/domain";
+
 export type BmiCategory =
   | "underweight"
   | "normal"
   | "overweight"
   | "obese";
-
-export type Goal = "lose" | "maintain" | "gain";
 
 export type Recommendation = {
   summary: string;

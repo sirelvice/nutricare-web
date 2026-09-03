@@ -1,3 +1,5 @@
+import type { Goal } from "@/lib/profile/domain";
+
 export type Gender = "male" | "female" | "other";
 export type ActivityLevel =
   | "sedentary"
@@ -57,7 +59,7 @@ export function calcTDEE(params: { bmr: number; activity: ActivityLevel }) {
  * - gain: +250 kcal/day
  * - maintain: TDEE
  */
-export function goalCalories(params: { tdee: number; goal: "lose" | "maintain" | "gain" }) {
+export function goalCalories(params: { tdee: number; goal: Goal }) {
   const { tdee, goal } = params;
   if (goal === "lose") return Math.max(1200, Math.round(tdee - 300));
   if (goal === "gain") return Math.round(tdee + 250);

@@ -32,11 +32,31 @@ function formatGoal(goal?: string) {
   return goal;
 }
 
-function formatProgressState(state: string) {
-  if (state === "ON_TRACK") return "On track";
-  if (state === "BEHIND_OPPOSITE") return "Moving away from your goal";
-  if (state === "PLATEAU") return "Little change so far";
-  return "Not enough data yet";
+function formatProgressState(state: string, goal?: string) {
+  if (state === "ON_TRACK") {
+    return goal === "maintain"
+      ? "Your weight is staying fairly steady"
+      : "You're moving toward your goal";
+  }
+
+  if (state === "BEHIND_OPPOSITE") {
+    return "Your recent weight change is moving away from your goal";
+  }
+
+  if (state === "PLATEAU") {
+    return "Your weight has changed very little so far";
+  }
+
+  return "We need a little more history to understand your progress";
+}
+
+function formatWeightChange(changeKg: number) {
+  if (changeKg === 0) return "Your logged weight stayed the same";
+
+  const amount = Math.abs(changeKg).toFixed(1);
+  const direction = changeKg > 0 ? "increased" : "decreased";
+
+  return `Your logged weight ${direction} by ${amount}`;
 }
 
 export default function DashboardPage() {
@@ -365,20 +385,32 @@ export default function DashboardPage() {
             {progressEvaluation ? (
               <>
                 <div className="text-2xl font-semibold">
-                  {formatProgressState(progressEvaluation.state)}
+                  {formatProgressState(
+                    progressEvaluation.state,
+                    profile?.goal,
+                  )}
                 </div>
 
                 <p className="text-sm text-slate-600">
                   {progressEvaluation.state === "INSUFFICIENT_DATA"
-                    ? "Keep logging your weight over time so we can evaluate your progress."
-                    : progressEvaluation.changeKg === null
-                      ? "No measurable change available."
-                      : `${progressEvaluation.changeKg > 0 ? "+" : ""}${progressEvaluation.changeKg} kg over ${progressEvaluation.evaluationDays} days.`}
+                    ? "Keep logging your weight consistently. We’ll use a longer view to give you a more meaningful picture."
+                    : progressEvaluation.changeKg === null ||
+                        progressEvaluation.evaluationDays === null
+                      ? "We don’t have enough information to describe the change yet."
+                      : `${formatWeightChange(progressEvaluation.changeKg)} over ${progressEvaluation.evaluationDays} days.`}
                 </p>
+
+                {progressEvaluation.state === "PLATEAU" && (
+                  <p className="text-xs text-slate-500">
+                    Small changes are normal. Focus on consistent habits rather
+                    than day-to-day fluctuations.
+                  </p>
+                )}
               </>
             ) : (
               <p className="text-sm text-slate-500">
-                Log more weight entries to evaluate your progress.
+                Keep logging your weight so we can understand how things are
+                changing over time.
               </p>
             )}
           </CardContent>

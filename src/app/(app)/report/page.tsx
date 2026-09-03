@@ -1,12 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-import { loadBmiHistory } from "@/lib/history/bmi";
-import { loadCaloriesHistory } from "@/lib/history/calories";
-import { loadWeightEntries, summarize } from "@/lib/tracking/weight";
+import type { Report } from "@/lib/report/service";
 
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -15,13 +13,34 @@ export default function ReportPage() {
   const pdfRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const bmi = loadBmiHistory();
-  const cal = loadCaloriesHistory();
-  const weight = loadWeightEntries();
+  const [report, setReport] = useState<Report | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const latestBmi = bmi[0];
-  const latestCal = cal[0];
-  const weightStats = summarize(weight);
+  useEffect(() => {
+    async function loadReport() {
+      try {
+        const response = await fetch("/api/report");
+
+        if (!response.ok) {
+          throw new Error("Unable to load report.");
+        }
+
+        const data = (await response.json()) as Report;
+        setReport(data);
+      } catch {
+        setError("Unable to load your report.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadReport();
+  }, []);
+
+  const latestBmi = report?.bmi.latest ?? null;
+  const latestCal = report?.nutritionPlan ?? null;
+  const weightStats = report?.weight.stats ?? null;
 
   const weightTrend = weightStats
     ? weightStats.change > 0
@@ -31,10 +50,10 @@ export default function ReportPage() {
 
   const weightInsight = weightStats
     ? weightStats.change < 0
-      ? "Weight trending down — good progress"
+      ? "Weight trending down"
       : weightStats.change > 0
-      ? "Weight increasing — review intake"
-      : "Weight stable — maintain consistency"
+      ? "Weight increasing"
+      : "Weight stable"
     : "No data";
 
   async function onDownloadPDF() {
@@ -104,8 +123,22 @@ export default function ReportPage() {
         </p>
       </div>
 
-      {/* UI CARDS */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {loading ? (
+        <Card className="rounded-3xl">
+          <CardContent className="py-10 text-center">
+            <p className="text-sm text-slate-500">Loading your report...</p>
+          </CardContent>
+        </Card>
+      ) : error ? (
+        <Card className="rounded-3xl">
+          <CardContent className="py-10 text-center">
+            <p className="text-sm text-red-600">{error}</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* UI CARDS */}
+          <div className="grid gap-4 md:grid-cols-3">
         <Card className="rounded-3xl bg-gradient-to-br from-white to-green-50">
           <CardHeader>
             <CardTitle className="text-sm">BMI</CardTitle>
@@ -114,10 +147,10 @@ export default function ReportPage() {
             {latestBmi ? (
               <>
                 <div className="text-3xl font-semibold">
-                  {latestBmi.bmi.toFixed(1)}
+                  {latestBmi.value.toFixed(1)}
                 </div>
                 <p className="text-sm text-slate-600">
-                  {latestBmi.category}
+                  {latestBmi.category.label}
                 </p>
               </>
             ) : (
@@ -155,23 +188,25 @@ export default function ReportPage() {
             <p className="text-sm text-slate-600">{weightInsight}</p>
           </CardContent>
         </Card>
-      </div>
+          </div>
 
-      {/* EXPORT BUTTON */}
-      <Card className="rounded-3xl">
+          {/* EXPORT BUTTON */}
+          <Card className="rounded-3xl">
         <CardHeader>
           <CardTitle className="text-lg">Export Full Report</CardTitle>
         </CardHeader>
         <CardContent>
           <Button 
             onClick={onDownloadPDF} 
-            disabled={isGenerating}
+            disabled={isGenerating || !report}
             className="rounded-2xl"
           >
             {isGenerating ? "Generating PDF..." : "Download PDF Report"}
           </Button>
-        </CardContent>
-      </Card>
+          </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* HIDDEN PDF TEMPLATE */}
       <div ref={pdfRef} style={{ position: "absolute", left: "-99999px", top: "0", visibility: "hidden" }}>
@@ -193,8 +228,8 @@ export default function ReportPage() {
             <h2 style={{ fontSize: "20px", marginBottom: "12px", fontWeight: "600" }}>
               Overview
             </h2>
-            <p>BMI: {latestBmi?.bmi?.toFixed(1) ?? "—"}</p>
-            <p>Category: {latestBmi?.category ?? "—"}</p>
+            <p>BMI: {latestBmi?.value?.toFixed(1) ?? "—"}</p>
+            <p>Category: {latestBmi?.category.label ?? "—"}</p>
             <p>Daily Calories: {latestCal?.targetCalories ?? "—"} kcal</p>
             <p>Goal: {latestCal?.goal ?? "—"}</p>
           </div>
@@ -211,7 +246,7 @@ export default function ReportPage() {
             <h2 style={{ fontSize: "20px", marginBottom: "12px", fontWeight: "600" }}>
               Insights
             </h2>
-            <p>Your current BMI status: {latestBmi?.category ?? "—"}</p>
+            <p>Your current BMI status: {latestBmi?.category.label ?? "—"}</p>
             <p>{weightInsight}</p>
           </div>
         </div>

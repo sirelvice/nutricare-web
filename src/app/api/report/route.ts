@@ -1,45 +1,46 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
+import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
+import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
+import { prisma } from "@/lib/db";
+import { GetReportService } from "@/lib/report/service";
 
-import { getProfileSnapshot } from "@/lib/profile/storage";
-import { loadBmiHistory } from "@/lib/history/bmi";
-import { loadCaloriesHistory } from "@/lib/history/calories";
-import { loadWeightEntries, summarize } from "@/lib/tracking/weight";
+export const dynamic = "force-dynamic";
 
-export const dynamic = "force-dynamic"; // no caching surprises
+const reportService = new GetReportService(
+  new PrismaProfileRepository(prisma),
+  new PrismaWeightRepository(prisma),
+  prismaNutritionPlanRepository,
+);
 
 export async function GET() {
-  const profile = getProfileSnapshot();
+  try {
+    const session = await auth();
 
-  const bmiHistory = loadBmiHistory();
-  const caloriesHistory = loadCaloriesHistory();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
 
-  const weightEntries = loadWeightEntries();
-  const weightStats = summarize(weightEntries);
+    const report = await reportService.execute(session.user.id);
 
-  const latestBmi = bmiHistory[0] ?? null;
-  const latestCalories = caloriesHistory[0] ?? null;
+    if (!report) {
+      return NextResponse.json(
+        { error: "Profile not found" },
+        { status: 404 },
+      );
+    }
 
-  const report = {
-    generatedAt: new Date().toISOString(),
-    app: { name: "NutriCare", version: "v1" },
+    return NextResponse.json(report, { status: 200 });
+  } catch (error) {
+    console.error("GET /api/report failed", error);
 
-    profile,
-
-    bmi: {
-      latest: latestBmi,
-      historyCount: bmiHistory.length,
-    },
-
-    calories: {
-      latest: latestCalories,
-      historyCount: caloriesHistory.length,
-    },
-
-    weight: {
-      stats: weightStats ?? null,
-      entriesCount: weightEntries.length,
-    },
-  };
-
-  return NextResponse.json(report, { status: 200 });
+    return NextResponse.json(
+      { error: "Unable to generate report" },
+      { status: 500 },
+    );
+  }
 }

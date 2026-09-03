@@ -10,8 +10,6 @@ import type { UserProfile } from "@/lib/profile/domain";
 import type { WeightEntry } from "@/lib/tracking/domain";
 import type { NutritionPlan } from "@/lib/nutrition-plan/domain";
 
-import { loadBmiHistory } from "@/lib/history/bmi";
-import { buildRecommendations } from "@/lib/reco/engine";
 
 import {
   LineChart,
@@ -34,20 +32,28 @@ function formatGoal(goal?: string) {
   return goal;
 }
 
-function normalizeBmiCategory(
-  raw: string
-): "underweight" | "normal" | "overweight" | "obese" {
-  if (raw === "underweight") return "underweight";
-  if (raw === "normal") return "normal";
-  if (raw === "overweight") return "overweight";
-  return "obese";
-}
-
 export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
   const [nutritionPlan, setNutritionPlan] =
     useState<NutritionPlan | null>(null);
+  const [recommendations, setRecommendations] = useState<{
+    bmi: number;
+    category: { label: string; note: string };
+    targetCalories: number;
+    macros: {
+      proteinG: number;
+      carbsG: number;
+      fatG: number;
+    };
+    recommendations: {
+      summary: string;
+      priorities: string[];
+      foodsToFocus: string[];
+      foodsToLimit: string[];
+      nextSteps: string[];
+    };
+  } | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -59,11 +65,13 @@ export default function DashboardPage() {
 
     async function loadDashboard() {
       try {
-        const [profileRes, weightRes, planRes] = await Promise.all([
-          fetch("/api/profile"),
-          fetch("/api/weight-entries"),
-          fetch("/api/nutrition-plan"),
-        ]);
+        const [profileRes, weightRes, planRes, recommendationsRes] =
+          await Promise.all([
+            fetch("/api/profile"),
+            fetch("/api/weight-entries"),
+            fetch("/api/nutrition-plan"),
+            fetch("/api/recommendations"),
+          ]);
 
         if (cancelled) return;
 
@@ -76,6 +84,10 @@ export default function DashboardPage() {
 
         const data = await planRes.json();
         setNutritionPlan(data.plan);
+
+        if (recommendationsRes.ok) {
+          setRecommendations(await recommendationsRes.json());
+        }
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load dashboard:", error);
@@ -111,18 +123,13 @@ export default function DashboardPage() {
   const hasWeight = !!latestWeight;
   const hasCalories = !!nutritionPlan;
 
-  const bmiHistory = useMemo(() => loadBmiHistory(), []);
-  const latestBMI = bmiHistory[0] ?? null;
-  const hasBMI = !!latestBMI;
-
   const progress = [
     hasProfile,
     hasWeight,
-    hasBMI,
     hasCalories,
   ].filter(Boolean).length;
 
-  const progressPercent = Math.round((progress / 4) * 100);
+  const progressPercent = Math.round((progress / 3) * 100);
 
   async function generateNutritionPlan() {
     setGenerating(true);
@@ -156,11 +163,9 @@ export default function DashboardPage() {
     ? { label: "Add your details", href: "/profile" }
     : !hasWeight
       ? { label: "Log your first weight", href: "/tools/tracking/weight" }
-      : !hasBMI
-        ? { label: "Check your BMI", href: "/tools/bmi" }
-        : !hasCalories
-          ? { label: "Generate your nutrition plan", href: null }
-          : null;
+      : !hasCalories
+        ? { label: "Generate your nutrition plan", href: null }
+        : null;
 
   const chartData = [...weightEntries]
     .sort((a, b) => (a.date > b.date ? 1 : -1))
@@ -170,15 +175,7 @@ export default function DashboardPage() {
       weight: w.weightKg,
     }));
 
-  const rec =
-    latestBMI && profile?.goal && nutritionPlan
-      ? buildRecommendations({
-          bmi: latestBMI.bmi,
-          category: normalizeBmiCategory(latestBMI.category),
-          goal: profile.goal,
-          targetCalories: nutritionPlan.targetCalories,
-        })
-      : null;
+  const rec = recommendations?.recommendations ?? null;
 
   if (loading) {
     return (
@@ -258,13 +255,13 @@ export default function DashboardPage() {
         <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
           <CardContent className="p-5">
             <p className="text-sm text-slate-500">BMI</p>
-            {latestBMI ? (
+            {recommendations ? (
               <>
                 <div className="text-4xl font-semibold">
-                  {latestBMI.bmi}
+                  {recommendations.bmi.toFixed(1)}
                 </div>
                 <p className="text-sm text-slate-600">
-                  {latestBMI.category}
+                  {recommendations.category.label}
                 </p>
               </>
             ) : (

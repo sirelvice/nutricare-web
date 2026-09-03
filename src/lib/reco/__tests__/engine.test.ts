@@ -4,49 +4,9 @@ import { buildRecommendations } from "../engine";
 const base = {
   bmi: 22,
   category: "normal" as const,
-  targetCalories: 2000,
 };
 
 describe("buildRecommendations", () => {
-  it("returns the expected macro targets for maintenance", () => {
-    const result = buildRecommendations({
-      ...base,
-      goal: "maintain",
-    });
-
-    expect(result.macros).toEqual({
-      proteinG: 125,
-      carbsG: 250,
-      fatG: 56,
-    });
-  });
-
-  it("uses higher protein allocation for weight loss", () => {
-    const result = buildRecommendations({
-      ...base,
-      goal: "lose",
-    });
-
-    expect(result.macros).toEqual({
-      proteinG: 150,
-      carbsG: 225,
-      fatG: 56,
-    });
-  });
-
-  it("returns the expected macro targets for weight gain", () => {
-    const result = buildRecommendations({
-      ...base,
-      goal: "gain",
-    });
-
-    expect(result.macros).toEqual({
-      proteinG: 125,
-      carbsG: 250,
-      fatG: 56,
-    });
-  });
-
   it("includes the BMI in the summary", () => {
     const result = buildRecommendations({
       ...base,

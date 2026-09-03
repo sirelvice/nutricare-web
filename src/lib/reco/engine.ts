@@ -1,5 +1,4 @@
 import type { Goal } from "@/lib/profile/domain";
-import { calcMacros } from "@/lib/calc/macros";
 
 export type BmiCategory =
   | "underweight"
@@ -26,12 +25,8 @@ export function buildRecommendations(params: {
   bmi: number;
   category: BmiCategory;
   goal: Goal;
-  targetCalories: number;
-}): Recommendation & {
-  macros: { proteinG: number; carbsG: number; fatG: number };
-} {
-  const { bmi, category, goal, targetCalories } = params;
-  const macros = calcMacros(targetCalories, goal);
+}): Recommendation {
+  const { bmi, category, goal } = params;
 
   const common = {
     priorities: [
@@ -123,6 +118,5 @@ export function buildRecommendations(params: {
     foodsToLimit: common.foodsToLimit,
     nextSteps,
 
-    macros,
   };
 }

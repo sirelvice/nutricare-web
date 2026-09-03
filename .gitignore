@@ -45,3 +45,5 @@ next-env.d.ts
 # Prisma local database
 dev.db
 prisma/dev.db
+# Local database TLS certificate
+/certs/*.crt

@@ -1,4 +1,5 @@
 import type { Goal } from "@/lib/profile/domain";
+import { calcMacros } from "@/lib/calc/macros";
 
 export type BmiCategory =
   | "underweight"
@@ -21,18 +22,6 @@ export type Recommendation = {
   nextSteps: string[];
 };
 
-function macrosFromCalories(targetCalories: number, goal: Goal) {
-  const proteinPct = goal === "lose" ? 0.3 : 0.25;
-  const fatPct = 0.25;
-  const carbsPct = 1 - proteinPct - fatPct;
-
-  const proteinG = Math.round((targetCalories * proteinPct) / 4);
-  const fatG = Math.round((targetCalories * fatPct) / 9);
-  const carbsG = Math.round((targetCalories * carbsPct) / 4);
-
-  return { proteinG, carbsG, fatG };
-}
-
 export function buildRecommendations(params: {
   bmi: number;
   category: BmiCategory;
@@ -42,7 +31,7 @@ export function buildRecommendations(params: {
   macros: { proteinG: number; carbsG: number; fatG: number };
 } {
   const { bmi, category, goal, targetCalories } = params;
-  const macros = macrosFromCalories(targetCalories, goal);
+  const macros = calcMacros(targetCalories, goal);
 
   const common = {
     priorities: [

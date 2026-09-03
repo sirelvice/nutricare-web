@@ -32,6 +32,13 @@ function formatGoal(goal?: string) {
   return goal;
 }
 
+function formatProgressState(state: string) {
+  if (state === "ON_TRACK") return "On track";
+  if (state === "BEHIND_OPPOSITE") return "Moving away from your goal";
+  if (state === "PLATEAU") return "Little change so far";
+  return "Not enough data yet";
+}
+
 export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
@@ -55,6 +62,17 @@ export default function DashboardPage() {
     };
   } | null>(null);
 
+  const [progressEvaluation, setProgressEvaluation] = useState<{
+    state:
+      | "ON_TRACK"
+      | "BEHIND_OPPOSITE"
+      | "PLATEAU"
+      | "INSUFFICIENT_DATA";
+    changeKg: number | null;
+    entriesCount: number;
+    evaluationDays: number | null;
+  } | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -65,13 +83,19 @@ export default function DashboardPage() {
 
     async function loadDashboard() {
       try {
-        const [profileRes, weightRes, planRes, recommendationsRes] =
-          await Promise.all([
-            fetch("/api/profile"),
-            fetch("/api/weight-entries"),
-            fetch("/api/nutrition-plan"),
-            fetch("/api/recommendations"),
-          ]);
+        const [
+          profileRes,
+          weightRes,
+          planRes,
+          recommendationsRes,
+          progressRes,
+        ] = await Promise.all([
+          fetch("/api/profile"),
+          fetch("/api/weight-entries"),
+          fetch("/api/nutrition-plan"),
+          fetch("/api/recommendations"),
+          fetch("/api/progress"),
+        ]);
 
         if (cancelled) return;
 
@@ -87,6 +111,11 @@ export default function DashboardPage() {
 
         if (recommendationsRes.ok) {
           setRecommendations(await recommendationsRes.json());
+        }
+
+        if (progressRes.ok) {
+          const data = await progressRes.json();
+          setProgressEvaluation(data.progress);
         }
       } catch (error) {
         if (!cancelled) {
@@ -327,7 +356,34 @@ export default function DashboardPage() {
       </div>
 
       {/* INSIGHTS */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* PROGRESS */}
+        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+          <CardContent className="p-5 space-y-3">
+            <p className="text-sm text-slate-500">Goal Progress</p>
+
+            {progressEvaluation ? (
+              <>
+                <div className="text-2xl font-semibold">
+                  {formatProgressState(progressEvaluation.state)}
+                </div>
+
+                <p className="text-sm text-slate-600">
+                  {progressEvaluation.state === "INSUFFICIENT_DATA"
+                    ? "Keep logging your weight over time so we can evaluate your progress."
+                    : progressEvaluation.changeKg === null
+                      ? "No measurable change available."
+                      : `${progressEvaluation.changeKg > 0 ? "+" : ""}${progressEvaluation.changeKg} kg over ${progressEvaluation.evaluationDays} days.`}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-slate-500">
+                Log more weight entries to evaluate your progress.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* MACROS */}
         <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
           <CardContent className="p-5 space-y-3">

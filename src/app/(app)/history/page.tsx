@@ -1,240 +1,279 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import {
-  loadBmiHistory,
-  deleteBmiHistory,
-  clearBmiHistory,
-  type BmiHistoryEntry,
-} from "@/lib/history/bmi";
+import { calcBMIKgM, bmiCategoryWHO } from "@/lib/calc/bmi";
+import type { WeightEntry } from "@/lib/tracking/domain";
+import type { NutritionPlan } from "@/lib/nutrition-plan/domain";
+import type { UserProfile } from "@/lib/profile/domain";
 
-import {
-  loadCaloriesHistory,
-  deleteCaloriesHistory,
-  clearCaloriesHistory,
-  type CaloriesHistoryEntry,
-} from "@/lib/history/calories";
-
-function fmtTime(ts: number) {
-  try {
-    return new Date(ts).toLocaleString();
-  } catch {
-    return String(ts);
-  }
-}
-
-const catLabel: Record<BmiHistoryEntry["category"], string> = {
-  underweight: "Underweight",
-  normal: "Normal",
-  overweight: "Overweight",
-  obese1: "Obese Class I",
-  obese2: "Obese Class II",
-  obese3: "Obese Class III",
-};
-
-type Tab = "bmi" | "calories";
+type Tab = "weight" | "plans";
 
 export default function HistoryPage() {
-  const [tab, setTab] = useState<Tab>("bmi");
+  const [tab, setTab] = useState<Tab>("weight");
 
-  const [bmi, setBmi] = useState<BmiHistoryEntry[]>(() =>
-    loadBmiHistory()
-  );
-  const [cal, setCal] = useState<CaloriesHistoryEntry[]>(() =>
-    loadCaloriesHistory()
-  );
+  const [weights, setWeights] = useState<WeightEntry[]>([]);
+  const [plans, setPlans] = useState<NutritionPlan[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  const latestBmi = useMemo(() => bmi[0] ?? null, [bmi]);
-  const latestCal = useMemo(() => cal[0] ?? null, [cal]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  function refresh() {
-    setBmi(loadBmiHistory());
-    setCal(loadCaloriesHistory());
-  }
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        const [weightsResponse, plansResponse, profileResponse] =
+          await Promise.all([
+            fetch("/api/weight-entries"),
+            fetch("/api/nutrition-plan/history"),
+            fetch("/api/profile"),
+          ]);
+
+        if (!weightsResponse.ok || !plansResponse.ok || !profileResponse.ok) {
+          throw new Error("Unable to load history.");
+        }
+
+        const [weightData, planData, profileData] = await Promise.all([
+          weightsResponse.json(),
+          plansResponse.json(),
+          profileResponse.json(),
+        ]);
+
+        setWeights(weightData as WeightEntry[]);
+        setPlans((planData.plans ?? []) as NutritionPlan[]);
+        setProfile(profileData as UserProfile | null);
+      } catch {
+        setError("Unable to load your history.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadHistory();
+  }, []);
+
+  const latestWeight = weights[0] ?? null;
+  const latestPlan = plans[0] ?? null;
+
+  const latestBmi = useMemo(() => {
+    if (!latestWeight || profile?.heightCm === null || !profile?.heightCm) {
+      return null;
+    }
+
+    const bmi = calcBMIKgM(latestWeight.weightKg, profile.heightCm);
+
+    if (bmi === null) return null;
+
+    return {
+      bmi,
+      category: bmiCategoryWHO(bmi),
+    };
+  }, [latestWeight, profile]);
 
   return (
     <div className="space-y-6">
-      {/* HEADER */}
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">History</h1>
           <p className="text-slate-600">
-            View your past BMI and calorie calculations.
+            Review your recorded weight and nutrition plan versions.
           </p>
         </div>
 
-        <Button variant="outline" onClick={refresh}>
+        <Button
+          variant="outline"
+          onClick={() => window.location.reload()}
+          disabled={loading}
+        >
           Refresh
         </Button>
       </div>
 
-      {/* TOGGLE */}
+      {loading && (
+        <p className="text-sm text-slate-500">Loading your history...</p>
+      )}
+
+      {error && (
+        <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
       <div className="flex gap-2">
         <Button
-          variant={tab === "bmi" ? "default" : "outline"}
-          onClick={() => setTab("bmi")}
+          variant={tab === "weight" ? "default" : "outline"}
+          onClick={() => setTab("weight")}
         >
-          BMI
+          Weight
         </Button>
+
         <Button
-          variant={tab === "calories" ? "default" : "outline"}
-          onClick={() => setTab("calories")}
+          variant={tab === "plans" ? "default" : "outline"}
+          onClick={() => setTab("plans")}
         >
-          Calories
+          Nutrition Plans
         </Button>
       </div>
 
-      {/* SUMMARY */}
       <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
-          <CardTitle className="text-lg">Summary</CardTitle>
+          <CardTitle className="text-lg">Current</CardTitle>
         </CardHeader>
 
-        <CardContent>
-          {tab === "bmi" ? (
-            !latestBmi ? (
-              <p className="text-slate-500">No BMI history yet.</p>
-            ) : (
-              <div className="space-y-1">
-                <div className="text-3xl font-semibold">
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <div>
+            <p className="text-sm text-slate-500">Latest weight</p>
+            <p className="text-2xl font-semibold">
+              {latestWeight ? `${latestWeight.weightKg} kg` : "—"}
+            </p>
+            {latestWeight && (
+              <p className="text-xs text-slate-500">{latestWeight.date}</p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-sm text-slate-500">Current BMI</p>
+            {latestBmi ? (
+              <>
+                <p className="text-2xl font-semibold">
                   {latestBmi.bmi.toFixed(1)}
-                </div>
-                <p className="text-sm text-slate-600">
-                  {catLabel[latestBmi.category]}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {fmtTime(latestBmi.createdAt)}
+                  {latestBmi.category.label}
                 </p>
-              </div>
-            )
-          ) : !latestCal ? (
-            <p className="text-slate-500">No calories history yet.</p>
-          ) : (
-            <div className="space-y-1">
-              <div className="text-3xl font-semibold">
-                {latestCal.targetCalories} kcal
-              </div>
-              <p className="text-sm text-slate-600">
-                Goal: {latestCal.goal}
-              </p>
-              <p className="text-xs text-slate-500">
-                {fmtTime(latestCal.createdAt)}
-              </p>
-            </div>
-          )}
+              </>
+            ) : (
+              <p className="text-2xl font-semibold">—</p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-sm text-slate-500">Current plan</p>
+            {latestPlan ? (
+              <>
+                <p className="text-2xl font-semibold">
+                  {latestPlan.targetCalories} kcal
+                </p>
+                <p className="text-xs text-slate-500">
+                  Version {latestPlan.version} • {latestPlan.goal}
+                </p>
+              </>
+            ) : (
+              <p className="text-2xl font-semibold">—</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* LIST */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-lg">
-            {tab === "bmi" ? "BMI history" : "Calories history"}
-          </CardTitle>
-          <Badge variant="secondary">
-            {tab === "bmi" ? bmi.length : cal.length}
-          </Badge>
-        </CardHeader>
+      {tab === "weight" ? (
+        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="text-lg">Weight history</CardTitle>
+            <Badge variant="secondary">{weights.length}</Badge>
+          </CardHeader>
 
-        <CardContent className="space-y-3">
-          {tab === "bmi" ? (
-            bmi.length === 0 ? (
-              <p className="text-slate-500">No entries yet.</p>
+          <CardContent>
+            {weights.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No weight entries yet. Start tracking to build your history.
+              </p>
             ) : (
               <div className="divide-y rounded-2xl border bg-white">
-                {bmi.slice(0, 25).map((e, i) => (
+                {weights.map((entry, index) => {
+                  const bmi =
+                    profile?.heightCm
+                      ? calcBMIKgM(entry.weightKg, profile.heightCm)
+                      : null;
+
+                  const category =
+                    bmi !== null ? bmiCategoryWHO(bmi) : null;
+
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`p-4 ${
+                        index === 0
+                          ? "bg-emerald-50 border-l-4 border-emerald-500"
+                          : ""
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="font-semibold">
+                            {entry.weightKg} kg
+                          </div>
+
+                          <div className="text-sm text-slate-600">
+                            {entry.date}
+                            {entry.note ? ` • ${entry.note}` : ""}
+                          </div>
+                        </div>
+
+                        {bmi !== null && category && (
+                          <Badge variant="secondary">
+                            BMI {bmi.toFixed(1)} • {category.label}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="text-lg">Nutrition plan history</CardTitle>
+            <Badge variant="secondary">{plans.length}</Badge>
+          </CardHeader>
+
+          <CardContent>
+            {plans.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No nutrition plans yet. Generate a plan from the Calories tool.
+              </p>
+            ) : (
+              <div className="divide-y rounded-2xl border bg-white">
+                {plans.map((plan, index) => (
                   <div
-                    key={e.id}
-                    className={`flex items-center justify-between gap-3 p-4 ${
-                      i === 0
+                    key={plan.id}
+                    className={`p-4 ${
+                      index === 0
                         ? "bg-emerald-50 border-l-4 border-emerald-500"
                         : ""
                     }`}
                   >
-                    <div>
-                      <div className="font-semibold">
-                        BMI {e.bmi.toFixed(1)} • {catLabel[e.category]}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="font-semibold">
+                          Version {plan.version} • {plan.targetCalories} kcal
+                        </div>
+
+                        <div className="text-sm text-slate-600">
+                          Goal: {plan.goal}
+                        </div>
+
+                        <div className="text-xs text-slate-500">
+                          {new Date(plan.createdAt).toLocaleString()}
+                        </div>
                       </div>
+
                       <div className="text-sm text-slate-600">
-                        {fmtTime(e.createdAt)} • {e.heightCm}cm •{" "}
-                        {e.weightKg}kg
+                        P {plan.proteinG}g • C {plan.carbsG}g • F {plan.fatG}g
                       </div>
                     </div>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        deleteBmiHistory(e.id);
-                        setBmi(loadBmiHistory());
-                      }}
-                    >
-                      Delete
-                    </Button>
                   </div>
                 ))}
               </div>
-            )
-          ) : cal.length === 0 ? (
-            <p className="text-slate-500">No entries yet.</p>
-          ) : (
-            <div className="divide-y rounded-2xl border bg-white">
-              {cal.slice(0, 25).map((e, i) => (
-                <div
-                  key={e.id}
-                  className={`flex items-center justify-between gap-3 p-4 ${
-                    i === 0
-                      ? "bg-emerald-50 border-l-4 border-emerald-500"
-                      : ""
-                  }`}
-                >
-                  <div>
-                    <div className="font-semibold">
-                      {e.targetCalories} kcal • Goal: {e.goal}
-                    </div>
-                    <div className="text-sm text-slate-600">
-                      {fmtTime(e.createdAt)} • {e.weightKg}kg •{" "}
-                      {e.heightCm}cm
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      deleteCaloriesHistory(e.id);
-                      setCal(loadCaloriesHistory());
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* CLEAR */}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (tab === "bmi") {
-                  clearBmiHistory();
-                  setBmi(loadBmiHistory());
-                } else {
-                  clearCaloriesHistory();
-                  setCal(loadCaloriesHistory());
-                }
-              }}
-              disabled={tab === "bmi" ? bmi.length === 0 : cal.length === 0}
-            >
-              Clear {tab === "bmi" ? "BMI" : "Calories"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

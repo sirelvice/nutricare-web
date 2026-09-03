@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import { summarize, type WeightEntry } from "@/lib/tracking/weight";
+import { summarize, type WeightEntry } from "@/lib/tracking/domain";
 
 function todayISO() {
   const d = new Date();

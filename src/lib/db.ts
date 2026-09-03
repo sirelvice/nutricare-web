@@ -5,10 +5,13 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString =
+  process.env.NODE_ENV === "test"
+    ? process.env.DIRECT_URL
+    : process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL is not defined in .env");
+  throw new Error("Database connection string is not defined in .env");
 }
 
 // Create adapter with SSL options to accept self-signed certs

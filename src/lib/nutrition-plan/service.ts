@@ -43,3 +43,15 @@ export class GetLatestNutritionPlanService {
     return this.repository.findLatestByUserId(userId);
   }
 }
+
+export class GetNutritionPlanHistoryService {
+  constructor(private readonly repository: NutritionPlanRepository) {}
+
+  async execute(userId: string): Promise<NutritionPlan[]> {
+    if (!userId) {
+      throw new Error("User ID is required");
+    }
+
+    return this.repository.findAllByUserId(userId);
+  }
+}

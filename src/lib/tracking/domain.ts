@@ -34,3 +34,25 @@ export function validateWeightEntry(entry: NewWeightEntry): boolean {
 
   return dateValid && weightValid && noteValid;
 }
+
+export function summarize(entries: WeightEntry[]) {
+  const sorted = [...entries].sort((a, b) =>
+    a.date > b.date ? 1 : -1
+  );
+
+  if (sorted.length === 0) return null;
+
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+
+  const change = Number(
+    (last.weightKg - first.weightKg).toFixed(1)
+  );
+
+  return {
+    first,
+    last,
+    change,
+    count: sorted.length,
+  };
+}

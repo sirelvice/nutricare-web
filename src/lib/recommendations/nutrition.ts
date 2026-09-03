@@ -1,4 +1,4 @@
-type Goal = "lose" | "maintain" | "gain";
+import type { Goal } from "@/lib/profile/domain";
 
 export function getNutritionRecommendations(input: {
   bmi: number;

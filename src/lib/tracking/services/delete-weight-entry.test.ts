@@ -7,6 +7,7 @@ describe("DeleteWeightEntryService", () => {
       create: vi.fn(),
       findByUserId: vi.fn(),
       delete: vi.fn().mockResolvedValue(undefined),
+      findLatestByUserId: vi.fn(),
     };
 
     const service = new DeleteWeightEntryService(repository);
@@ -21,6 +22,7 @@ describe("DeleteWeightEntryService", () => {
       create: vi.fn(),
       findByUserId: vi.fn(),
       delete: vi.fn(),
+      findLatestByUserId: vi.fn(),
     };
 
     const service = new DeleteWeightEntryService(repository);
@@ -37,6 +39,7 @@ describe("DeleteWeightEntryService", () => {
       create: vi.fn(),
       findByUserId: vi.fn(),
       delete: vi.fn(),
+      findLatestByUserId: vi.fn(),
     };
 
     const service = new DeleteWeightEntryService(repository);

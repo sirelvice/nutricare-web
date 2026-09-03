@@ -44,6 +44,15 @@ export class PrismaWeightRepository implements WeightRepository {
     return entries.map(toDomain);
   }
 
+  async findLatestByUserId(userId: string): Promise<WeightEntry | null> {
+    const entry = await this.db.weightEntry.findFirst({
+      where: { userId },
+      orderBy: { date: "desc" },
+    });
+
+    return entry ? toDomain(entry) : null;
+  }
+
   async delete(userId: string, entryId: string): Promise<void> {
     await this.db.weightEntry.deleteMany({
       where: {

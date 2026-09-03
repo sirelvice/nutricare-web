@@ -71,6 +71,48 @@ describe("PrismaWeightRepository", () => {
     ]);
   });
 
+  it("finds the latest entry for the authenticated user", async () => {
+    const db = {
+      weightEntry: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "entry-2",
+          date: new Date("2026-09-03T00:00:00.000Z"),
+          weightKg: 61.2,
+          note: null,
+        }),
+      },
+    } as any;
+
+    const repository = new PrismaWeightRepository(db);
+
+    const result = await repository.findLatestByUserId("user-1");
+
+    expect(db.weightEntry.findFirst).toHaveBeenCalledWith({
+      where: { userId: "user-1" },
+      orderBy: { date: "desc" },
+    });
+
+    expect(result).toEqual({
+      id: "entry-2",
+      date: "2026-09-03",
+      weightKg: 61.2,
+    });
+  });
+
+  it("returns null when the user has no weight entries", async () => {
+    const db = {
+      weightEntry: {
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+    } as any;
+
+    const repository = new PrismaWeightRepository(db);
+
+    const result = await repository.findLatestByUserId("user-1");
+
+    expect(result).toBeNull();
+  });
+
   it("deletes only an entry belonging to the user", async () => {
     const db = {
       weightEntry: {

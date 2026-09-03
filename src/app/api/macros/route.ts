@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        targetCalories: round(targetCalories),
+        targetCalories,
         goal,
         splitPercent: {
           protein: goal === "lose" ? 30 : 25,

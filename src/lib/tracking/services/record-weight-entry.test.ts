@@ -15,6 +15,7 @@ describe("RecordWeightEntryService", () => {
       }),
       findByUserId: vi.fn(),
       delete: vi.fn(),
+      findLatestByUserId: vi.fn(),
     };
 
     const service = new RecordWeightEntryService(repository);
@@ -44,6 +45,7 @@ describe("RecordWeightEntryService", () => {
       create: vi.fn(),
       findByUserId: vi.fn(),
       delete: vi.fn(),
+      findLatestByUserId: vi.fn(),
     };
 
     const service = new RecordWeightEntryService(repository);
@@ -63,6 +65,7 @@ describe("RecordWeightEntryService", () => {
       create: vi.fn(),
       findByUserId: vi.fn(),
       delete: vi.fn(),
+      findLatestByUserId: vi.fn(),
     };
 
     const service = new RecordWeightEntryService(repository);

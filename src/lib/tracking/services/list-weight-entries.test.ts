@@ -15,6 +15,7 @@ describe("ListWeightEntriesService", () => {
       create: vi.fn(),
       findByUserId: vi.fn().mockResolvedValue(entries),
       delete: vi.fn(),
+      findLatestByUserId: vi.fn(),
     };
 
     const service = new ListWeightEntriesService(repository);
@@ -30,6 +31,7 @@ describe("ListWeightEntriesService", () => {
       create: vi.fn(),
       findByUserId: vi.fn(),
       delete: vi.fn(),
+      findLatestByUserId: vi.fn(),
     };
 
     const service = new ListWeightEntriesService(repository);

@@ -17,22 +17,23 @@ model User {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  profile          Profile?
-  weightEntries     WeightEntry[]
+  profile        Profile?
+  weightEntries  WeightEntry[]
+  nutritionPlans NutritionPlan[]
 }
 
 model Profile {
-  id          String        @id @default(cuid())
-  userId      String        @unique
-  heightCm    Float?
-  age         Int?
-  gender      Gender
-  activity    ActivityLevel
-  goal        Goal
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id        String        @id @default(cuid())
+  userId    String        @unique
+  heightCm  Float?
+  age       Int?
+  gender    Gender
+  activity  ActivityLevel
+  goal      Goal
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model WeightEntry {
@@ -44,9 +45,26 @@ model WeightEntry {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, date])
+}
+
+model NutritionPlan {
+  id             String   @id @default(cuid())
+  userId         String
+  version        Int
+  goal           Goal
+  targetCalories Int
+  proteinG       Int
+  carbsG         Int
+  fatG           Int
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, version])
+  @@index([userId, createdAt])
 }
 
 model ContactMessage {

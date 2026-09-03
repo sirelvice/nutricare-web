@@ -1,99 +1,113 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
+
 import {
-  useMemo,
-  useState,
-  useEffect,
-  useSyncExternalStore,
-} from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import {
-  subscribeProfile,
-  getProfileSnapshot,
-  getProfileServerSnapshot,
-} from "@/lib/profile/storage";
-
-import { loadCaloriesHistory } from "@/lib/history/calories";
-
-type Goal = "lose" | "maintain" | "gain";
-
-type ApiOk = {
-  targetCalories: number;
-  goal: Goal;
-  splitPercent: { protein: number; carbs: number; fat: number };
-  grams: { protein: number; carbs: number; fat: number };
-  notes: string[];
-};
-type ApiErr = { error: string };
-type ApiResponse = ApiOk | ApiErr;
+import type { NutritionPlan } from "@/lib/nutrition-plan/domain";
 
 export default function MacrosPage() {
-  const profile = useSyncExternalStore(
-    subscribeProfile,
-    getProfileSnapshot,
-    getProfileServerSnapshot
-  );
+  const [plan, setPlan] = useState<NutritionPlan | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const calHistory = useMemo(() => loadCaloriesHistory(), []);
-  const latestCalories = calHistory[0] ?? null;
-
-  const [targetCalories, setTargetCalories] = useState("");
-  const [goal, setGoal] = useState<Goal>("maintain");
-  const [loading, setLoading] = useState(false);
-  const [api, setApi] = useState<ApiResponse | null>(null);
-
-  // ✅ Prefill calories
   useEffect(() => {
-    if (latestCalories && !targetCalories) {
-      setTargetCalories(String(latestCalories.targetCalories));
-    }
-  }, [latestCalories, targetCalories]);
+    let cancelled = false;
 
-  // ✅ Prefill goal
-  useEffect(() => {
-    if (profile.goal) {
-      setGoal(profile.goal);
-    }
-  }, [profile.goal]);
+    async function loadPlan() {
+      try {
+        const response = await fetch("/api/nutrition-plan");
 
-  const valid = useMemo(() => {
-    const c = Number(targetCalories);
-    return Boolean(c && c >= 800 && c <= 6000);
-  }, [targetCalories]);
+        if (!response.ok) {
+          throw new Error("Unable to load your nutrition plan.");
+        }
 
-  async function calculate() {
-    if (!valid) {
-      setApi({ error: "Enter realistic target calories (800–6000)." });
-      return;
-    }
+        const data = await response.json();
 
-    setLoading(true);
-    setApi(null);
-
-    try {
-      const res = await fetch("/api/macros", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetCalories: Number(targetCalories), goal }),
-      });
-
-      const json = (await res.json()) as ApiResponse;
-
-      if (!res.ok) {
-        setApi({ error: (json as ApiErr).error ?? "Request failed." });
-      } else {
-        setApi(json);
+        if (!cancelled) {
+          setPlan(data.plan);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load nutrition plan:", error);
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load your nutrition plan.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    } catch {
-      setApi({ error: "Network error. Please try again." });
-    } finally {
-      setLoading(false);
     }
+
+    loadPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Macros</h1>
+          <p className="text-slate-600">Loading your current nutrition plan...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Macros</h1>
+          <p className="text-slate-600">{error}</p>
+        </div>
+
+        <Button onClick={() => window.location.reload()}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  if (!plan) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Macros</h1>
+          <p className="text-slate-600">
+            Your macros are part of your nutrition plan.
+          </p>
+        </div>
+
+        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+          <CardContent className="p-5 space-y-4">
+            <p className="text-sm text-slate-600">
+              Generate a nutrition plan from your profile and current weight to
+              see your recommended daily calorie and macro targets.
+            </p>
+
+            <Button asChild>
+              <Link href="/dashboard">Go to dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -101,106 +115,60 @@ export default function MacrosPage() {
       <div>
         <h1 className="text-2xl font-semibold">Macros</h1>
         <p className="text-slate-600">
-          Explore macro splits for different calorie targets.
+          Your current daily macro targets from your nutrition plan.
         </p>
       </div>
 
-      {/* INPUT */}
       <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
         <CardHeader>
-          <CardTitle className="text-lg">Inputs</CardTitle>
-        </CardHeader>
-
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          {/* Calories */}
-          <div className="space-y-2">
-            <Label>Target calories (kcal/day)</Label>
-            <Input
-              value={targetCalories}
-              onChange={(e) => setTargetCalories(e.target.value)}
-              placeholder="e.g. 2200"
-              inputMode="numeric"
-            />
-            <p className="text-xs text-slate-500">
-              Auto-filled from your dashboard.
-            </p>
-          </div>
-
-          {/* Goal dropdown ✅ */}
-          <div className="space-y-2">
-            <Label>Goal</Label>
-            <select
-              value={goal}
-              onChange={(e) =>
-                setGoal(e.target.value as "lose" | "maintain" | "gain")
-              }
-              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
-            >
-              <option value="lose">Lose weight</option>
-              <option value="maintain">Maintain weight</option>
-              <option value="gain">Gain weight</option>
-            </select>
-          </div>
-
-          {/* Button */}
-          <div className="md:col-span-2">
-            <Button onClick={calculate} disabled={!valid || loading}>
-              {loading ? "Calculating..." : "Calculate macros"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* RESULT */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Result</CardTitle>
+          <CardTitle className="text-lg">Current plan</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {!api ? (
-            <p className="text-slate-600">Enter calories and calculate.</p>
-          ) : "error" in api ? (
-            <p className="text-slate-600">{api.error}</p>
-          ) : (
-            <>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Goal: {api.goal}</Badge>
-                <Badge variant="secondary">
-                  {api.targetCalories} kcal/day
-                </Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">
+              Goal: {plan.goal}
+            </Badge>
+            <Badge variant="secondary">
+              {plan.targetCalories} kcal/day
+            </Badge>
+            <Badge variant="secondary">
+              Plan v{plan.version}
+            </Badge>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border p-4">
+              <div className="text-xs text-slate-500">Protein</div>
+              <div className="text-2xl font-semibold">
+                {plan.proteinG} g
               </div>
+            </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-2xl border p-4">
-                  <div className="text-xs text-slate-500">Protein</div>
-                  <div className="text-2xl font-semibold">
-                    {api.grams.protein} g
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border p-4">
-                  <div className="text-xs text-slate-500">Carbs</div>
-                  <div className="text-2xl font-semibold">
-                    {api.grams.carbs} g
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border p-4">
-                  <div className="text-xs text-slate-500">Fat</div>
-                  <div className="text-2xl font-semibold">
-                    {api.grams.fat} g
-                  </div>
-                </div>
+            <div className="rounded-2xl border p-4">
+              <div className="text-xs text-slate-500">Carbs</div>
+              <div className="text-2xl font-semibold">
+                {plan.carbsG} g
               </div>
+            </div>
 
-              <ul className="list-disc pl-5 text-sm text-slate-600">
-                {api.notes.map((n) => (
-                  <li key={n}>{n}</li>
-                ))}
-              </ul>
-            </>
-          )}
+            <div className="rounded-2xl border p-4">
+              <div className="text-xs text-slate-500">Fat</div>
+              <div className="text-2xl font-semibold">
+                {plan.fatG} g
+              </div>
+            </div>
+          </div>
+
+          <ul className="list-disc pl-5 text-sm text-slate-600">
+            <li>
+              These targets are estimates based on your current profile and
+              weight.
+            </li>
+            <li>
+              Your plan may be updated as your goals and progress change.
+            </li>
+          </ul>
         </CardContent>
       </Card>
     </div>

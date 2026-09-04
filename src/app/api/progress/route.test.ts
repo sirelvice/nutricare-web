@@ -67,6 +67,23 @@ describe("/api/progress", () => {
     expect(progressExecute).toHaveBeenCalledWith("user-123");
   });
 
+  it("returns 422 when there is no current nutrition plan", async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: "user-123" },
+    } as any);
+
+    progressExecute.mockRejectedValue(
+      new Error("Current nutrition plan is required"),
+    );
+
+    const response = await GET();
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({
+      error: "A current nutrition plan is required to evaluate progress",
+    });
+  });
+
   it("returns 404 when the profile does not exist", async () => {
     vi.mocked(auth).mockResolvedValue({
       user: { id: "user-123" },

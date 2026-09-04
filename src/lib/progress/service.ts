@@ -1,11 +1,13 @@
 import type { ProfileRepository } from "@/lib/profile/repositories/profile-repository";
 import type { WeightRepository } from "@/lib/tracking/repositories/weight-repository";
+import type { NutritionPlanRepository } from "@/lib/nutrition-plan/repository";
 import { evaluateProgress, type ProgressEvaluation } from "./domain";
 
 export class EvaluateProgressService {
   constructor(
     private readonly profileRepository: ProfileRepository,
     private readonly weightRepository: WeightRepository,
+    private readonly nutritionPlanRepository: NutritionPlanRepository,
   ) {}
 
   async execute(userId: string): Promise<ProgressEvaluation | null> {
@@ -19,11 +21,22 @@ export class EvaluateProgressService {
       return null;
     }
 
-    const entries = await this.weightRepository.findByUserId(userId);
+    const [entries, currentPlan] = await Promise.all([
+      this.weightRepository.findByUserId(userId),
+      this.nutritionPlanRepository.findLatestByUserId(userId),
+    ]);
+
+    if (!currentPlan) {
+      throw new Error("Current nutrition plan is required");
+    }
+
+    const periodEntries = entries.filter(
+      (entry) => entry.date >= currentPlan.createdAt.slice(0, 10),
+    );
 
     return evaluateProgress({
       goal: profile.goal,
-      entries,
+      entries: periodEntries,
     });
   }
 }

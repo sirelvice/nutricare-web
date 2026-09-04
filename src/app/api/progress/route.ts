@@ -32,6 +32,16 @@ export async function GET() {
 
     return NextResponse.json({ progress }, { status: 200 });
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "Current nutrition plan is required"
+    ) {
+      return NextResponse.json(
+        { error: "A current nutrition plan is required to evaluate progress" },
+        { status: 422 },
+      );
+    }
+
     console.error("GET /api/progress failed", error);
 
     return NextResponse.json(

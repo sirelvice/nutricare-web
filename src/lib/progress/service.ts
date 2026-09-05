@@ -35,7 +35,7 @@ export class EvaluateProgressService {
     );
 
     return evaluateProgress({
-      goal: profile.goal,
+      goal: currentPlan.goal,
       entries: periodEntries,
     });
   }

@@ -3,11 +3,13 @@ import { auth } from "@/auth";
 import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
 import { prisma } from "@/lib/db";
-import { EvaluateProgressService } from "@/lib/progress/service";
+import { GetCurrentProgressService } from "@/lib/progress/get-current-progress-service";
+import { PrismaProgressEvaluationRepository } from "@/lib/progress/repositories/prisma-progress-evaluation-repository";
+import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
 
-const progressService = new EvaluateProgressService(
-  new PrismaProfileRepository(prisma),
-  new PrismaWeightRepository(prisma),
+const progressService = new GetCurrentProgressService(
+  prismaNutritionPlanRepository,
+  new PrismaProgressEvaluationRepository(prisma),
 );
 
 export async function GET() {
@@ -25,27 +27,17 @@ export async function GET() {
 
     if (!progress) {
       return NextResponse.json(
-        { error: "Profile not found" },
+        { error: "Current progress is not available" },
         { status: 404 },
       );
     }
 
     return NextResponse.json({ progress }, { status: 200 });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === "Current nutrition plan is required"
-    ) {
-      return NextResponse.json(
-        { error: "A current nutrition plan is required to evaluate progress" },
-        { status: 422 },
-      );
-    }
-
     console.error("GET /api/progress failed", error);
 
     return NextResponse.json(
-      { error: "Unable to evaluate progress" },
+      { error: "Unable to load current progress" },
       { status: 500 },
     );
   }

@@ -93,6 +93,20 @@ export default function DashboardPage() {
     evaluationDays: number | null;
   } | null>(null);
 
+  const [progressRecommendation, setProgressRecommendation] = useState<{
+    recommendedAction:
+      | "CONTINUE"
+      | "REVIEW_ADHERENCE"
+      | "CONSIDER_ADJUSTMENT"
+      | "SUGGEST_PROFESSIONAL_CONSULT";
+    reason:
+      | "insufficient_data"
+      | "on_track"
+      | "first_problem"
+      | "consecutive_problem"
+      | "recurrence_after_adjustment";
+  } | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -135,7 +149,8 @@ export default function DashboardPage() {
 
         if (progressRes.ok) {
           const data = await progressRes.json();
-          setProgressEvaluation(data.progress);
+          setProgressEvaluation(data.progress.evaluation);
+          setProgressRecommendation(data.progress.recommendation);
         }
       } catch (error) {
         if (!cancelled) {
@@ -399,6 +414,30 @@ export default function DashboardPage() {
                       ? "We don’t have enough information to describe the change yet."
                       : `${formatWeightChange(progressEvaluation.changeKg)} over ${progressEvaluation.evaluationDays} days.`}
                 </p>
+
+                {progressRecommendation && (
+                  <div className="rounded-2xl bg-white/70 border p-3">
+                    <p className="text-xs font-medium text-slate-500">
+                      Next step
+                    </p>
+
+                    <p className="text-sm text-slate-700 mt-1">
+                      {progressRecommendation.recommendedAction ===
+                      "CONTINUE"
+                        ? progressRecommendation.reason === "insufficient_data"
+                          ? "Keep logging your weight consistently so we can evaluate your progress with enough evidence."
+                          : "Continue with your current approach and keep tracking your progress."
+                        : progressRecommendation.recommendedAction ===
+                            "REVIEW_ADHERENCE"
+                          ? "Review how consistently you’ve been following your current plan before making changes."
+                          : progressRecommendation.recommendedAction ===
+                              "CONSIDER_ADJUSTMENT"
+                            ? "Your recent results suggest it may be time to review and adjust your current plan."
+                            : "This pattern has continued across plan periods. Consider discussing it with a qualified health professional."
+                      }
+                    </p>
+                  </div>
+                )}
 
                 {progressEvaluation.state === "PLATEAU" && (
                   <p className="text-xs text-slate-500">

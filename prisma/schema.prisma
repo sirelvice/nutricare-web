@@ -70,14 +70,16 @@ model NutritionPlan {
 }
 
 model ProgressEvaluation {
-  id             String         @id @default(cuid())
-  userId         String
-  planVersionId  String
-  state          ProgressState
-  changeKg       Float?
-  entriesCount   Int
-  evaluationDays Int?
-  evaluatedAt    DateTime       @default(now())
+  id                   String               @id @default(cuid())
+  userId               String
+  planVersionId        String
+  state                ProgressState
+  changeKg             Float?
+  entriesCount         Int
+  evaluationDays       Int?
+  recommendedAction    RecommendedAction
+  recommendationReason RecommendationReason
+  evaluatedAt          DateTime             @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   nutritionPlan NutritionPlan @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
@@ -121,6 +123,21 @@ enum ProgressState {
   BEHIND_OPPOSITE
   PLATEAU
   INSUFFICIENT_DATA
+}
+
+enum RecommendedAction {
+  CONTINUE
+  REVIEW_ADHERENCE
+  CONSIDER_ADJUSTMENT
+  SUGGEST_PROFESSIONAL_CONSULT
+}
+
+enum RecommendationReason {
+  INSUFFICIENT_DATA
+  ON_TRACK
+  FIRST_PROBLEM
+  CONSECUTIVE_PROBLEM
+  RECURRENCE_AFTER_ADJUSTMENT
 }
 
 enum Role {

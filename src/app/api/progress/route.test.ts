@@ -6,21 +6,18 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(),
 }));
 
-vi.mock("@/lib/progress/service", () => ({
-  EvaluateProgressService: class {
+vi.mock("@/lib/progress/get-current-progress-service", () => ({
+  GetCurrentProgressService: class {
     async execute(userId: string) {
       return progressExecute(userId);
     }
   },
 }));
 
-vi.mock("@/lib/profile/repositories/prisma-profile-repository", () => ({
-  PrismaProfileRepository: class {},
+vi.mock("@/lib/progress/repositories/prisma-progress-evaluation-repository", () => ({
+  PrismaProgressEvaluationRepository: class {},
 }));
 
-vi.mock("@/lib/tracking/repositories/prisma-weight-repository", () => ({
-  PrismaWeightRepository: class {},
-}));
 
 vi.mock("@/lib/db", () => ({
   prisma: {},
@@ -46,16 +43,24 @@ describe("/api/progress", () => {
     expect(progressExecute).not.toHaveBeenCalled();
   });
 
-  it("returns progress when authenticated", async () => {
+  it("returns persisted progress and recommendation when authenticated", async () => {
     vi.mocked(auth).mockResolvedValue({
       user: { id: "user-123" },
     } as any);
 
     const progress = {
-      state: "ON_TRACK",
-      changeKg: -0.6,
-      entriesCount: 3,
-      evaluationDays: 14,
+      planVersionId: "plan-1",
+      evaluation: {
+        state: "ON_TRACK",
+        changeKg: -0.6,
+        entriesCount: 3,
+        evaluationDays: 14,
+        evaluatedAt: "2026-09-05T10:10:48.679Z",
+      },
+      recommendation: {
+        recommendedAction: "CONTINUE",
+        reason: "on_track",
+      },
     };
 
     progressExecute.mockResolvedValue(progress);
@@ -67,24 +72,7 @@ describe("/api/progress", () => {
     expect(progressExecute).toHaveBeenCalledWith("user-123");
   });
 
-  it("returns 422 when there is no current nutrition plan", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
-
-    progressExecute.mockRejectedValue(
-      new Error("Current nutrition plan is required"),
-    );
-
-    const response = await GET();
-
-    expect(response.status).toBe(422);
-    expect(await response.json()).toEqual({
-      error: "A current nutrition plan is required to evaluate progress",
-    });
-  });
-
-  it("returns 404 when the profile does not exist", async () => {
+  it("returns 404 when current persisted progress is unavailable", async () => {
     vi.mocked(auth).mockResolvedValue({
       user: { id: "user-123" },
     } as any);
@@ -95,11 +83,11 @@ describe("/api/progress", () => {
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
-      error: "Profile not found",
+      error: "Current progress is not available",
     });
   });
 
-  it("returns 500 when progress evaluation fails", async () => {
+  it("returns 500 when progress loading fails", async () => {
     vi.mocked(auth).mockResolvedValue({
       user: { id: "user-123" },
     } as any);
@@ -110,7 +98,7 @@ describe("/api/progress", () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({
-      error: "Unable to evaluate progress",
+      error: "Unable to load current progress",
     });
   });
 });

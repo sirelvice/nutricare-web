@@ -17,9 +17,10 @@ model User {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  profile        Profile?
-  weightEntries  WeightEntry[]
-  nutritionPlans NutritionPlan[]
+  profile             Profile?
+  weightEntries       WeightEntry[]
+  nutritionPlans      NutritionPlan[]
+  progressEvaluations ProgressEvaluation[]
 }
 
 model Profile {
@@ -51,20 +52,38 @@ model WeightEntry {
 }
 
 model NutritionPlan {
-  id             String   @id @default(cuid())
-  userId         String
-  version        Int
-  goal           Goal
-  targetCalories Int
-  proteinG       Int
-  carbsG         Int
-  fatG           Int
-  createdAt      DateTime @default(now())
+  id                  String               @id @default(cuid())
+  userId              String
+  version             Int
+  goal                Goal
+  targetCalories      Int
+  proteinG            Int
+  carbsG              Int
+  fatG                Int
+  createdAt           DateTime             @default(now())
+  progressEvaluations ProgressEvaluation[]
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, version])
   @@index([userId, createdAt])
+}
+
+model ProgressEvaluation {
+  id             String         @id @default(cuid())
+  userId         String
+  planVersionId  String
+  state          ProgressState
+  changeKg       Float?
+  entriesCount   Int
+  evaluationDays Int?
+  evaluatedAt    DateTime       @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nutritionPlan NutritionPlan @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, evaluatedAt])
+  @@index([planVersionId, evaluatedAt])
 }
 
 model ContactMessage {
@@ -95,6 +114,13 @@ enum Goal {
   LOSE
   MAINTAIN
   GAIN
+}
+
+enum ProgressState {
+  ON_TRACK
+  BEHIND_OPPOSITE
+  PLATEAU
+  INSUFFICIENT_DATA
 }
 
 enum Role {

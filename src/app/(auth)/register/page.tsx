@@ -51,10 +51,20 @@ export default function RegisterPage() {
 
       const json = (await res.json()) as ApiRes;
 
-      if (!res.ok || !json.ok) {
+      if (!res.ok) {
         setMsg({
           type: "error",
-          text: json.error || "Registration failed. Please try again.",
+          text: !json.ok
+            ? json.error
+            : "Registration failed. Please try again.",
+        });
+        return;
+      }
+
+      if (!json.ok) {
+        setMsg({
+          type: "error",
+          text: json.error,
         });
         return;
       }

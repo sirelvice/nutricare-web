@@ -79,6 +79,8 @@ model ProgressEvaluation {
   evaluationDays       Int?
   recommendedAction    RecommendedAction
   recommendationReason RecommendationReason
+  adjustmentDecision   AdjustmentDecision   @default(PENDING)
+  respondedAt          DateTime?
   evaluatedAt          DateTime             @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -138,6 +140,12 @@ enum RecommendationReason {
   FIRST_PROBLEM
   CONSECUTIVE_PROBLEM
   RECURRENCE_AFTER_ADJUSTMENT
+}
+
+enum AdjustmentDecision {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
 
 enum Role {

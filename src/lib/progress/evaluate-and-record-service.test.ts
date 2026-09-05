@@ -157,6 +157,8 @@ describe("EvaluateAndRecordProgressService", () => {
         evaluationDays: 14,
         recommendedAction: "REVIEW_ADHERENCE",
         recommendationReason: "first_problem",
+        adjustmentDecision: "PENDING",
+        respondedAt: null,
         evaluatedAt: "2026-09-15T12:00:00.000Z",
       },
     ]);

@@ -67,7 +67,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!userId) throw new Error("Invalid session: missing user id");
 
       session.user.id = userId;
-      session.user.email = token.email ?? null;
+      if (token.email) {
+        session.user.email = token.email;
+      }
       session.user.name = token.name ?? null;
       session.user.role = token.role ?? Role.USER;
       session.user.subscriptionTier =

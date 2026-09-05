@@ -315,6 +315,192 @@ describe("PrismaProgressEvaluationRepository", () => {
     });
   });
 
+  it("records an accepted adjustment decision", async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `progress-repository-${Date.now()}-accept@example.com`,
+        passwordHash: TEST_PASSWORD_HASH,
+      },
+    });
+
+    const plan = await prisma.nutritionPlan.create({
+      data: {
+        userId: user.id,
+        version: 1,
+        goal: "LOSE",
+        targetCalories: 2000,
+        proteinG: 150,
+        carbsG: 225,
+        fatG: 56,
+      },
+    });
+
+    const created = await repository.create(user.id, {
+      planVersionId: plan.id,
+      state: "PLATEAU",
+      changeKg: 0.1,
+      entriesCount: 5,
+      evaluationDays: 28,
+      recommendedAction: "CONSIDER_ADJUSTMENT",
+      recommendationReason: "consecutive_problem",
+      evaluatedAt: "2026-09-15T12:00:00.000Z",
+    });
+
+    const respondedAt = "2026-09-16T12:00:00.000Z";
+
+    const updated = await repository.respondToAdjustment(
+      user.id,
+      created.id,
+      "ACCEPTED",
+      respondedAt,
+    );
+
+    expect(updated).toMatchObject({
+      id: created.id,
+      adjustmentDecision: "ACCEPTED",
+      respondedAt,
+    });
+  });
+
+  it("records a declined adjustment decision", async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `progress-repository-${Date.now()}-decline@example.com`,
+        passwordHash: TEST_PASSWORD_HASH,
+      },
+    });
+
+    const plan = await prisma.nutritionPlan.create({
+      data: {
+        userId: user.id,
+        version: 1,
+        goal: "LOSE",
+        targetCalories: 2000,
+        proteinG: 150,
+        carbsG: 225,
+        fatG: 56,
+      },
+    });
+
+    const created = await repository.create(user.id, {
+      planVersionId: plan.id,
+      state: "PLATEAU",
+      changeKg: 0.1,
+      entriesCount: 5,
+      evaluationDays: 28,
+      recommendedAction: "CONSIDER_ADJUSTMENT",
+      recommendationReason: "consecutive_problem",
+      evaluatedAt: "2026-09-15T12:00:00.000Z",
+    });
+
+    const updated = await repository.respondToAdjustment(
+      user.id,
+      created.id,
+      "DECLINED",
+    );
+
+    expect(updated.adjustmentDecision).toBe("DECLINED");
+    expect(updated.respondedAt).toBeTruthy();
+  });
+
+  it("does not allow one user to respond to another user's evaluation", async () => {
+    const userA = await prisma.user.create({
+      data: {
+        email: `progress-repository-${Date.now()}-owner@example.com`,
+        passwordHash: TEST_PASSWORD_HASH,
+      },
+    });
+
+    const userB = await prisma.user.create({
+      data: {
+        email: `progress-repository-${Date.now()}-other@example.com`,
+        passwordHash: TEST_PASSWORD_HASH,
+      },
+    });
+
+    const plan = await prisma.nutritionPlan.create({
+      data: {
+        userId: userA.id,
+        version: 1,
+        goal: "LOSE",
+        targetCalories: 2000,
+        proteinG: 150,
+        carbsG: 225,
+        fatG: 56,
+      },
+    });
+
+    const created = await repository.create(userA.id, {
+      planVersionId: plan.id,
+      state: "PLATEAU",
+      changeKg: 0.1,
+      entriesCount: 5,
+      evaluationDays: 28,
+      recommendedAction: "CONSIDER_ADJUSTMENT",
+      recommendationReason: "consecutive_problem",
+      evaluatedAt: "2026-09-15T12:00:00.000Z",
+    });
+
+    await expect(
+      repository.respondToAdjustment(
+        userB.id,
+        created.id,
+        "ACCEPTED",
+      ),
+    ).rejects.toThrow("Progress evaluation cannot be responded to");
+
+    const unchanged = await prisma.progressEvaluation.findUnique({
+      where: { id: created.id },
+    });
+
+    expect(unchanged?.adjustmentDecision).toBe("PENDING");
+    expect(unchanged?.respondedAt).toBeNull();
+  });
+
+  it("does not allow an adjustment decision to be changed after responding", async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `progress-repository-${Date.now()}-once@example.com`,
+        passwordHash: TEST_PASSWORD_HASH,
+      },
+    });
+
+    const plan = await prisma.nutritionPlan.create({
+      data: {
+        userId: user.id,
+        version: 1,
+        goal: "LOSE",
+        targetCalories: 2000,
+        proteinG: 150,
+        carbsG: 225,
+        fatG: 56,
+      },
+    });
+
+    const created = await repository.create(user.id, {
+      planVersionId: plan.id,
+      state: "PLATEAU",
+      changeKg: 0.1,
+      entriesCount: 5,
+      evaluationDays: 28,
+      recommendedAction: "CONSIDER_ADJUSTMENT",
+      recommendationReason: "consecutive_problem",
+      evaluatedAt: "2026-09-15T12:00:00.000Z",
+    });
+
+    await repository.respondToAdjustment(user.id, created.id, "ACCEPTED");
+
+    await expect(
+      repository.respondToAdjustment(user.id, created.id, "DECLINED"),
+    ).rejects.toThrow("Progress evaluation cannot be responded to");
+
+    const unchanged = await prisma.progressEvaluation.findUnique({
+      where: { id: created.id },
+    });
+
+    expect(unchanged?.adjustmentDecision).toBe("ACCEPTED");
+  });
+
   it("preserves nullable evaluation fields", async () => {
     const user = await prisma.user.create({
       data: {

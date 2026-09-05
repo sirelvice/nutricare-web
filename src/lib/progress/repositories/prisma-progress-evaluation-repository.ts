@@ -3,6 +3,7 @@ import type {
   PersistedProgressEvaluation,
   NewProgressEvaluation,
   ProgressEvaluationRepository,
+  AdjustmentDecision,
 } from "./progress-evaluation-repository";
 
 type PrismaProgressEvaluation = {
@@ -28,6 +29,8 @@ type PrismaProgressEvaluation = {
     | "FIRST_PROBLEM"
     | "CONSECUTIVE_PROBLEM"
     | "RECURRENCE_AFTER_ADJUSTMENT";
+  adjustmentDecision: AdjustmentDecision;
+  respondedAt: Date | null;
   evaluatedAt: Date;
 };
 
@@ -50,6 +53,8 @@ function toDomain(
         | "first_problem"
         | "consecutive_problem"
         | "recurrence_after_adjustment",
+    adjustmentDecision: evaluation.adjustmentDecision,
+    respondedAt: evaluation.respondedAt?.toISOString() ?? null,
     evaluatedAt: evaluation.evaluatedAt.toISOString(),
   };
 }
@@ -79,6 +84,7 @@ export class PrismaProgressEvaluationRepository
             | "FIRST_PROBLEM"
             | "CONSECUTIVE_PROBLEM"
             | "RECURRENCE_AFTER_ADJUSTMENT",
+        adjustmentDecision: "PENDING",
         ...(evaluation.evaluatedAt
           ? { evaluatedAt: new Date(evaluation.evaluatedAt) }
           : {}),
@@ -127,6 +133,39 @@ export class PrismaProgressEvaluationRepository
     });
 
     return evaluation ? toDomain(evaluation) : null;
+  }
+
+  async respondToAdjustment(
+    userId: string,
+    evaluationId: string,
+    decision: Exclude<AdjustmentDecision, "PENDING">,
+    respondedAt?: string,
+  ): Promise<PersistedProgressEvaluation> {
+    const updated = await this.db.progressEvaluation.updateMany({
+      where: {
+        id: evaluationId,
+        userId,
+        adjustmentDecision: "PENDING",
+      },
+      data: {
+        adjustmentDecision: decision,
+        respondedAt: respondedAt ? new Date(respondedAt) : new Date(),
+      },
+    });
+
+    if (updated.count !== 1) {
+      throw new Error("Progress evaluation cannot be responded to");
+    }
+
+    const evaluation = await this.db.progressEvaluation.findUnique({
+      where: { id: evaluationId },
+    });
+
+    if (!evaluation) {
+      throw new Error("Progress evaluation not found");
+    }
+
+    return toDomain(evaluation);
   }
 
   async findLatestByUserId(

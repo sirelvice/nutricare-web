@@ -4,6 +4,8 @@ import type {
   RecommendationReason,
 } from "@/lib/progress/recommendation";
 
+export type AdjustmentDecision = "PENDING" | "ACCEPTED" | "DECLINED";
+
 export type PersistedProgressEvaluation = {
   id: string;
   userId: string;
@@ -14,6 +16,8 @@ export type PersistedProgressEvaluation = {
   evaluationDays: number | null;
   recommendedAction: RecommendedAction;
   recommendationReason: RecommendationReason;
+  adjustmentDecision: AdjustmentDecision;
+  respondedAt: string | null;
   evaluatedAt: string;
 };
 
@@ -51,4 +55,11 @@ export interface ProgressEvaluationRepository {
   findLatestByUserId(
     userId: string,
   ): Promise<PersistedProgressEvaluation | null>;
+
+  respondToAdjustment(
+    userId: string,
+    evaluationId: string,
+    decision: Exclude<AdjustmentDecision, "PENDING">,
+    respondedAt?: string,
+  ): Promise<PersistedProgressEvaluation>;
 }

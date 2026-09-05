@@ -87,6 +87,8 @@ describe("GetCurrentProgressService", () => {
       evaluationDays: 21,
       recommendedAction: "CONSIDER_ADJUSTMENT",
       recommendationReason: "consecutive_problem",
+      adjustmentDecision: "PENDING",
+      respondedAt: null,
       evaluatedAt: "2026-10-21T12:00:00.000Z",
     });
 
@@ -98,6 +100,7 @@ describe("GetCurrentProgressService", () => {
     await expect(service.execute("user-1")).resolves.toEqual({
       planVersionId: "plan-2",
       evaluation: {
+        id: "evaluation-2",
         state: "PLATEAU",
         changeKg: 0.2,
         entriesCount: 4,
@@ -107,6 +110,8 @@ describe("GetCurrentProgressService", () => {
       recommendation: {
         recommendedAction: "CONSIDER_ADJUSTMENT",
         reason: "consecutive_problem",
+        adjustmentDecision: "PENDING",
+        respondedAt: null,
       },
     });
   });

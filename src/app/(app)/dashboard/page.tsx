@@ -83,6 +83,7 @@ export default function DashboardPage() {
   } | null>(null);
 
   const [progressEvaluation, setProgressEvaluation] = useState<{
+    id: string;
     state:
       | "ON_TRACK"
       | "BEHIND_OPPOSITE"
@@ -105,7 +106,12 @@ export default function DashboardPage() {
       | "first_problem"
       | "consecutive_problem"
       | "recurrence_after_adjustment";
+    adjustmentDecision: "PENDING" | "ACCEPTED" | "DECLINED";
+    respondedAt: string | null;
   } | null>(null);
+
+  const [adjustmentSubmitting, setAdjustmentSubmitting] = useState(false);
+  const [adjustmentError, setAdjustmentError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -174,6 +180,66 @@ export default function DashboardPage() {
       cancelled = true;
     };
   }, []);
+
+  async function respondToAdjustment(
+    decision: "ACCEPTED" | "DECLINED",
+  ) {
+    if (
+      !progressEvaluation ||
+      !progressRecommendation ||
+      progressRecommendation.recommendedAction !== "CONSIDER_ADJUSTMENT" ||
+      progressRecommendation.adjustmentDecision !== "PENDING"
+    ) {
+      return;
+    }
+
+    setAdjustmentSubmitting(true);
+    setAdjustmentError(null);
+
+    try {
+      if (!progressEvaluation.id) {
+        throw new Error("Current progress evaluation is unavailable.");
+      }
+
+      const response = await fetch("/api/progress/adjustment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          evaluationId: progressEvaluation.id,
+          decision,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(
+          data?.error || "Unable to record your adjustment decision.",
+        );
+      }
+
+      const result = await response.json();
+
+      setProgressRecommendation((current) =>
+        current
+          ? {
+              ...current,
+              adjustmentDecision: result.adjustmentDecision,
+              respondedAt: result.respondedAt,
+            }
+          : current,
+      );
+    } catch (error) {
+      setAdjustmentError(
+        error instanceof Error
+          ? error.message
+          : "Unable to record your adjustment decision.",
+      );
+    } finally {
+      setAdjustmentSubmitting(false);
+    }
+  }
 
   const latestWeight = useMemo(() => {
     if (weightEntries.length === 0) return null;
@@ -436,6 +502,58 @@ export default function DashboardPage() {
                             : "This pattern has continued across plan periods. Consider discussing it with a qualified health professional."
                       }
                     </p>
+
+                    {progressRecommendation.recommendedAction ===
+                      "CONSIDER_ADJUSTMENT" &&
+                      progressRecommendation.adjustmentDecision ===
+                        "PENDING" && (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() =>
+                                respondToAdjustment("ACCEPTED")
+                              }
+                              disabled={adjustmentSubmitting}
+                            >
+                              {adjustmentSubmitting
+                                ? "Saving..."
+                                : "Accept"}
+                            </Button>
+
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                respondToAdjustment("DECLINED")
+                              }
+                              disabled={adjustmentSubmitting}
+                            >
+                              Decline
+                            </Button>
+                          </div>
+
+                          {adjustmentError && (
+                            <p className="text-xs text-red-600">
+                              {adjustmentError}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                    {progressRecommendation.recommendedAction ===
+                      "CONSIDER_ADJUSTMENT" &&
+                      progressRecommendation.adjustmentDecision !==
+                        "PENDING" && (
+                        <p className="mt-3 text-xs text-slate-500">
+                          {progressRecommendation.adjustmentDecision ===
+                          "ACCEPTED"
+                            ? "You accepted the recommendation. Your current plan has not been changed yet."
+                            : "You chose to keep your current plan for now."}
+                        </p>
+                      )}
                   </div>
                 )}
 

@@ -3,6 +3,7 @@ import type { ProgressEvaluationRepository } from "./repositories/progress-evalu
 
 export type CurrentProgressResult = {
   evaluation: {
+    id: string;
     state: "ON_TRACK" | "BEHIND_OPPOSITE" | "PLATEAU" | "INSUFFICIENT_DATA";
     changeKg: number | null;
     entriesCount: number;
@@ -21,6 +22,8 @@ export type CurrentProgressResult = {
       | "first_problem"
       | "consecutive_problem"
       | "recurrence_after_adjustment";
+    adjustmentDecision: "PENDING" | "ACCEPTED" | "DECLINED";
+    respondedAt: string | null;
   };
   planVersionId: string;
 };
@@ -56,6 +59,7 @@ export class GetCurrentProgressService {
     return {
       planVersionId: currentPlan.id,
       evaluation: {
+        id: evaluation.id,
         state: evaluation.state,
         changeKg: evaluation.changeKg,
         entriesCount: evaluation.entriesCount,
@@ -65,6 +69,8 @@ export class GetCurrentProgressService {
       recommendation: {
         recommendedAction: evaluation.recommendedAction,
         reason: evaluation.recommendationReason,
+        adjustmentDecision: evaluation.adjustmentDecision,
+        respondedAt: evaluation.respondedAt,
       },
     };
   }

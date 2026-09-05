@@ -31,6 +31,32 @@ vi.mock("@/lib/tracking/services/list-weight-entries", () => ({
   },
 }));
 
+vi.mock("@/lib/nutrition-plan/prisma-repository", () => ({
+  prismaNutritionPlanRepository: {
+    findLatestByUserId: vi.fn(),
+    findAllByUserId: vi.fn(),
+    create: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/progress/repositories/prisma-progress-evaluation-repository", () => ({
+  PrismaProgressEvaluationRepository: class PrismaProgressEvaluationRepository {},
+}));
+
+vi.mock("@/lib/progress/repositories/progress-evaluation-repository", () => ({
+  ProgressEvaluationRepository: class {},
+}));
+
+vi.mock("@/lib/progress/evaluate-and-record-service", () => ({
+  EvaluateAndRecordProgressService: class EvaluateAndRecordProgressService {
+    execute = vi.fn().mockResolvedValue(null);
+  },
+}));
+
+vi.mock("@/lib/profile/repositories/prisma-profile-repository", () => ({
+  PrismaProfileRepository: class PrismaProfileRepository {},
+}));
+
 import { GET, POST } from "./route";
 
 describe("POST /api/weight-entries", () => {

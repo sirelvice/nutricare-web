@@ -8,6 +8,11 @@ import {
 } from "@/lib/tracking/services/record-weight-entry";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
 import { ListWeightEntriesService } from "@/lib/tracking/services/list-weight-entries";
+import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
+import { PrismaProgressEvaluationRepository } from "@/lib/progress/repositories/prisma-progress-evaluation-repository";
+import { EvaluateAndRecordProgressService } from "@/lib/progress/evaluate-and-record-service";
+import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
+import { RecordWeightAndEvaluateService } from "@/lib/tracking/services/record-weight-and-evaluate";
 
 const createWeightEntrySchema = z.object({
   date: z.string(),
@@ -35,14 +40,28 @@ export async function POST(req: Request) {
     );
   }
 
-  const service = new RecordWeightEntryService(
-    new PrismaWeightRepository(prisma),
+  const weightRepository = new PrismaWeightRepository(prisma);
+  const recordWeightService = new RecordWeightEntryService(weightRepository);
+
+  const evaluateAndRecordProgressService =
+    new EvaluateAndRecordProgressService(
+      new PrismaProfileRepository(prisma),
+      weightRepository,
+      prismaNutritionPlanRepository,
+      new PrismaProgressEvaluationRepository(prisma),
+    );
+
+  const service = new RecordWeightAndEvaluateService(
+    recordWeightService,
+    prismaNutritionPlanRepository,
+    new PrismaProgressEvaluationRepository(prisma),
+    evaluateAndRecordProgressService,
   );
 
   try {
-    const entry = await service.execute(session.user.id, parsed.data);
+    const result = await service.execute(session.user.id, parsed.data);
 
-    return NextResponse.json(entry, { status: 201 });
+    return NextResponse.json(result.entry, { status: 201 });
   } catch (error) {
     if (error instanceof InvalidWeightEntryError) {
       return NextResponse.json(

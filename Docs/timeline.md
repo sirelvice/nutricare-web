@@ -49,3 +49,16 @@ This timeline records major product and engineering milestones. It is intentiona
 - Added route tests protecting authentication, ownership, and public-data boundaries.
 - Full regression checkpoint passed: 43 test files, 224 tests, TypeScript, and production build.
 - Added ADR 007 documenting the public impact vs private personal-report boundary.
+
+## 2026-09-06 — PostgreSQL becomes the single authoritative user-data store
+
+- Audited remaining browser `localStorage` consumers.
+- Confirmed active product history already derives from persisted PostgreSQL profile,
+  weight, and nutrition-plan data.
+- Retired obsolete browser-only profile, weight, BMI-history, calorie-history, and
+  metrics persistence modules.
+- Preserved `/history/bmi` and `/history/calories` as compatibility redirects to
+  `/history`.
+- Verified full regression: 43 test files, 224 tests, TypeScript, and production build.
+- Added ADR 008 documenting PostgreSQL as the authoritative authenticated user-data
+  store.

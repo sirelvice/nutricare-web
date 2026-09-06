@@ -69,3 +69,14 @@ This timeline records major product and engineering milestones. It is intentiona
 - Applied migration `20260906133433_remove_subscription_billing` and regenerated Prisma Client.
 - Verified 43 test files / 224 tests, TypeScript, and production build all pass.
 - Historical migration artifacts remain unchanged.
+
+## 2026-09-06 — Real password-reset flow
+
+- Replaced the prototype forgot-password simulation with a real server-side reset workflow.
+- Added PostgreSQL-backed `PasswordResetToken` persistence with hashed, expiring, single-use tokens.
+- Added `POST /api/auth/forgot-password` with account-enumeration protection and real Resend email delivery.
+- Added `POST /api/auth/reset-password` with atomic token consumption and bcrypt password replacement.
+- Added the reset-password UI and connected the forgot-password UI to the real API.
+- Added dedicated route coverage for password-reset success, failure, expiry, replay, delivery, and security behavior.
+- Verified the complete application: 46 test files, 238 tests, TypeScript check, and production build all pass.
+- Added ADR 010 documenting the password-reset security model.

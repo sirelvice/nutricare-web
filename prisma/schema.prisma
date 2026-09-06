@@ -19,6 +19,7 @@ model User {
   weightEntries       WeightEntry[]
   nutritionPlans      NutritionPlan[]
   progressEvaluations ProgressEvaluation[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Profile {
@@ -111,6 +112,19 @@ model PartnerInquiry {
 
   @@index([createdAt])
   @@index([email])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 enum PartnerInterest {

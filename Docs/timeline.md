@@ -62,3 +62,10 @@ This timeline records major product and engineering milestones. It is intentiona
 - Verified full regression: 43 test files, 224 tests, TypeScript, and production build.
 - Added ADR 008 documenting PostgreSQL as the authoritative authenticated user-data
   store.
+## 2026-09-06 — Free core / billing retirement
+
+- Decided that the core NutriCare personal nutrition experience is free at this stage; monetization is deferred until validated additional capabilities exist.
+- Retired the prototype subscription and Stripe implementation from the live application.
+- Applied migration `20260906133433_remove_subscription_billing` and regenerated Prisma Client.
+- Verified 43 test files / 224 tests, TypeScript, and production build all pass.
+- Historical migration artifacts remain unchanged.

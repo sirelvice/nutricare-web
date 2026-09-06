@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
         email: trimmedEmail,
         name: name ? name.trim() : null,
         passwordHash,
-        // role and subscriptionTier will use defaults from schema
       },
     });
 

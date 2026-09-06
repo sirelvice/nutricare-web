@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
-import { Role, SubscriptionTier } from "@prisma/client";
+import { Role } from "@prisma/client";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   debug: false,
@@ -42,7 +42,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
-          subscriptionTier: user.subscriptionTier,
         };
       },
     }),
@@ -55,7 +54,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email = user.email;
         token.name = user.name;
         token.role = user.role;
-        token.subscriptionTier = user.subscriptionTier;
       }
       return token;
     },
@@ -72,9 +70,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       session.user.name = token.name ?? null;
       session.user.role = token.role ?? Role.USER;
-      session.user.subscriptionTier =
-        token.subscriptionTier ?? SubscriptionTier.FREE;
-
       return session;
     },
   },

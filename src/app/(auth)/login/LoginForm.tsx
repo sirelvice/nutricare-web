@@ -201,7 +201,7 @@ export default function LoginForm() {
 
         {/* Trust signals */}
         <p className="text-center text-xs text-slate-500">
-          Your data is secure • End-to-end encrypted
+          Your account is protected with secure authentication
         </p>
       </div>
     </div>

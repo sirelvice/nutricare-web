@@ -7,7 +7,13 @@ import { Role } from "@prisma/client";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   debug: false,
 
-  session: { strategy: "jwt" },
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60,
+    updateAge: 24 * 60 * 60,
+  },
 
   pages: {
     signIn: "/login",
@@ -42,6 +48,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
+          authVersion: user.authVersion,
         };
       },
     }),
@@ -54,11 +61,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email = user.email;
         token.name = user.name;
         token.role = user.role;
+        token.authVersion = user.authVersion;
       }
+
+      if (token.sub) {
+        const currentUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { authVersion: true },
+        });
+
+        if (!currentUser || currentUser.authVersion !== token.authVersion) {
+          token.invalidated = true;
+        }
+      }
+
       return token;
     },
 
     async session({ session, token }) {
+      if (token.invalidated) {
+        throw new Error("Session invalidated");
+      }
       if (!session.user) return session;
 
       const userId = token.sub;

@@ -173,7 +173,10 @@ describe("POST /api/auth/reset-password", () => {
     });
     expect(userUpdate).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      data: { passwordHash: "hashed-password" },
+      data: {
+        passwordHash: "hashed-password",
+        authVersion: { increment: 1 },
+      },
     });
   });
 

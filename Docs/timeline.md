@@ -39,3 +39,13 @@ This timeline records major product and engineering milestones. It is intentiona
 - Resolved PostgreSQL/Supabase TLS certificate verification and connectivity issues.
 - Added test coverage across progress evaluation, recommendation, persistence, services, and API contracts.
 - Reached a clean TypeScript check and successful production build.
+
+## 2026-09-06 — Public/private reporting boundary
+
+- Reworked `/api/impact-snapshot` as a public static programme-impact endpoint.
+- Removed user-specific localStorage data from the server-side impact snapshot.
+- Reworked `/api/report/pdf` into an authenticated personal report export.
+- Personal PDF generation now uses the PostgreSQL-backed `GetReportService`.
+- Added route tests protecting authentication, ownership, and public-data boundaries.
+- Full regression checkpoint passed: 43 test files, 224 tests, TypeScript, and production build.
+- Added ADR 007 documenting the public impact vs private personal-report boundary.

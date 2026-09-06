@@ -1,165 +1,165 @@
-// src/app/api/report/pdf/route.ts
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { prisma } from "@/lib/db";
+import { GetReportService } from "@/lib/report/service";
+import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
+import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
+import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
 
-export const runtime = "nodejs"; // safe — pdf-lib works fine here
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const reportService = new GetReportService(
+  new PrismaProfileRepository(prisma),
+  new PrismaWeightRepository(prisma),
+  prismaNutritionPlanRepository,
+);
 
 export async function GET() {
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595.28, 841.89]); // A4 (595 × 842 pt)
-  const width = page.getWidth();
-  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const session = await auth();
 
-  const margin = 50;
-  let y = page.getHeight() - margin; // start from top
-
-  // ── Logo ────────────────────────────────────────────────────────────────
-  try {
-    const logoBytes = await fetch("http://localhost:3000/brand/nutricare-design-no-bg-low.png")
-      .then((res) => res.arrayBuffer());
-    const logoImage = await pdfDoc.embedPng(logoBytes);
-
-    const logoScale = 0.15; // adjust this to fit nicely
-    const logoWidth = logoImage.width * logoScale;
-    const logoHeight = logoImage.height * logoScale;
-
-    // Center horizontally
-    const logoX = (width - logoWidth) / 2;
-
-    page.drawImage(logoImage, {
-      x: logoX,
-      y: y - logoHeight,
-      width: logoWidth,
-      height: logoHeight,
-    });
-
-    y -= logoHeight + 20; // space below logo
-  } catch (e) {
-    console.error("Failed to load logo:", e);
-    // Continue without logo if it fails (fallback)
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "Authentication required." },
+      { status: 401 },
+    );
   }
 
-  // ── Main Title (centered below logo) ───────────────────────────────────
-  const title = "NutriCare Impact Snapshot";
-  const titleWidth = helveticaBold.widthOfTextAtSize(title, 20);
-  page.drawText(title, {
-    x: (width - titleWidth) / 2,
-    y,
-    size: 24,
-    font: helveticaBold,
-    color: rgb(0.1, 0.12, 0.16),
-  });
+  try {
+    const report = await reportService.execute(session.user.id);
 
-  y -= 40; // space after title
+    if (!report) {
+      return NextResponse.json(
+        { error: "Profile not found." },
+        { status: 404 },
+      );
+    }
 
-  // ── Subtitle ────────────────────────────────────────────────────────────
-  const sub = "Generated for program reporting and donor/partner review";
-  const subWidth = helvetica.widthOfTextAtSize(sub, 12);
-  page.drawText(sub, {
-    x: (width - subWidth) / 2,
-    y,
-    size: 12,
-    font: helvetica,
-    color: rgb(0.35, 0.4, 0.5),
-  });
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595.28, 841.89]);
+    const width = page.getWidth();
+    const height = page.getHeight();
 
-  y -= 50;
+    const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  // ── Content Helpers ─────────────────────────────────────────────────────
-  const drawSectionTitle = (text: string) => {
-    page.drawText(text, {
+    const margin = 50;
+    let y = height - margin;
+
+    const drawText = (
+      text: string,
+      size = 11,
+      font = regular,
+      gap = 18,
+    ) => {
+      page.drawText(text, {
+        x: margin,
+        y,
+        size,
+        font,
+        color: rgb(0.12, 0.14, 0.18),
+      });
+      y -= gap;
+    };
+
+    const drawSection = (title: string) => {
+      y -= 8;
+      drawText(title, 14, bold, 24);
+    };
+
+    drawText("NutriCare Personal Report", 22, bold, 32);
+    drawText(
+      `Generated ${new Date(report.generatedAt).toLocaleString()}`,
+      10,
+      regular,
+      24,
+    );
+
+    drawSection("Profile");
+    drawText(`Goal: ${report.profile.goal}`);
+    drawText(`Activity: ${report.profile.activity}`);
+    drawText(`Height: ${report.profile.heightCm ?? "Not provided"} cm`);
+    drawText(`Age: ${report.profile.age ?? "Not provided"}`);
+
+    drawSection("Current health snapshot");
+
+    const latestWeight = report.weight.entries[0]?.weightKg ?? null;
+
+    drawText(
+      `Latest weight: ${
+        latestWeight !== null ? `${latestWeight} kg` : "Not recorded"
+      }`,
+    );
+
+    drawText(
+      report.bmi.latest
+        ? `BMI: ${report.bmi.latest.value.toFixed(1)} (${report.bmi.latest.category})`
+        : "BMI: Not available",
+    );
+
+    drawText(`Weight entries: ${report.weight.entriesCount}`);
+
+    drawSection("Nutrition plan");
+
+    if (report.nutritionPlan) {
+      drawText(`Plan version: ${report.nutritionPlan.version}`);
+      drawText(
+        `Target calories: ${report.nutritionPlan.targetCalories} kcal/day`,
+      );
+      drawText(`Protein: ${report.nutritionPlan.proteinG} g/day`);
+      drawText(`Carbohydrates: ${report.nutritionPlan.carbsG} g/day`);
+      drawText(`Fat: ${report.nutritionPlan.fatG} g/day`);
+    } else {
+      drawText("No nutrition plan has been generated yet.");
+    }
+
+    drawSection("Weight trend");
+
+    if (report.weight.stats) {
+      drawText(`Change: ${report.weight.stats.change} kg`);
+      drawText(
+        `From ${report.weight.stats.first.weightKg} kg on ${report.weight.stats.first.date}`,
+      );
+      drawText(
+        `to ${report.weight.stats.last.weightKg} kg on ${report.weight.stats.last.date}`,
+      );
+    } else {
+      drawText("No weight history has been recorded yet.");
+    }
+
+    page.drawLine({
+      start: { x: margin, y: margin + 10 },
+      end: { x: width - margin, y: margin + 10 },
+      thickness: 0.5,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+
+    page.drawText("Personal report — keep this document private.", {
       x: margin,
-      y,
-      size: 14,
-      font: helveticaBold,
-      color: rgb(0.1, 0.12, 0.16),
+      y: margin - 10,
+      size: 9,
+      font: regular,
+      color: rgb(0.45, 0.45, 0.45),
     });
-    y -= 24;
-  };
 
-  const drawBullet = (text: string) => {
-    page.drawText(`• ${text}`, {
-      x: margin + 10,
-      y,
-      size: 11,
-      font: helvetica,
-      color: rgb(0.12, 0.14, 0.18),
+    const pdfBytes = await pdfDoc.save();
+
+    return new NextResponse(Buffer.from(pdfBytes), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition":
+          'attachment; filename="nutricare-personal-report.pdf"',
+        "Cache-Control": "no-store",
+      },
     });
-    y -= 18;
-  };
+  } catch (error) {
+    console.error("GET /api/report/pdf failed", error);
 
-  // ── Summary Section ─────────────────────────────────────────────────────
-  drawSectionTitle("Summary");
-  drawBullet("People reached: 1,245");
-  drawBullet("Facilities: 18");
-  drawBullet("Screenings completed: 3,420");
-  drawBullet("Reports exported: 62");
-
-  y -= 20;
-
-  // ── Safeguards Section ──────────────────────────────────────────────────
-  drawSectionTitle("Safeguards");
-  drawBullet("Privacy-first data handling");
-  drawBullet("No individual health data shared");
-  drawBullet("Aggregated metrics only");
-
-  y -= 40;
-
-  // ── Footer Note ─────────────────────────────────────────────────────────
-  const note = "Note: This is a demo snapshot. Future versions will pull real data from profile and tracking history.";
-  const noteLines = note.split('\n');
-  noteLines.forEach((line) => {
-    page.drawText(line, {
-      x: margin,
-      y,
-      size: 10,
-      font: helvetica,
-      color: rgb(0.4, 0.45, 0.55),
-    });
-    y -= 14;
-  });
-
-  // ── Footer (date/time + page number) ────────────────────────────────────
-  const now = new Date();
-  const footerText = `Generated on ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`;
-  const pageNum = "Page 1 of 1";
-
-  page.drawText(footerText, {
-    x: margin,
-    y: margin - 10,
-    size: 9,
-    font: helvetica,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-
-  const pageNumWidth = helvetica.widthOfTextAtSize(pageNum, 9);
-  page.drawText(pageNum, {
-    x: width - margin - pageNumWidth,
-    y: margin - 10,
-    size: 9,
-    font: helvetica,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-
-  // Thin line separator above footer
-  page.drawLine({
-    start: { x: margin, y: margin + 10 },
-    end: { x: width - margin, y: margin + 10 },
-    thickness: 0.5,
-    color: rgb(0.8, 0.8, 0.8),
-  });
-
-  // Save & serve
-  const pdfBytes = await pdfDoc.save();
-  const buffer = Buffer.from(pdfBytes);
-
-  return new NextResponse(buffer, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": 'attachment; filename="nutricare-impact-report.pdf"',
-      "Cache-Control": "no-store",
-    },
-  });
+    return NextResponse.json(
+      { error: "Unable to generate report." },
+      { status: 500 },
+    );
+  }
 }

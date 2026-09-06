@@ -8,21 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { loadInquiries, saveInquiry, type PartnerInquiry } from "@/lib/partners/inquiries";
-
-type Interest = PartnerInquiry["interest"];
-
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
+type Interest = "pilot" | "donation" | "research" | "integration" | "other";
 
 const interests: { value: Interest; label: string; hint: string }[] = [
   { value: "pilot", label: "Pilot programme", hint: "Deploy NutriCare for a group/site" },
@@ -40,9 +26,11 @@ export default function PartnersPage() {
   const [interest, setInterest] = useState<Interest>("pilot");
   const [message, setMessage] = useState("");
 
-  const [sent, setSent] = useState(false);
-
-  const inquiries = useMemo(() => loadInquiries(), []);
+  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const valid = useMemo(() => {
     if (!orgName.trim()) return false;
@@ -52,32 +40,63 @@ export default function PartnersPage() {
     return true;
   }, [orgName, contactName, email, message]);
 
-  function onSubmit() {
-    if (!valid) return;
+  async function onSubmit() {
+    if (!valid || submitting) return;
 
-    saveInquiry({
-      orgName: orgName.trim(),
-      contactName: contactName.trim(),
-      email: email.trim(),
-      country: country.trim() ? country.trim() : undefined,
-      interest,
-      message: message.trim(),
-    });
+    setSubmitting(true);
+    setStatus(null);
 
-    setSent(true);
-    setTimeout(() => setSent(false), 1500);
+    try {
+      const response = await fetch("/api/partners/inquiries", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orgName: orgName.trim(),
+          contactName: contactName.trim(),
+          email: email.trim(),
+          country: country.trim() || undefined,
+          interest,
+          message: message.trim(),
+        }),
+      });
 
-    setOrgName("");
-    setContactName("");
-    setEmail("");
-    setCountry("");
-    setInterest("pilot");
-    setMessage("");
-  }
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | { ok?: boolean; id?: string }
+        | null;
 
-  function exportInquiries() {
-    const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    download(`nutricare-partner-inquiries-${ts}.json`, JSON.stringify(inquiries, null, 2));
+      if (!response.ok) {
+        throw new Error(
+          data && "error" in data && data.error
+            ? data.error
+            : "Unable to submit your inquiry.",
+        );
+      }
+
+      setStatus({
+        type: "success",
+        text: "Inquiry submitted successfully.",
+      });
+
+      setOrgName("");
+      setContactName("");
+      setEmail("");
+      setCountry("");
+      setInterest("pilot");
+      setMessage("");
+    } catch (error) {
+      setStatus({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Unable to submit your inquiry.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -94,24 +113,14 @@ export default function PartnersPage() {
         </h1>
 
         <p className="max-w-3xl text-slate-600">
-          NutriCare is a privacy-first nutrition intelligence platform built for individuals and programmes.
-          We support pilots with exportable reporting and a clear impact model.
+          NutriCare is a privacy-first nutrition intelligence platform built for
+          individuals and programmes. We support pilots with explainable tools,
+          reporting, and a clear impact model.
         </p>
 
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link href="/impact">View impact model</Link>
-          </Button>
-          <Button onClick={exportInquiries} variant="outline" disabled={inquiries.length === 0}>
-            Export inquiries (JSON)
-          </Button>
-        </div>
-
-        {inquiries.length > 0 ? (
-          <p className="text-xs text-slate-500">
-            Stored inquiries on this device: <span className="font-medium">{inquiries.length}</span>
-          </p>
-        ) : null}
+        <Button asChild variant="outline">
+          <Link href="/impact">View impact model</Link>
+        </Button>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -120,7 +129,8 @@ export default function PartnersPage() {
             <CardTitle className="text-lg">Pilot-ready</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-slate-600">
-            Tools for screening + trend tracking, designed to be explainable and easy to deploy.
+            Tools for screening, education, and trend tracking designed to be
+            explainable and practical to deploy.
           </CardContent>
         </Card>
 
@@ -129,16 +139,18 @@ export default function PartnersPage() {
             <CardTitle className="text-lg">Privacy-first</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-slate-600">
-            MVP stores data locally. Backend phase adds secure accounts and aggregated reporting.
+            Personal user data is stored securely in the NutriCare backend, with
+            reporting designed around appropriate access boundaries.
           </CardContent>
         </Card>
 
         <Card className="rounded-3xl">
           <CardHeader>
-            <CardTitle className="text-lg">Exportable reporting</CardTitle>
+            <CardTitle className="text-lg">Reporting</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-slate-600">
-            JSON exports today; PDF and dashboards later — built for donor/partner workflows.
+            Personal reporting is available today, while programme and aggregate
+            reporting can evolve as partner requirements are validated.
           </CardContent>
         </Card>
       </section>
@@ -153,22 +165,47 @@ export default function PartnersPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="org">Organisation</Label>
-                <Input id="org" value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="e.g. Community Health Org" />
+                <Input
+                  id="org"
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                  placeholder="e.g. Community Health Org"
+                  disabled={submitting}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="name">Contact name</Label>
-                <Input id="name" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. Jane Doe" />
+                <Input
+                  id="name"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="e.g. Jane Doe"
+                  disabled={submitting}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@org.org" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@org.org"
+                  disabled={submitting}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="country">Country (optional)</Label>
-                <Input id="country" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. Kenya" />
+                <Input
+                  id="country"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  placeholder="e.g. Kenya"
+                  disabled={submitting}
+                />
               </div>
             </div>
 
@@ -180,9 +217,12 @@ export default function PartnersPage() {
                     key={opt.value}
                     type="button"
                     onClick={() => setInterest(opt.value)}
+                    disabled={submitting}
                     className={[
                       "rounded-2xl border p-3 text-left",
-                      interest === opt.value ? "border-slate-900 bg-slate-50" : "hover:bg-slate-50",
+                      interest === opt.value
+                        ? "border-slate-900 bg-slate-50"
+                        : "hover:bg-slate-50",
                     ].join(" ")}
                   >
                     <div className="text-sm font-semibold">{opt.label}</div>
@@ -198,20 +238,32 @@ export default function PartnersPage() {
                 id="msg"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="min-h-[120px] w-full rounded-2xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-200"
+                className="min-h-[120px] w-full rounded-2xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-200 disabled:opacity-50"
                 placeholder="Tell us about your programme, audience size, and what you want to measure."
+                disabled={submitting}
               />
-              <p className="text-xs text-slate-500">
-                We’ll later connect this to email + database. For now it saves locally on your device.
-              </p>
             </div>
 
-            <Button onClick={onSubmit} disabled={!valid}>
-              {sent ? "Saved ✓" : "Submit inquiry"}
+            <Button onClick={onSubmit} disabled={!valid || submitting}>
+              {submitting ? "Submitting..." : "Submit inquiry"}
             </Button>
-            {!valid ? (
+
+            {status && (
+              <p
+                className={`text-sm ${
+                  status.type === "success"
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {status.text}
+              </p>
+            )}
+
+            {!valid && !status ? (
               <p className="text-xs text-slate-500">
-                Fill organisation, contact, valid email, and a short message (10+ chars).
+                Fill organisation, contact, valid email, and a short message
+                (10+ characters).
               </p>
             ) : null}
           </CardContent>
@@ -223,18 +275,11 @@ export default function PartnersPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-slate-700">
             <ul className="list-disc space-y-2 pl-5">
-              <li>Clear pilot plan: screening + education + tracking</li>
-              <li>Exportable reporting snapshot for donors</li>
-              <li>Privacy-first approach suitable for sensitive contexts</li>
-              <li>Future: aggregated dashboards + site-level reporting</li>
+              <li>Clear pilot plan: screening, education, and tracking</li>
+              <li>Explainable personal and programme-oriented reporting</li>
+              <li>Privacy-first handling of sensitive nutrition data</li>
+              <li>Future programme and site-level capabilities as validated</li>
             </ul>
-
-            <div className="rounded-2xl border bg-white p-4">
-              <div className="font-semibold">Next backend step</div>
-              <p className="mt-1 text-slate-600">
-                Add secure sign-in, store profiles & history in a database, and generate aggregate reports per site.
-              </p>
-            </div>
           </CardContent>
         </Card>
       </section>

@@ -136,7 +136,7 @@ export default function ContactPage() {
                   disabled={loading}
                 />
                 <p className="text-xs text-slate-500">
-                  (MVP note: this form is UI-only for now. Next sprint we’ll wire it to an API + email.)
+                  Your message is submitted securely and stored for follow-up.
                 </p>
               </div>
 
@@ -171,7 +171,7 @@ export default function ContactPage() {
               <p>Email: <span className="font-medium text-slate-900">support@nutricare.app</span></p>
               <p>Hours: Mon–Fri, 9am–5pm</p>
               <p className="text-xs text-slate-500">
-                Replace with your real email when you’re ready.
+                Support inquiries are handled through the NutriCare contact channel.
               </p>
             </CardContent>
           </Card>
@@ -185,7 +185,7 @@ export default function ContactPage() {
                 For pilots, outcome reporting, or deployments, reach out and we’ll share the partner brief.
               </p>
               <p className="text-xs text-slate-500">
-                Tip: we’ll later connect this to the “Impact Snapshot” export.
+                For programme and impact discussions, use the partner inquiry form.
               </p>
             </CardContent>
           </Card>

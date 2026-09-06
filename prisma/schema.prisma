@@ -98,6 +98,29 @@ model ContactMessage {
   updatedAt DateTime @updatedAt
 }
 
+model PartnerInquiry {
+  id          String   @id @default(cuid())
+  orgName     String
+  contactName String
+  email       String
+  country     String?
+  interest    PartnerInterest
+  message     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([email])
+}
+
+enum PartnerInterest {
+  PILOT
+  DONATION
+  RESEARCH
+  INTEGRATION
+  OTHER
+}
+
 enum Gender {
   MALE
   FEMALE

@@ -54,6 +54,16 @@ Stale-plan protection is enforced both before orchestration and again inside the
 - The application service performs prerequisite reads before entering the transaction, while the transaction repeats critical applicability checks for consistency.
 - More integration testing is required because the workflow depends on real PostgreSQL transaction behavior.
 
+## Plan-Period Lifecycle
+
+A newly created plan version establishes a fresh progress-evaluation boundary.
+
+When evaluating the current plan, only weight entries dated on or after the current plan's `createdAt` date are included. Historical entries remain available for reporting but do not influence the new plan period's progress state.
+
+For the recommendation layer, the immediately preceding plan version may provide `PreviousPlanContext`. When that prior period ended with a persisted problem evaluation that was actually `ACCEPTED` for adjustment, a problem in the new plan period is treated as an immediate recurrence and escalates to `SUGGEST_PROFESSIONAL_CONSULT`.
+
+The previous-plan context is derived from persisted plan and evaluation history rather than stored as duplicated state.
+
 ## Testing Implications
 
 The integration tests cover:

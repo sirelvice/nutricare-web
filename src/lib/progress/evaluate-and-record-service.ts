@@ -8,6 +8,7 @@ import {
 import {
   recommendAdjustment,
   type AdjustmentRecommendation,
+  type PreviousPlanContext,
 } from "./recommendation";
 import type {
   PersistedProgressEvaluation,
@@ -41,9 +42,10 @@ export class EvaluateAndRecordProgressService {
       return null;
     }
 
-    const [entries, currentPlan, history] = await Promise.all([
+    const [entries, currentPlan, plans, history] = await Promise.all([
       this.weightRepository.findByUserId(userId),
       this.nutritionPlanRepository.findLatestByUserId(userId),
+      this.nutritionPlanRepository.findAllByUserId(userId),
       this.evaluationRepository.findByUserId(userId),
     ]);
 
@@ -62,6 +64,32 @@ export class EvaluateAndRecordProgressService {
 
     const evaluationTimestamp = new Date().toISOString();
 
+    const previousPlan =
+      plans.find((plan) => plan.version === currentPlan.version - 1) ?? null;
+
+    const previousAdjustmentEvaluation = previousPlan
+      ? history
+          .filter(
+            (item) =>
+              item.planVersionId === previousPlan.id &&
+              item.adjustmentDecision === "ACCEPTED",
+          )
+          .sort((a, b) => b.evaluatedAt.localeCompare(a.evaluatedAt))[0] ?? null
+      : null;
+
+    const previousPlanContext: PreviousPlanContext | null =
+      previousPlan && previousAdjustmentEvaluation
+        ? {
+            planVersionId: previousPlan.id,
+            finalProblemState:
+              previousAdjustmentEvaluation.state === "PLATEAU" ||
+              previousAdjustmentEvaluation.state === "BEHIND_OPPOSITE"
+                ? previousAdjustmentEvaluation.state
+                : null,
+            wasAdjustment: true,
+          }
+        : null;
+
     const recommendation = recommendAdjustment({
       currentEvaluation: {
         state: evaluation.state,
@@ -73,7 +101,7 @@ export class EvaluateAndRecordProgressService {
         planVersionId: item.planVersionId,
         evaluatedAt: item.evaluatedAt,
       })),
-      previousPlanContext: null,
+      previousPlanContext,
     });
 
     const persistedEvaluation = await this.evaluationRepository.create(

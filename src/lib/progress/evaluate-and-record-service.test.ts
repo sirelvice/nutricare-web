@@ -40,6 +40,18 @@ const nutritionPlanRepository = (goal: "lose" | "maintain" | "gain") =>
       fatG: 56,
       createdAt: "2026-08-01T00:00:00.000Z",
     }),
+    findAllByUserId: vi.fn().mockResolvedValue([
+      {
+        id: "plan-1",
+        version: 1,
+        goal,
+        targetCalories: 2000,
+        proteinG: 150,
+        carbsG: 225,
+        fatG: 56,
+        createdAt: "2026-08-01T00:00:00.000Z",
+      },
+    ]),
   }) as unknown as NutritionPlanRepository;
 
 const evaluationRepository = (
@@ -183,9 +195,119 @@ describe("EvaluateAndRecordProgressService", () => {
     });
   });
 
+  it("ignores weight entries from before the current plan started", async () => {
+    const evaluations = evaluationRepository();
+
+    const service = new EvaluateAndRecordProgressService(
+      profileRepository("gain"),
+      weightRepository([
+        { id: "old", date: "2026-07-25", weightKg: 59 },
+        { id: "1", date: "2026-08-01", weightKg: 60 },
+        { id: "2", date: "2026-08-08", weightKg: 60.3 },
+        { id: "3", date: "2026-08-15", weightKg: 60.6 },
+      ]),
+      nutritionPlanRepository("gain"),
+      evaluations,
+    );
+
+    const result = await service.execute("user-1");
+
+    expect(result?.evaluation).toMatchObject({
+      state: "ON_TRACK",
+      changeKg: 0.6,
+      entriesCount: 3,
+      evaluationDays: 14,
+    });
+  });
+
+  it("suggests professional consultation when a problem recurs after an accepted adjustment", async () => {
+    const evaluations = evaluationRepository([
+      {
+        id: "previous",
+        userId: "user-1",
+        planVersionId: "plan-1",
+        state: "PLATEAU",
+        changeKg: 0.1,
+        entriesCount: 5,
+        evaluationDays: 28,
+        recommendedAction: "CONSIDER_ADJUSTMENT",
+        recommendationReason: "consecutive_problem",
+        adjustmentDecision: "ACCEPTED",
+        respondedAt: "2026-09-29T12:00:00.000Z",
+        evaluatedAt: "2026-09-29T12:00:00.000Z",
+      },
+    ]);
+
+    const plans = nutritionPlanRepository("lose");
+
+    vi.mocked(plans.findLatestByUserId).mockResolvedValue({
+      id: "plan-2",
+      version: 2,
+      goal: "lose",
+      targetCalories: 1900,
+      proteinG: 145,
+      carbsG: 210,
+      fatG: 53,
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+
+    vi.mocked(plans.findAllByUserId).mockResolvedValue([
+      {
+        id: "plan-2",
+        version: 2,
+        goal: "lose",
+        targetCalories: 1900,
+        proteinG: 145,
+        carbsG: 210,
+        fatG: 53,
+        createdAt: "2026-10-01T00:00:00.000Z",
+      },
+      {
+        id: "plan-1",
+        version: 1,
+        goal: "lose",
+        targetCalories: 2000,
+        proteinG: 150,
+        carbsG: 225,
+        fatG: 56,
+        createdAt: "2026-08-01T00:00:00.000Z",
+      },
+    ]);
+
+    const service = new EvaluateAndRecordProgressService(
+      profileRepository("lose"),
+      weightRepository([
+        { id: "old-1", date: "2026-09-29", weightKg: 70 },
+        { id: "old-2", date: "2026-09-30", weightKg: 69.9 },
+        { id: "1", date: "2026-10-01", weightKg: 69.8 },
+        { id: "2", date: "2026-10-08", weightKg: 69.7 },
+        { id: "3", date: "2026-10-15", weightKg: 69.6 },
+      ]),
+      plans,
+      evaluations,
+    );
+
+    const result = await service.execute("user-1");
+
+    expect(result?.recommendation).toEqual({
+      recommendedAction: "SUGGEST_PROFESSIONAL_CONSULT",
+      reason: "recurrence_after_adjustment",
+    });
+
+    expect(evaluations.create).toHaveBeenCalledWith(
+      "user-1",
+      expect.objectContaining({
+        planVersionId: "plan-2",
+        recommendedAction: "SUGGEST_PROFESSIONAL_CONSULT",
+        recommendationReason: "recurrence_after_adjustment",
+      }),
+    );
+  });
+
   it("rejects evaluation when no current nutrition plan exists", async () => {
     const planRepository = {
       findLatestByUserId: vi.fn().mockResolvedValue(null),
+      findAllByUserId: vi.fn().mockResolvedValue([]),
     } as unknown as NutritionPlanRepository;
 
     const service = new EvaluateAndRecordProgressService(

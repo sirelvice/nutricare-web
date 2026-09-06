@@ -21,6 +21,7 @@ export default defineConfig({
           ],
           exclude: [
             "src/lib/nutrition-plan/prisma-repository.test.ts",
+            "src/lib/progress/evaluation-lifecycle.integration.test.ts",
             "src/lib/progress/repositories/adjustment-workflow-repository.test.ts",
             "src/lib/progress/repositories/prisma-progress-evaluation-repository.test.ts",
           ],
@@ -35,10 +36,12 @@ export default defineConfig({
           name: "database",
           include: [
             "src/lib/nutrition-plan/prisma-repository.test.ts",
+            "src/lib/progress/evaluation-lifecycle.integration.test.ts",
             "src/lib/progress/repositories/adjustment-workflow-repository.test.ts",
             "src/lib/progress/repositories/prisma-progress-evaluation-repository.test.ts",
           ],
           fileParallelism: false,
+          testTimeout: 15000,
           sequence: {
             groupOrder: 1,
           },

@@ -9,8 +9,6 @@ describe("PrismaProgressEvaluationRepository", () => {
   const repository = new PrismaProgressEvaluationRepository(prisma);
 
   beforeEach(async () => {
-    await prisma.progressEvaluation.deleteMany({});
-    await prisma.nutritionPlan.deleteMany({});
     await prisma.user.deleteMany({
       where: {
         email: {
@@ -134,6 +132,90 @@ describe("PrismaProgressEvaluationRepository", () => {
 
     expect(evaluations).toHaveLength(1);
     expect(evaluations[0].userId).toBe(userA.id);
+  });
+
+  it("finds a specific evaluation for its owner", async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `progress-repository-find-${Date.now()}@example.com`,
+        passwordHash: TEST_PASSWORD_HASH,
+      },
+    });
+
+    const plan = await prisma.nutritionPlan.create({
+      data: {
+        userId: user.id,
+        version: 1,
+        goal: "LOSE",
+        targetCalories: 2000,
+        proteinG: 150,
+        carbsG: 225,
+        fatG: 56,
+      },
+    });
+
+    const created = await repository.create(user.id, {
+      planVersionId: plan.id,
+      state: "PLATEAU",
+      changeKg: 0.1,
+      entriesCount: 3,
+      evaluationDays: 14,
+      recommendedAction: "CONSIDER_ADJUSTMENT",
+      recommendationReason: "consecutive_problem",
+      evaluatedAt: "2026-09-17T12:00:00.000Z",
+    });
+
+    const found = await repository.findById(user.id, created.id);
+
+    expect(found).toMatchObject(created);
+
+    await prisma.user.delete({ where: { id: user.id } });
+  });
+
+  it("does not find another user's evaluation by ID", async () => {
+    const userA = await prisma.user.create({
+      data: {
+        email: `progress-repository-find-a-${Date.now()}@example.com`,
+        passwordHash: TEST_PASSWORD_HASH,
+      },
+    });
+
+    const userB = await prisma.user.create({
+      data: {
+        email: `progress-repository-find-b-${Date.now()}@example.com`,
+        passwordHash: TEST_PASSWORD_HASH,
+      },
+    });
+
+    const planA = await prisma.nutritionPlan.create({
+      data: {
+        userId: userA.id,
+        version: 1,
+        goal: "LOSE",
+        targetCalories: 2000,
+        proteinG: 150,
+        carbsG: 225,
+        fatG: 56,
+      },
+    });
+
+    const created = await repository.create(userA.id, {
+      planVersionId: planA.id,
+      state: "PLATEAU",
+      changeKg: 0.1,
+      entriesCount: 3,
+      evaluationDays: 14,
+      recommendedAction: "CONSIDER_ADJUSTMENT",
+      recommendationReason: "consecutive_problem",
+      evaluatedAt: "2026-09-18T12:00:00.000Z",
+    });
+
+    const found = await repository.findById(userB.id, created.id);
+
+    expect(found).toBeNull();
+
+    await prisma.user.delete({ where: { id: userA.id } });
+    await prisma.user.delete({ where: { id: userB.id } });
   });
 
   it("filters evaluations by user and plan version", async () => {

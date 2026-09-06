@@ -30,11 +30,12 @@ export class RespondToAdjustmentService {
       throw new Error("Invalid adjustment decision");
     }
 
-    const evaluation = await this.evaluationRepository.findLatestByUserId(
+    const evaluation = await this.evaluationRepository.findById(
       userId,
+      input.evaluationId,
     );
 
-    if (!evaluation || evaluation.id !== input.evaluationId) {
+    if (!evaluation) {
       throw new Error("Progress evaluation not found");
     }
 

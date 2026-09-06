@@ -42,6 +42,11 @@ export interface ProgressEvaluationRepository {
     userId: string,
   ): Promise<PersistedProgressEvaluation[]>;
 
+  findById(
+    userId: string,
+    evaluationId: string,
+  ): Promise<PersistedProgressEvaluation | null>;
+
   findByPlanVersionId(
     userId: string,
     planVersionId: string,

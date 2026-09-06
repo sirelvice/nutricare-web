@@ -105,6 +105,20 @@ export class PrismaProgressEvaluationRepository
     return evaluations.map(toDomain);
   }
 
+  async findById(
+    userId: string,
+    evaluationId: string,
+  ): Promise<PersistedProgressEvaluation | null> {
+    const evaluation = await this.db.progressEvaluation.findFirst({
+      where: {
+        id: evaluationId,
+        userId,
+      },
+    });
+
+    return evaluation ? toDomain(evaluation) : null;
+  }
+
   async findByPlanVersionId(
     userId: string,
     planVersionId: string,

@@ -30,7 +30,9 @@ This timeline records major product and engineering milestones. It is intentiona
 - Added persisted adjustment decision state.
 - Added the API workflow for accepting or declining an adjustment recommendation.
 - Added the dashboard decision point for the user.
-- Next implementation milestone: applying an accepted adjustment by creating a new nutrition-plan version.
+- Implemented accepted adjustments as a transactional workflow that creates the next nutrition-plan version and marks the recommendation accepted atomically.
+- Added stale-plan protection and cross-user authorization checks at the workflow persistence boundary.
+- Updated the dashboard to reflect the newly active nutrition-plan version immediately after acceptance.
 
 ### Engineering hardening
 - Resolved PostgreSQL/Supabase TLS certificate verification and connectivity issues.

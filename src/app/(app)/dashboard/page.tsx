@@ -230,6 +230,10 @@ export default function DashboardPage() {
             }
           : current,
       );
+
+      if (decision === "ACCEPTED" && result.plan) {
+        setNutritionPlan(result.plan);
+      }
     } catch (error) {
       setAdjustmentError(
         error instanceof Error
@@ -550,7 +554,9 @@ export default function DashboardPage() {
                         <p className="mt-3 text-xs text-slate-500">
                           {progressRecommendation.adjustmentDecision ===
                           "ACCEPTED"
-                            ? "You accepted the recommendation. Your current plan has not been changed yet."
+                            ? nutritionPlan
+                              ? `Your new plan is active (version ${nutritionPlan.version}) with a target of ${nutritionPlan.targetCalories} kcal/day.`
+                              : "You accepted the recommendation and a new plan has been created."
                             : "You chose to keep your current plan for now."}
                         </p>
                       )}

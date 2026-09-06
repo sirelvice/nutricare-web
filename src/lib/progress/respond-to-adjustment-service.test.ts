@@ -42,12 +42,9 @@ describe("RespondToAdjustmentService", () => {
     ).rejects.toThrow("Evaluation ID is required");
   });
 
-  it("rejects an evaluation that is not the user's latest evaluation", async () => {
+  it("rejects an evaluation that cannot be found for the user", async () => {
     const repository = {
-      findLatestByUserId: vi.fn().mockResolvedValue({
-        ...evaluation,
-        id: "latest-evaluation",
-      }),
+      findById: vi.fn().mockResolvedValue(null),
     } as unknown as ProgressEvaluationRepository;
 
     const service = new RespondToAdjustmentService(repository);
@@ -64,7 +61,7 @@ describe("RespondToAdjustmentService", () => {
 
   it("rejects responses for non-adjustment recommendations", async () => {
     const repository = {
-      findLatestByUserId: vi.fn().mockResolvedValue({
+      findById: vi.fn().mockResolvedValue({
         ...evaluation,
         recommendedAction: "REVIEW_ADHERENCE",
       }),
@@ -85,7 +82,7 @@ describe("RespondToAdjustmentService", () => {
 
   it("rejects a decision that has already been recorded", async () => {
     const repository = {
-      findLatestByUserId: vi.fn().mockResolvedValue({
+      findById: vi.fn().mockResolvedValue({
         ...evaluation,
         adjustmentDecision: "ACCEPTED",
       }),
@@ -106,7 +103,7 @@ describe("RespondToAdjustmentService", () => {
 
   it("records an accepted adjustment decision", async () => {
     const repository = {
-      findLatestByUserId: vi.fn().mockResolvedValue(evaluation),
+      findById: vi.fn().mockResolvedValue(evaluation),
       respondToAdjustment: vi.fn().mockResolvedValue({
         ...evaluation,
         adjustmentDecision: "ACCEPTED",
@@ -131,7 +128,7 @@ describe("RespondToAdjustmentService", () => {
 
   it("records a declined adjustment decision", async () => {
     const repository = {
-      findLatestByUserId: vi.fn().mockResolvedValue(evaluation),
+      findById: vi.fn().mockResolvedValue(evaluation),
       respondToAdjustment: vi.fn().mockResolvedValue({
         ...evaluation,
         adjustmentDecision: "DECLINED",

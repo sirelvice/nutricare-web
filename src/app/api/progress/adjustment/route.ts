@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
+import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
+import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
+import { ApplyPlanAdjustmentService } from "@/lib/progress/apply-plan-adjustment-service";
 import { RespondToAdjustmentService } from "@/lib/progress/respond-to-adjustment-service";
+import { PrismaAdjustmentWorkflowRepository } from "@/lib/progress/repositories/adjustment-workflow-repository";
 import { PrismaProgressEvaluationRepository } from "@/lib/progress/repositories/prisma-progress-evaluation-repository";
 
 const respondToAdjustmentSchema = z.object({
@@ -30,21 +35,46 @@ export async function POST(req: Request) {
     );
   }
 
+  const userId = session.user.id;
+  const evaluationRepository = new PrismaProgressEvaluationRepository(prisma);
+
   try {
-    const service = new RespondToAdjustmentService(
-      new PrismaProgressEvaluationRepository(prisma),
+    if (parsed.data.decision === "DECLINED") {
+      const service = new RespondToAdjustmentService(
+        evaluationRepository,
+      );
+
+      const evaluation = await service.execute(userId, parsed.data);
+
+      return NextResponse.json(
+        {
+          evaluationId: evaluation.id,
+          adjustmentDecision: evaluation.adjustmentDecision,
+          respondedAt: evaluation.respondedAt,
+        },
+        { status: 200 },
+      );
+    }
+
+    const service = new ApplyPlanAdjustmentService(
+      evaluationRepository,
+      prismaNutritionPlanRepository,
+      new PrismaProfileRepository(prisma),
+      new PrismaWeightRepository(prisma),
+      new PrismaAdjustmentWorkflowRepository(prisma),
     );
 
-    const evaluation = await service.execute(
-      session.user.id,
-      parsed.data,
+    const result = await service.execute(
+      userId,
+      parsed.data.evaluationId,
     );
 
     return NextResponse.json(
       {
-        evaluationId: evaluation.id,
-        adjustmentDecision: evaluation.adjustmentDecision,
-        respondedAt: evaluation.respondedAt,
+        evaluationId: result.evaluationId,
+        adjustmentDecision: result.adjustmentDecision,
+        respondedAt: result.respondedAt,
+        plan: result.plan,
       },
       { status: 200 },
     );
@@ -55,6 +85,9 @@ export async function POST(req: Request) {
         "Progress evaluation not found",
         "Adjustment response is not applicable",
         "Adjustment decision has already been recorded",
+        "Nutrition plan has changed since the recommendation",
+        "Adjustment recommendation is no longer applicable",
+        "Adjustment decision could not be recorded",
       ].includes(error.message)
     ) {
       return NextResponse.json(
@@ -66,7 +99,7 @@ export async function POST(req: Request) {
     console.error("POST /api/progress/adjustment failed", error);
 
     return NextResponse.json(
-      { error: "Unable to record adjustment response." },
+      { error: "Unable to process adjustment response." },
       { status: 500 },
     );
   }

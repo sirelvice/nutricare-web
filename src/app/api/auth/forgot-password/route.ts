@@ -137,12 +137,16 @@ export async function POST(req: Request) {
       }),
     ]);
 
-    const baseUrl =
-      process.env.NEXTAUTH_URL ||
-      process.env.APP_URL ||
-      new URL(req.url).origin;
+    const baseUrl = process.env.APP_URL?.trim();
 
-    const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    if (!baseUrl) {
+      await prisma.passwordResetToken.deleteMany({
+        where: { tokenHash },
+      });
+      throw new Error("Application URL is not configured.");
+    }
+
+    const resetUrl = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(token)}`;
 
     try {
       await sendResetEmail(user.email, resetUrl);

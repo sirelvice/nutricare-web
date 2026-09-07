@@ -135,6 +135,7 @@ describe("POST /api/auth/forgot-password", () => {
   it("creates a reset token and sends the reset email", async () => {
     process.env.RESEND_API_KEY = "test-key";
     process.env.CONTACT_FROM_EMAIL = "no-reply@nutricare.app";
+    process.env.APP_URL = "https://app.nutricare.app";
 
     findUnique.mockResolvedValue({
       id: "user-1",
@@ -149,7 +150,7 @@ describe("POST /api/auth/forgot-password", () => {
       }),
     );
 
-    const request = new Request("https://nutricare.app/api/auth/forgot-password", {
+    const request = new Request("https://attacker.example/api/auth/forgot-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: "USER@EXAMPLE.COM" }),
@@ -169,7 +170,37 @@ describe("POST /api/auth/forgot-password", () => {
 
     expect(emailBody.to).toBe("user@example.com");
     expect(emailBody.subject).toBe("Reset your NutriCare password");
-    expect(emailBody.html).toContain("/reset-password?token=");
+    expect(emailBody.html).toContain(
+      "https://app.nutricare.app/reset-password?token=",
+    );
+    expect(emailBody.html).not.toContain("attacker.example");
+  });
+
+  it("fails closed when the application URL is not configured", async () => {
+    process.env.RESEND_API_KEY = "test-key";
+    process.env.CONTACT_FROM_EMAIL = "no-reply@nutricare.app";
+    delete process.env.APP_URL;
+
+    findUnique.mockResolvedValue({
+      id: "user-1",
+      email: "user@example.com",
+    });
+
+    transaction.mockResolvedValue([]);
+
+    const request = new Request("https://attacker.example/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "user@example.com" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(500);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: { tokenHash: expect.any(String) },
+    });
   });
 
   it("removes the token when email delivery fails", async () => {

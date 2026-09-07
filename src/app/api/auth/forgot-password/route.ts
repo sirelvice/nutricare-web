@@ -7,6 +7,7 @@ import {
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
 import { forgotPasswordSchema } from "@/lib/security/auth-validation";
+import { getAppUrl } from "@/lib/security/runtime-config";
 
 export const runtime = "nodejs";
 
@@ -135,7 +136,16 @@ export async function POST(req: Request) {
       }),
     ]);
 
-    const baseUrl = process.env.APP_URL?.trim();
+    let baseUrl: string;
+
+    try {
+      baseUrl = getAppUrl() ?? "";
+    } catch (error) {
+      await prisma.passwordResetToken.deleteMany({
+        where: { tokenHash },
+      });
+      throw error;
+    }
 
     if (!baseUrl) {
       await prisma.passwordResetToken.deleteMany({
@@ -144,7 +154,7 @@ export async function POST(req: Request) {
       throw new Error("Application URL is not configured.");
     }
 
-    const resetUrl = `${baseUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(token)}`;
+    const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
     try {
       await sendResetEmail(user.email, resetUrl);

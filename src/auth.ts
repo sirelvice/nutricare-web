@@ -4,11 +4,12 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
 import { loginSchema } from "@/lib/security/auth-validation";
+import { getAuthSecret } from "@/lib/security/runtime-config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   debug: false,
 
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  secret: getAuthSecret(),
 
   session: {
     strategy: "jwt",

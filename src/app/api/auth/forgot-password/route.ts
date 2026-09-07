@@ -161,7 +161,7 @@ export async function POST(req: Request) {
         "If an account exists for that email, reset instructions will be sent shortly.",
     });
   } catch (error) {
-    console.error("Forgot-password route error:", error);
+    console.error("Forgot-password route failed.");
 
     return NextResponse.json(
       { error: "Unable to process the password reset request right now." },

@@ -100,7 +100,7 @@ export async function POST(req: Request) {
       message: "Your password has been reset successfully.",
     });
   } catch (error) {
-    console.error("Reset-password route error:", error);
+    console.error("Reset-password route failed.");
 
     return NextResponse.json(
       { error: "Unable to reset the password right now." },

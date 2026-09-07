@@ -69,11 +69,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Clean logging
-    console.log(`New user registered: ${trimmedEmail}`);
+    console.log("New user registration completed.");
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {
-    console.error("Register API error:", error);
+    console.error("Register API request failed.");
     return NextResponse.json(
       { ok: false, error: "Something went wrong. Please try again later." },
       { status: 500 }

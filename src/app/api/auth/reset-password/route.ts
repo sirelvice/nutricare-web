@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 import { prisma } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -17,6 +22,20 @@ function hashToken(token: string) {
 
 export async function POST(req: Request) {
   try {
+    const limit = await consumeRateLimit({
+      namespace: "auth:reset-password:ip",
+      identifier: getClientIp(req),
+      limit: 10,
+      windowSeconds: 60 * 60,
+    });
+
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "Too many password reset attempts. Please try again later." },
+        { status: 429, headers: rateLimitHeaders(limit) },
+      );
+    }
+
     const parsed = schema.safeParse(await req.json());
 
     if (!parsed.success) {

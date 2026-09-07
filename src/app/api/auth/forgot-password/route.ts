@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { randomBytes, createHash } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -58,6 +63,35 @@ export async function POST(req: Request) {
     }
 
     const email = parsed.data.email.toLowerCase();
+
+    const ipLimit = await consumeRateLimit({
+      namespace: "auth:forgot-password:ip",
+      identifier: getClientIp(req),
+      limit: 10,
+      windowSeconds: 60 * 60,
+    });
+
+    if (!ipLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many password reset requests. Please try again later." },
+        { status: 429, headers: rateLimitHeaders(ipLimit) },
+      );
+    }
+
+    const accountLimit = await consumeRateLimit({
+      namespace: "auth:forgot-password:account",
+      identifier: `${email}:${getClientIp(req)}`,
+      limit: 3,
+      windowSeconds: 60 * 60,
+    });
+
+    if (!accountLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many password reset requests. Please try again later." },
+        { status: 429, headers: rateLimitHeaders(accountLimit) },
+      );
+    }
+
     const apiKeyConfigured = Boolean(
       process.env.RESEND_API_KEY && process.env.CONTACT_FROM_EMAIL,
     );

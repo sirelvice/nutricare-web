@@ -29,9 +29,61 @@ vi.mock("bcryptjs", () => ({
   },
 }));
 
+const { consumeRateLimit } = vi.hoisted(() => ({
+  consumeRateLimit: vi.fn().mockResolvedValue({
+    allowed: true,
+    remaining: 9,
+    retryAfterSeconds: 60,
+  }),
+}));
+
+vi.mock("@/lib/security/rate-limit", () => ({
+  consumeRateLimit,
+  getClientIp: vi.fn().mockReturnValue("127.0.0.1"),
+  rateLimitHeaders: vi.fn((result) => ({
+    "Retry-After": String(result.retryAfterSeconds),
+    "X-RateLimit-Remaining": String(result.remaining),
+  })),
+}));
+
 import { POST } from "./route";
 
 describe("POST /api/auth/reset-password", () => {
+
+  beforeEach(() => {
+    consumeRateLimit.mockResolvedValue({
+      allowed: true,
+      remaining: 9,
+      retryAfterSeconds: 60,
+    });
+  });
+
+  it("returns 429 when rate limit is exceeded", async () => {
+    consumeRateLimit.mockResolvedValue({
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: 120,
+    });
+
+    const request = new Request("http://localhost/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: "a".repeat(64),
+        password: "new-password-123",
+      }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(body).toEqual({
+      error: "Too many password reset attempts. Please try again later.",
+    });
+    expect(response.headers.get("Retry-After")).toBe("120");
+  });
+
   beforeEach(() => {
     findUnique.mockReset();
     updateMany.mockReset();

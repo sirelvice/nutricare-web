@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const limit = await consumeRateLimit({
+      namespace: "auth:register:ip",
+      identifier: getClientIp(request),
+      limit: 5,
+      windowSeconds: 15 * 60,
+    });
+
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { ok: false, error: "Too many registration attempts. Please try again later." },
+        { status: 429, headers: rateLimitHeaders(limit) },
+      );
+    }
     const { name, email, password } = await request.json();
 
     // Validation

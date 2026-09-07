@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
-import { z } from "zod";
 import {
   consumeRateLimit,
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
 import { prisma } from "@/lib/db";
+import { resetPasswordSchema } from "@/lib/security/auth-validation";
 
 export const runtime = "nodejs";
 
-const schema = z.object({
-  token: z.string().min(32),
-  password: z.string().min(8).max(128),
-});
+const schema = resetPasswordSchema;
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");

@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
+import { loginSchema } from "@/lib/security/auth-validation";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   debug: false,
@@ -28,10 +29,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
 
       async authorize(credentials) {
-        const email = credentials?.email?.toString().trim().toLowerCase();
-        const password = credentials?.password?.toString();
+        const parsed = loginSchema.safeParse({
+          email: credentials?.email?.toString(),
+          password: credentials?.password?.toString(),
+        });
 
-        if (!email || !password) return null;
+        if (!parsed.success) return null;
+
+        const { email, password } = parsed.data;
 
         const user = await prisma.user.findUnique({
           where: { email },

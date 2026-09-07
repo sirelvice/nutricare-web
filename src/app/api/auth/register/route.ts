@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { registerSchema } from "@/lib/security/auth-validation";
 import {
   consumeRateLimit,
   getClientIp,
@@ -22,38 +23,22 @@ export async function POST(request: NextRequest) {
         { status: 429, headers: rateLimitHeaders(limit) },
       );
     }
-    const { name, email, password } = await request.json();
+    const parsed = registerSchema.safeParse(await request.json());
 
-    // Validation
-    if (!email || typeof email !== "string") {
+    if (!parsed.success) {
       return NextResponse.json(
-        { ok: false, error: "Email is required." },
-        { status: 400 }
+        {
+          ok: false,
+          error:
+            parsed.error.issues[0]?.message ??
+            "Invalid registration details.",
+        },
+        { status: 400 },
       );
     }
 
-    const trimmedEmail = email.trim().toLowerCase();
-
-    if (!trimmedEmail.includes("@") || trimmedEmail.length < 6) {
-      return NextResponse.json(
-        { ok: false, error: "Please enter a valid email address." },
-        { status: 400 }
-      );
-    }
-
-    if (!password || typeof password !== "string" || password.length < 8) {
-      return NextResponse.json(
-        { ok: false, error: "Password must be at least 8 characters long." },
-        { status: 400 }
-      );
-    }
-
-    if (name && typeof name === "string" && name.trim().length < 2) {
-      return NextResponse.json(
-        { ok: false, error: "Name must be at least 2 characters long." },
-        { status: 400 }
-      );
-    }
+    const { name, email, password } = parsed.data;
+    const trimmedEmail = email;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({

@@ -74,6 +74,31 @@ describe("POST /api/auth/register", () => {
     expect(userCreate).not.toHaveBeenCalled();
   });
 
+  it("does not reveal whether an email already has an account", async () => {
+    userFindUnique.mockResolvedValue({ id: "existing-user" });
+
+    const request = new NextRequest("http://localhost/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "existing@example.com",
+        password: "password-123",
+        name: "Existing User",
+      }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body).toEqual({
+      ok: true,
+      message:
+        "If an account can be created with this email, the next step is ready.",
+    });
+    expect(userCreate).not.toHaveBeenCalled();
+  });
+
   it("continues with normal registration when the rate limit allows it", async () => {
     userFindUnique.mockResolvedValue(null);
     userCreate.mockResolvedValue({ id: "user-1" });

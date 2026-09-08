@@ -5,6 +5,11 @@ import { GetRecommendationsService } from "@/lib/reco/service";
 import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
 import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
+import {
+  unauthorized,
+  unprocessableEntity,
+  internalServerError,
+} from "@/lib/api/errors";
 
 const recommendationsService = new GetRecommendationsService(
   new PrismaProfileRepository(prisma),
@@ -17,7 +22,7 @@ export async function GET() {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const recommendations = await recommendationsService.execute(
@@ -25,12 +30,8 @@ export async function GET() {
     );
 
     if (!recommendations) {
-      return NextResponse.json(
-        {
-          error:
-            "Profile, current weight, and nutrition plan are required to generate recommendations",
-        },
-        { status: 422 },
+      return unprocessableEntity(
+        "Profile, current weight, and nutrition plan are required to generate recommendations",
       );
     }
 
@@ -38,9 +39,6 @@ export async function GET() {
   } catch (error) {
     console.error("GET /api/recommendations failed", error);
 
-    return NextResponse.json(
-      { error: "Unable to load recommendations" },
-      { status: 500 },
-    );
+    return internalServerError("Unable to load recommendations");
   }
 }

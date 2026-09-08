@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  unauthorized,
+  badRequest,
+  internalServerError,
+} from "@/lib/api/errors";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -24,20 +29,14 @@ export async function POST(req: Request) {
   const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
+    return unauthorized();
   }
 
   const body = await req.json().catch(() => null);
   const parsed = createWeightEntrySchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid weight entry." },
-      { status: 400 },
-    );
+    return badRequest("Invalid weight entry.");
   }
 
   const weightRepository = new PrismaWeightRepository(prisma);
@@ -64,18 +63,12 @@ export async function POST(req: Request) {
     return NextResponse.json(result.entry, { status: 201 });
   } catch (error) {
     if (error instanceof InvalidWeightEntryError) {
-      return NextResponse.json(
-        { error: "Invalid weight entry." },
-        { status: 400 },
-      );
+      return badRequest("Invalid weight entry.");
     }
 
     console.error("Failed to record weight entry:", error);
 
-    return NextResponse.json(
-      { error: "Unable to record weight entry." },
-      { status: 500 },
-    );
+    return internalServerError("Unable to record weight entry.");
   }
 }
 
@@ -84,10 +77,7 @@ export async function GET() {
   const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
+    return unauthorized();
   }
 
   const service = new ListWeightEntriesService(

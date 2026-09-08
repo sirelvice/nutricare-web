@@ -8,6 +8,11 @@ import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repos
 import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
 import { prisma } from "@/lib/db";
+import {
+  unauthorized,
+  unprocessableEntity,
+  internalServerError,
+} from "@/lib/api/errors";
 
 const latestPlanService = new GetLatestNutritionPlanService(
   prismaNutritionPlanRepository
@@ -24,10 +29,7 @@ export async function GET() {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return unauthorized();
     }
 
     const plan = await latestPlanService.execute(session.user.id);
@@ -36,10 +38,7 @@ export async function GET() {
   } catch (error) {
     console.error("GET /api/nutrition-plan failed", error);
 
-    return NextResponse.json(
-      { error: "Unable to load nutrition plan" },
-      { status: 500 }
-    );
+    return internalServerError("Unable to load nutrition plan");
   }
 }
 
@@ -48,18 +47,14 @@ export async function POST() {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return unauthorized();
     }
 
     const plan = await generatePlanService.execute(session.user.id);
 
     if (!plan) {
-      return NextResponse.json(
-        { error: "Profile and current weight are required to generate a nutrition plan" },
-        { status: 422 }
+      return unprocessableEntity(
+        "Profile and current weight are required to generate a nutrition plan",
       );
     }
 
@@ -67,9 +62,6 @@ export async function POST() {
   } catch (error) {
     console.error("POST /api/nutrition-plan failed", error);
 
-    return NextResponse.json(
-      { error: "Unable to create nutrition plan" },
-      { status: 500 }
-    );
+    return internalServerError("Unable to create nutrition plan");
   }
 }

@@ -5,6 +5,11 @@ import { prisma } from "@/lib/db";
 import { GetProfileService } from "@/lib/profile/services/get-profile";
 import { SaveProfileService } from "@/lib/profile/services/save-profile";
 import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
+import {
+  unauthorized,
+  badRequest,
+  internalServerError,
+} from "@/lib/api/errors";
 
 const profileSchema = z.object({
   heightCm: z.number().min(80).max(250).nullable(),
@@ -24,10 +29,7 @@ export async function GET() {
   const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
+    return unauthorized();
   }
 
   try {
@@ -39,10 +41,7 @@ export async function GET() {
 
     return NextResponse.json(profile, { status: 200 });
   } catch {
-    return NextResponse.json(
-      { error: "Unable to load profile." },
-      { status: 500 },
-    );
+    return internalServerError("Unable to load profile.");
   }
 }
 
@@ -50,20 +49,14 @@ export async function PUT(request: Request) {
   const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
+    return unauthorized();
   }
 
   const body = await request.json().catch(() => null);
   const parsed = profileSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid profile data." },
-      { status: 400 },
-    );
+    return badRequest("Invalid profile data.");
   }
 
   try {
@@ -76,15 +69,9 @@ export async function PUT(request: Request) {
     return NextResponse.json(profile, { status: 200 });
   } catch (error) {
     if (error instanceof Error && error.message === "Invalid profile") {
-      return NextResponse.json(
-        { error: "Invalid profile data." },
-        { status: 400 },
-      );
+      return badRequest("Invalid profile data.");
     }
 
-    return NextResponse.json(
-      { error: "Unable to save profile." },
-      { status: 500 },
-    );
+    return internalServerError("Unable to save profile.");
   }
 }

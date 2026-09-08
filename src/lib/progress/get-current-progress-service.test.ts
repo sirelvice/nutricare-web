@@ -106,12 +106,16 @@ describe("GetCurrentProgressService", () => {
         entriesCount: 4,
         evaluationDays: 21,
         evaluatedAt: "2026-10-21T12:00:00.000Z",
+        headline: "Your weight has changed very little so far",
+        summary: "Your logged weight increased by 0.2 kg over 21 days.",
       },
       recommendation: {
         recommendedAction: "CONSIDER_ADJUSTMENT",
         reason: "consecutive_problem",
         adjustmentDecision: "PENDING",
         respondedAt: null,
+        message:
+          "Your recent results suggest it may be time to review and adjust your current plan.",
       },
     });
   });

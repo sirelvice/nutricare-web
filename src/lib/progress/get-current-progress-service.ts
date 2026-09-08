@@ -1,5 +1,10 @@
 import type { NutritionPlanRepository } from "@/lib/nutrition-plan/repository";
 import type { ProgressEvaluationRepository } from "./repositories/progress-evaluation-repository";
+import {
+  describeProgressState,
+  describeProgressSummary,
+  describeRecommendation,
+} from "./presentation";
 
 export type CurrentProgressResult = {
   evaluation: {
@@ -9,6 +14,8 @@ export type CurrentProgressResult = {
     entriesCount: number;
     evaluationDays: number | null;
     evaluatedAt: string;
+    headline: string;
+    summary: string;
   };
   recommendation: {
     recommendedAction:
@@ -24,6 +31,7 @@ export type CurrentProgressResult = {
       | "recurrence_after_adjustment";
     adjustmentDecision: "PENDING" | "ACCEPTED" | "DECLINED";
     respondedAt: string | null;
+    message: string;
   };
   planVersionId: string;
 };
@@ -65,12 +73,22 @@ export class GetCurrentProgressService {
         entriesCount: evaluation.entriesCount,
         evaluationDays: evaluation.evaluationDays,
         evaluatedAt: evaluation.evaluatedAt,
+        headline: describeProgressState(currentPlan.goal, evaluation.state),
+        summary: describeProgressSummary(
+          evaluation.state,
+          evaluation.changeKg,
+          evaluation.evaluationDays,
+        ),
       },
       recommendation: {
         recommendedAction: evaluation.recommendedAction,
         reason: evaluation.recommendationReason,
         adjustmentDecision: evaluation.adjustmentDecision,
         respondedAt: evaluation.respondedAt,
+        message: describeRecommendation(
+          evaluation.recommendedAction,
+          evaluation.recommendationReason,
+        ),
       },
     };
   }

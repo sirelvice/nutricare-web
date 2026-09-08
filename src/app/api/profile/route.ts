@@ -4,6 +4,10 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { GetProfileService } from "@/lib/profile/services/get-profile";
 import { SaveProfileService } from "@/lib/profile/services/save-profile";
+import { ChangeGoalService } from "@/lib/profile/services/change-goal";
+import { PrismaGoalChangeWorkflowRepository } from "@/lib/profile/repositories/goal-change-workflow-repository";
+import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
+import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
 import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
 import {
   unauthorized,
@@ -60,8 +64,19 @@ export async function PUT(request: Request) {
   }
 
   try {
+    const profileRepository = new PrismaProfileRepository(prisma);
+    const weightRepository = new PrismaWeightRepository(prisma);
+    const changeGoalWorkflowRepository =
+      new PrismaGoalChangeWorkflowRepository(prisma);
+    const changeGoalService = new ChangeGoalService(
+      weightRepository,
+      prismaNutritionPlanRepository,
+      changeGoalWorkflowRepository,
+    );
+
     const service = new SaveProfileService(
-      new PrismaProfileRepository(prisma),
+      profileRepository,
+      changeGoalService,
     );
 
     const profile = await service.execute(session.user.id, parsed.data);

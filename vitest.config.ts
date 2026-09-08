@@ -39,6 +39,7 @@ export default defineConfig({
             "src/lib/progress/evaluation-lifecycle.integration.test.ts",
             "src/lib/progress/repositories/adjustment-workflow-repository.test.ts",
             "src/lib/progress/repositories/prisma-progress-evaluation-repository.test.ts",
+            "src/lib/profile/repositories/goal-change-workflow-repository.integration.test.ts",
           ],
           fileParallelism: false,
           testTimeout: 15000,

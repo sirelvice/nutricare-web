@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { internalServerError, notFound, unauthorized } from "@/lib/api/errors";
 import { auth } from "@/auth";
 import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
@@ -19,28 +20,19 @@ export async function GET() {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return unauthorized();
     }
 
     const report = await reportService.execute(session.user.id);
 
     if (!report) {
-      return NextResponse.json(
-        { error: "Profile not found" },
-        { status: 404 },
-      );
+      return notFound("Profile not found");
     }
 
     return NextResponse.json(report, { status: 200 });
   } catch (error) {
     console.error("GET /api/report failed", error);
 
-    return NextResponse.json(
-      { error: "Unable to generate report" },
-      { status: 500 },
-    );
+    return internalServerError("Unable to generate report");
   }
 }

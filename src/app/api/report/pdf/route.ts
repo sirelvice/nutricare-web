@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { internalServerError, notFound, unauthorized } from "@/lib/api/errors";
 import { auth } from "@/auth";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { prisma } from "@/lib/db";
@@ -20,20 +21,14 @@ export async function GET() {
   const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
+    return unauthorized();
   }
 
   try {
     const report = await reportService.execute(session.user.id);
 
     if (!report) {
-      return NextResponse.json(
-        { error: "Profile not found." },
-        { status: 404 },
-      );
+      return notFound("Profile not found.");
     }
 
     const pdfDoc = await PDFDocument.create();
@@ -157,9 +152,6 @@ export async function GET() {
   } catch (error) {
     console.error("GET /api/report/pdf failed", error);
 
-    return NextResponse.json(
-      { error: "Unable to generate report." },
-      { status: 500 },
-    );
+    return internalServerError("Unable to generate report.");
   }
 }

@@ -131,19 +131,6 @@ export default function WeightTrackingPage() {
     }
   }
 
-  // 🧠 Trend insight
-  const trendMessage = useMemo(() => {
-    if (!stats) return null;
-
-    if (stats.change < 0) {
-      return "You're losing weight — keep going 👍";
-    }
-    if (stats.change > 0) {
-      return "Weight increasing — review intake ⚠️";
-    }
-    return "Weight stable — maintain consistency";
-  }, [stats]);
-
   // 🔥 Today vs last delta
   const latestDelta = useMemo(() => {
     if (!stats || stats.count < 2) return null;
@@ -272,14 +259,6 @@ export default function WeightTrackingPage() {
                 </div>
               </div>
 
-              {/* TREND */}
-              {trendMessage && (
-                <div className="rounded-xl bg-slate-50 p-3">
-                  <p className="text-sm text-slate-600">
-                    {trendMessage}
-                  </p>
-                </div>
-              )}
             </>
           ) : (
             <p className="text-sm text-slate-400">

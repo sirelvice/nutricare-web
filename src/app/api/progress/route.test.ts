@@ -38,7 +38,7 @@ describe("/api/progress", () => {
 
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({
-      error: "Unauthorized",
+      error: "Authentication required.",
     });
     expect(progressExecute).not.toHaveBeenCalled();
   });

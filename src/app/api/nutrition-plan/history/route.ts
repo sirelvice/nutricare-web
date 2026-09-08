@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
 import { GetNutritionPlanHistoryService } from "@/lib/nutrition-plan/service";
+import {
+  unauthorized,
+  internalServerError,
+} from "@/lib/api/errors";
 
 const historyService = new GetNutritionPlanHistoryService(
   prismaNutritionPlanRepository,
@@ -12,10 +16,7 @@ export async function GET() {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return unauthorized();
     }
 
     const plans = await historyService.execute(session.user.id);
@@ -24,9 +25,6 @@ export async function GET() {
   } catch (error) {
     console.error("GET /api/nutrition-plan/history failed", error);
 
-    return NextResponse.json(
-      { error: "Unable to load nutrition plan history" },
-      { status: 500 },
-    );
+    return internalServerError("Unable to load nutrition plan history");
   }
 }

@@ -3,6 +3,10 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
 import { DeleteWeightEntryService } from "@/lib/tracking/services/delete-weight-entry";
+import {
+  unauthorized,
+  badRequest,
+} from "@/lib/api/errors";
 
 export async function DELETE(
   _req: Request,
@@ -11,19 +15,13 @@ export async function DELETE(
   const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
+    return unauthorized();
   }
 
   const { id } = await params;
 
   if (!id) {
-    return NextResponse.json(
-      { error: "Weight entry ID is required." },
-      { status: 400 },
-    );
+    return badRequest("Weight entry ID is required.");
   }
 
   const service = new DeleteWeightEntryService(

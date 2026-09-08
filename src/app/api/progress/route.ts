@@ -6,6 +6,11 @@ import { prisma } from "@/lib/db";
 import { GetCurrentProgressService } from "@/lib/progress/get-current-progress-service";
 import { PrismaProgressEvaluationRepository } from "@/lib/progress/repositories/prisma-progress-evaluation-repository";
 import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
+import {
+  unauthorized,
+  notFound,
+  internalServerError,
+} from "@/lib/api/errors";
 
 const progressService = new GetCurrentProgressService(
   prismaNutritionPlanRepository,
@@ -17,28 +22,19 @@ export async function GET() {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return unauthorized();
     }
 
     const progress = await progressService.execute(session.user.id);
 
     if (!progress) {
-      return NextResponse.json(
-        { error: "Current progress is not available" },
-        { status: 404 },
-      );
+      return notFound("Current progress is not available");
     }
 
     return NextResponse.json({ progress }, { status: 200 });
   } catch (error) {
     console.error("GET /api/progress failed", error);
 
-    return NextResponse.json(
-      { error: "Unable to load current progress" },
-      { status: 500 },
-    );
+    return internalServerError("Unable to load current progress");
   }
 }

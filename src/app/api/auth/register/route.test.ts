@@ -66,7 +66,6 @@ describe("POST /api/auth/register", () => {
 
     expect(response.status).toBe(429);
     expect(body).toEqual({
-      ok: false,
       error: "Too many registration attempts. Please try again later.",
     });
     expect(response.headers.get("Retry-After")).toBe("120");

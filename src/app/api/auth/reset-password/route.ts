@@ -8,6 +8,7 @@ import {
 } from "@/lib/security/rate-limit";
 import { prisma } from "@/lib/db";
 import { resetPasswordSchema } from "@/lib/security/auth-validation";
+import { apiError, badRequest, internalServerError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -27,19 +28,17 @@ export async function POST(req: Request) {
     });
 
     if (!limit.allowed) {
-      return NextResponse.json(
-        { error: "Too many password reset attempts. Please try again later." },
-        { status: 429, headers: rateLimitHeaders(limit) },
+      return apiError(
+        "Too many password reset attempts. Please try again later.",
+        429,
+        rateLimitHeaders(limit),
       );
     }
 
     const parsed = schema.safeParse(await req.json());
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid reset request." },
-        { status: 400 },
-      );
+      return badRequest("Invalid reset request.");
     }
 
     const { token, password } = parsed.data;
@@ -57,10 +56,7 @@ export async function POST(req: Request) {
     });
 
     if (!resetToken || resetToken.usedAt || resetToken.expiresAt <= now) {
-      return NextResponse.json(
-        { error: "This password reset link is invalid or has expired." },
-        { status: 400 },
-      );
+      return badRequest("This password reset link is invalid or has expired.");
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -102,9 +98,6 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Reset-password route failed.");
 
-    return NextResponse.json(
-      { error: "Unable to reset the password right now." },
-      { status: 500 },
-    );
+    return internalServerError("Unable to reset the password right now.");
   }
 }

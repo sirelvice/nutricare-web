@@ -8,6 +8,7 @@ import {
 } from "@/lib/security/rate-limit";
 import { forgotPasswordSchema } from "@/lib/security/auth-validation";
 import { getAppUrl } from "@/lib/security/runtime-config";
+import { apiError, badRequest, internalServerError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -55,10 +56,7 @@ export async function POST(req: Request) {
     const parsed = schema.safeParse(await req.json());
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Enter a valid email address." },
-        { status: 400 },
-      );
+      return badRequest("Enter a valid email address.");
     }
 
     const email = parsed.data.email.toLowerCase();
@@ -71,9 +69,10 @@ export async function POST(req: Request) {
     });
 
     if (!ipLimit.allowed) {
-      return NextResponse.json(
-        { error: "Too many password reset requests. Please try again later." },
-        { status: 429, headers: rateLimitHeaders(ipLimit) },
+      return apiError(
+        "Too many password reset requests. Please try again later.",
+        429,
+        rateLimitHeaders(ipLimit),
       );
     }
 
@@ -85,9 +84,10 @@ export async function POST(req: Request) {
     });
 
     if (!accountLimit.allowed) {
-      return NextResponse.json(
-        { error: "Too many password reset requests. Please try again later." },
-        { status: 429, headers: rateLimitHeaders(accountLimit) },
+      return apiError(
+        "Too many password reset requests. Please try again later.",
+        429,
+        rateLimitHeaders(accountLimit),
       );
     }
 
@@ -173,9 +173,8 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Forgot-password route failed.");
 
-    return NextResponse.json(
-      { error: "Unable to process the password reset request right now." },
-      { status: 500 },
+    return internalServerError(
+      "Unable to process the password reset request right now.",
     );
   }
 }

@@ -7,6 +7,7 @@ import {
   getClientIp,
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
+import { apiError, badRequest, internalServerError } from "@/lib/api/errors";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,22 +19,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (!limit.allowed) {
-      return NextResponse.json(
-        { ok: false, error: "Too many registration attempts. Please try again later." },
-        { status: 429, headers: rateLimitHeaders(limit) },
+      return apiError(
+        "Too many registration attempts. Please try again later.",
+        429,
+        rateLimitHeaders(limit),
       );
     }
     const parsed = registerSchema.safeParse(await request.json());
 
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            parsed.error.issues[0]?.message ??
-            "Invalid registration details.",
-        },
-        { status: 400 },
+      return badRequest(
+        parsed.error.issues[0]?.message ??
+          "Invalid registration details.",
       );
     }
 
@@ -74,9 +71,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {
     console.error("Register API request failed.");
-    return NextResponse.json(
-      { ok: false, error: "Something went wrong. Please try again later." },
-      { status: 500 }
+    return internalServerError(
+      "Something went wrong. Please try again later.",
     );
   }
 }

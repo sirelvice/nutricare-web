@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PartnerInterest } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { badRequest, internalServerError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -31,10 +32,7 @@ export async function POST(req: Request) {
     const parsed = inquirySchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Please provide valid partner inquiry details." },
-        { status: 400 },
-      );
+      return badRequest("Please provide valid partner inquiry details.");
     }
 
     const data = parsed.data;
@@ -57,9 +55,6 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Partner inquiry route error:", error);
 
-    return NextResponse.json(
-      { error: "Unable to submit your inquiry right now." },
-      { status: 500 },
-    );
+    return internalServerError("Unable to submit your inquiry right now.");
   }
 }

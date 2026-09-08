@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { badRequest, internalServerError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -73,14 +74,11 @@ export async function POST(req: Request) {
     const message = (body.message ?? "").trim();
 
     if (!name || !email || !message) {
-      return NextResponse.json(
-        { error: "Name, email and message are required." },
-        { status: 400 }
-      );
+      return badRequest("Name, email and message are required.");
     }
 
     if (!isEmail(email)) {
-      return NextResponse.json({ error: "Enter a valid email." }, { status: 400 });
+      return badRequest("Enter a valid email.");
     }
 
     // 1) Save to DB
@@ -104,6 +102,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: saved.id }, { status: 200 });
   } catch (e) {
     console.error("Contact route error:", e);
-    return NextResponse.json({ error: "Server error." }, { status: 500 });
+    return internalServerError("Server error.");
   }
 }

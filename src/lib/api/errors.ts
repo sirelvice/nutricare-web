@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 
-export function apiError(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
+export function apiError(
+  message: string,
+  status: number,
+  headers?: HeadersInit,
+) {
+  return NextResponse.json(
+    { error: message },
+    {
+      status,
+      headers,
+    },
+  );
 }
 
 export const unauthorized = () =>

@@ -47,8 +47,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Image
               src="/brand/nutricare-logo.png"
               alt="NutriCare"
-              width={110}
-              height={44}
+              width={176}
+              height={100}
               priority
             />
           </Link>

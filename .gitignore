@@ -50,3 +50,8 @@ prisma/dev.db
 
 # Local runtime credentials
 .nutricare_runtime_password
+
+# Playwright test artifacts
+playwright-report/
+
+test-results/

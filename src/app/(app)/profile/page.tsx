@@ -170,8 +170,9 @@ export default function ProfilePage() {
           {/* HEIGHT + AGE */}
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
-              <Label>Height (cm)</Label>
+              <Label htmlFor="height-cm">Height (cm)</Label>
               <Input
+                id="height-cm"
                 className="h-10 rounded-xl"
                 value={draft.heightCm ?? ""}
                 onChange={(e) => {
@@ -182,8 +183,9 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-1">
-              <Label>Age (years)</Label>
+              <Label htmlFor="age-years">Age (years)</Label>
               <Input
+                id="age-years"
                 className="h-10 rounded-xl"
                 value={draft.age ?? ""}
                 onChange={(e) => {
@@ -197,8 +199,9 @@ export default function ProfilePage() {
           {/* GENDER + GOAL (SIDE BY SIDE) */}
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
-              <Label>Gender</Label>
+              <Label htmlFor="gender">Gender</Label>
               <select
+                id="gender"
                 value={draft.gender ?? ""}
                 onChange={(e) =>
                   update("gender", e.target.value as "male" | "female" | "other")
@@ -213,8 +216,9 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-1">
-              <Label>Your goal</Label>
+              <Label htmlFor="goal">Your goal</Label>
               <select
+                id="goal"
                 value={draft.goal ?? ""}
                 onChange={(e) =>
                   update("goal", e.target.value as "lose" | "maintain" | "gain")
@@ -233,8 +237,9 @@ export default function ProfilePage() {
 
           {/* ACTIVITY */}
           <div className="space-y-1">
-            <Label>Activity level</Label>
+            <Label htmlFor="activity-level">Activity level</Label>
             <select
+              id="activity-level"
               value={draft.activity ?? ""}
               onChange={(e) =>
                 update("activity", e.target.value as ActivityLevel)

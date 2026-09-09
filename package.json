@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "prisma": "NODE_EXTRA_CA_CERTS=./certs/prod-ca-2021.crt NODE_OPTIONS=--use-openssl-ca prisma"
+    "prisma": "NODE_EXTRA_CA_CERTS=./certs/prod-ca-2021.crt NODE_OPTIONS=--use-openssl-ca prisma",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -42,6 +43,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/canvas-confetti": "^1.9.0",

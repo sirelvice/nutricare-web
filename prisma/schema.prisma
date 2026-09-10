@@ -21,6 +21,7 @@ model User {
   nutritionPlans      NutritionPlan[]
   progressEvaluations ProgressEvaluation[]
   passwordResetTokens PasswordResetToken[]
+  securityEvents      SecurityEvent[]
 }
 
 model Profile {
@@ -137,6 +138,23 @@ model PasswordResetToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+}
+
+model SecurityEvent {
+  id         String   @id @default(cuid())
+  type       String
+  outcome    String
+  userId     String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  occurredAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([occurredAt])
+  @@index([userId, occurredAt])
+  @@index([type, occurredAt])
 }
 
 enum PartnerInterest {

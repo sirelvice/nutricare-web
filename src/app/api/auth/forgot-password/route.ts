@@ -9,6 +9,11 @@ import {
 import { forgotPasswordSchema } from "@/lib/security/auth-validation";
 import { getAppUrl } from "@/lib/security/runtime-config";
 import { apiError, badRequest, internalServerError } from "@/lib/api/errors";
+import {
+  recordSecurityEvent,
+  SECURITY_EVENT_TYPES,
+  SECURITY_EVENT_OUTCOMES,
+} from "@/lib/security/events";
 
 export const runtime = "nodejs";
 
@@ -164,6 +169,11 @@ export async function POST(req: Request) {
       });
       throw error;
     }
+
+    await recordSecurityEvent({
+      type: SECURITY_EVENT_TYPES.PASSWORD_RESET_REQUEST,
+      outcome: SECURITY_EVENT_OUTCOMES.SUCCESS,
+    });
 
     return NextResponse.json({
       ok: true,

@@ -8,6 +8,11 @@ import {
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
 import { apiError, badRequest, internalServerError } from "@/lib/api/errors";
+import {
+  recordSecurityEvent,
+  SECURITY_EVENT_TYPES,
+  SECURITY_EVENT_OUTCOMES,
+} from "@/lib/security/events";
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,12 +62,18 @@ export async function POST(request: NextRequest) {
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Create user
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         email: trimmedEmail,
         name: name ? name.trim() : null,
         passwordHash,
       },
+    });
+
+    await recordSecurityEvent({
+      type: SECURITY_EVENT_TYPES.AUTH_REGISTER,
+      outcome: SECURITY_EVENT_OUTCOMES.SUCCESS,
+      userId: user.id,
     });
 
     // Clean logging

@@ -5,6 +5,11 @@ import { prisma } from "@/lib/db";
 import { Role } from "@prisma/client";
 import { loginSchema } from "@/lib/security/auth-validation";
 import { getAuthSecret } from "@/lib/security/runtime-config";
+import {
+  recordSecurityEvent,
+  SECURITY_EVENT_TYPES,
+  SECURITY_EVENT_OUTCOMES,
+} from "@/lib/security/events";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   debug: false,
@@ -48,6 +53,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const isValid = await bcrypt.compare(password, user.passwordHash);
 
         if (!isValid) return null;
+
+        await recordSecurityEvent({
+          type: SECURITY_EVENT_TYPES.AUTH_LOGIN,
+          outcome: SECURITY_EVENT_OUTCOMES.SUCCESS,
+          userId: user.id,
+        });
 
         return {
           id: user.id,

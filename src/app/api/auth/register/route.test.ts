@@ -1,17 +1,22 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { userFindUnique, userCreate, rateLimit } = vi.hoisted(() => ({
-  userFindUnique: vi.fn(),
-  userCreate: vi.fn(),
-  rateLimit: vi.fn(),
-}));
+const { userFindUnique, userCreate, securityEventCreate, rateLimit } =
+  vi.hoisted(() => ({
+    userFindUnique: vi.fn(),
+    userCreate: vi.fn(),
+    securityEventCreate: vi.fn(),
+    rateLimit: vi.fn(),
+  }));
 
 vi.mock("@/lib/db", () => ({
   prisma: {
     user: {
       findUnique: userFindUnique,
       create: userCreate,
+    },
+    securityEvent: {
+      create: securityEventCreate,
     },
   },
 }));
@@ -42,6 +47,7 @@ describe("POST /api/auth/register", () => {
     });
     userFindUnique.mockReset();
     userCreate.mockReset();
+    securityEventCreate.mockReset();
   });
 
   it("rejects registration when the IP rate limit is exceeded", async () => {
@@ -125,6 +131,16 @@ describe("POST /api/auth/register", () => {
     });
     expect(userFindUnique).toHaveBeenCalledWith({
       where: { email: "user@example.com" },
+    });
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "AUTH_REGISTER",
+        outcome: "SUCCESS",
+        userId: "user-1",
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
     });
   });
 });

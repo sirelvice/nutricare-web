@@ -9,6 +9,11 @@ import {
 import { prisma } from "@/lib/db";
 import { resetPasswordSchema } from "@/lib/security/auth-validation";
 import { apiError, badRequest, internalServerError } from "@/lib/api/errors";
+import {
+  recordSecurityEvent,
+  SECURITY_EVENT_TYPES,
+  SECURITY_EVENT_OUTCOMES,
+} from "@/lib/security/events";
 
 export const runtime = "nodejs";
 
@@ -89,6 +94,12 @@ export async function POST(req: Request) {
           id: { not: resetToken.id },
         },
       });
+    });
+
+    await recordSecurityEvent({
+      type: SECURITY_EVENT_TYPES.PASSWORD_RESET_COMPLETE,
+      outcome: SECURITY_EVENT_OUTCOMES.SUCCESS,
+      userId: resetToken.userId,
     });
 
     return NextResponse.json({

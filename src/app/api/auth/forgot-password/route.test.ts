@@ -1,11 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findUnique, deleteMany, create, transaction, fetchMock } = vi.hoisted(() => ({
+const {
+  findUnique,
+  deleteMany,
+  create,
+  transaction,
+  fetchMock,
+  securityEventCreate,
+} = vi.hoisted(() => ({
   findUnique: vi.fn(),
   deleteMany: vi.fn(),
   create: vi.fn(),
   transaction: vi.fn(),
   fetchMock: vi.fn(),
+  securityEventCreate: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -18,6 +26,9 @@ vi.mock("@/lib/db", () => ({
       create,
     },
     $transaction: transaction,
+    securityEvent: {
+      create: securityEventCreate,
+    },
   },
 }));
 
@@ -81,6 +92,7 @@ describe("POST /api/auth/forgot-password", () => {
     create.mockReset();
     transaction.mockReset();
     fetchMock.mockReset();
+    securityEventCreate.mockReset();
 
     transaction.mockResolvedValue([]);
   });
@@ -174,6 +186,16 @@ describe("POST /api/auth/forgot-password", () => {
       "https://app.nutricare.app/reset-password?token=",
     );
     expect(emailBody.html).not.toContain("attacker.example");
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_REQUEST",
+        outcome: "SUCCESS",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
   });
 
   it("fails closed when the application URL is not configured", async () => {

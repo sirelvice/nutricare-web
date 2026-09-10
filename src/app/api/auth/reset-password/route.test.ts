@@ -1,13 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findUnique, updateMany, userUpdate, deleteMany, transaction } =
-  vi.hoisted(() => ({
-    findUnique: vi.fn(),
-    updateMany: vi.fn(),
-    userUpdate: vi.fn(),
-    deleteMany: vi.fn(),
-    transaction: vi.fn(),
-  }));
+const {
+  findUnique,
+  updateMany,
+  userUpdate,
+  deleteMany,
+  transaction,
+  securityEventCreate,
+} = vi.hoisted(() => ({
+  findUnique: vi.fn(),
+  updateMany: vi.fn(),
+  userUpdate: vi.fn(),
+  deleteMany: vi.fn(),
+  transaction: vi.fn(),
+  securityEventCreate: vi.fn(),
+}));
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -20,6 +27,9 @@ vi.mock("@/lib/db", () => ({
       update: userUpdate,
     },
     $transaction: transaction,
+    securityEvent: {
+      create: securityEventCreate,
+    },
   },
 }));
 
@@ -90,6 +100,7 @@ describe("POST /api/auth/reset-password", () => {
     userUpdate.mockReset();
     deleteMany.mockReset();
     transaction.mockReset();
+    securityEventCreate.mockReset();
 
     transaction.mockImplementation(async (callback) =>
       callback({
@@ -228,6 +239,16 @@ describe("POST /api/auth/reset-password", () => {
       data: {
         passwordHash: "hashed-password",
         authVersion: { increment: 1 },
+      },
+    });
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_COMPLETE",
+        outcome: "SUCCESS",
+        userId: "user-1",
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
       },
     });
   });

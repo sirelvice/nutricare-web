@@ -102,7 +102,10 @@ describe("Profile API", () => {
         activity: "moderate",
         goal: "lose",
       }),
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:3000",
+      },
     });
 
     const response = await PUT(request);
@@ -129,7 +132,10 @@ describe("Profile API", () => {
     const request = new Request("http://localhost/api/profile", {
       method: "PUT",
       body: JSON.stringify(profile),
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:3000",
+      },
     });
 
     const response = await PUT(request);
@@ -138,4 +144,28 @@ describe("Profile API", () => {
     expect(await response.json()).toEqual(profile);
     expect(mockSaveExecute).toHaveBeenCalledWith("user-123", profile);
   });
+  it("returns 403 and does not call the service for a foreign origin", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: "user-1" },
+    } as never);
+
+    const request = new Request(
+      "http://localhost:3000/api/profile",
+      {
+        method: "PUT",
+        headers: {
+          Origin: "https://attacker.example",
+        },
+        body: JSON.stringify({
+          firstName: "Updated",
+        }),
+      },
+    );
+
+    const response = await PUT(request);
+
+    expect(response.status).toBe(403);
+    expect(mockSaveExecute).not.toHaveBeenCalled();
+  });
+
 });

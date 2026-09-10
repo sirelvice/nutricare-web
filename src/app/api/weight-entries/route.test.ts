@@ -100,6 +100,7 @@ describe("POST /api/weight-entries", () => {
       }),
       headers: {
         "content-type": "application/json",
+        Origin: "http://localhost:3000",
       },
     });
 
@@ -135,6 +136,7 @@ describe("POST /api/weight-entries", () => {
       }),
       headers: {
         "content-type": "application/json",
+        Origin: "http://localhost:3000",
       },
     });
 
@@ -149,6 +151,32 @@ describe("POST /api/weight-entries", () => {
       note: "Morning",
     });
   });
+
+  it("returns 403 and does not call the service for a foreign origin", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: "user-1" },
+    } as never);
+
+    const request = new Request(
+      "http://localhost:3000/api/weight-entries",
+      {
+        method: "POST",
+        headers: {
+          Origin: "https://attacker.example",
+        },
+        body: JSON.stringify({
+          weightKg: 70,
+          recordedAt: "2026-09-10T08:00:00.000Z",
+        }),
+      },
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(403);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
 });
 
 describe("GET /api/weight-entries", () => {

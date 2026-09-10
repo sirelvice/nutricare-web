@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
+import {
+  assertSameOrigin,
+  InvalidRequestOriginError,
+} from "@/lib/security/origin";
 import { prisma } from "@/lib/db";
 import { GetProfileService } from "@/lib/profile/services/get-profile";
 import { SaveProfileService } from "@/lib/profile/services/save-profile";
@@ -54,6 +58,19 @@ export async function PUT(request: Request) {
 
   if (!session?.user?.id) {
     return unauthorized();
+  }
+
+  try {
+    assertSameOrigin(request);
+  } catch (error) {
+    if (error instanceof InvalidRequestOriginError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 },
+      );
+    }
+
+    throw error;
   }
 
   const body = await request.json().catch(() => null);

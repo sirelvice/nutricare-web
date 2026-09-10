@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
+import {
+  assertSameOrigin,
+  InvalidRequestOriginError,
+} from "@/lib/security/origin";
 import { prisma } from "@/lib/db";
 import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
 import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
@@ -23,6 +27,19 @@ export async function POST(req: Request) {
       { error: "Authentication required." },
       { status: 401 },
     );
+  }
+
+  try {
+    assertSameOrigin(req);
+  } catch (error) {
+    if (error instanceof InvalidRequestOriginError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 },
+      );
+    }
+
+    throw error;
   }
 
   const body = await req.json().catch(() => null);

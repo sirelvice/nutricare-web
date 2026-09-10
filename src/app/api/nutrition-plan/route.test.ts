@@ -82,7 +82,14 @@ describe("/api/nutrition-plan", () => {
 
     generateExecute.mockResolvedValue(null);
 
-    const response = await POST();
+    const response = await POST(
+      new Request("http://localhost:3000/api/nutrition-plan", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+        },
+      }),
+    );
 
     expect(response.status).toBe(422);
     expect(await response.json()).toEqual({
@@ -110,10 +117,38 @@ describe("/api/nutrition-plan", () => {
 
     generateExecute.mockResolvedValue(plan);
 
-    const response = await POST();
+    const response = await POST(
+      new Request("http://localhost:3000/api/nutrition-plan", {
+        method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+        },
+      }),
+    );
 
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ plan });
     expect(generateExecute).toHaveBeenCalledWith("user-123");
   });
+  it("returns 403 and does not call the service for a foreign origin", async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: "user-1" },
+    } as never);
+
+    const request = new Request(
+      "http://localhost:3000/api/nutrition-plan",
+      {
+        method: "POST",
+        headers: {
+          Origin: "https://attacker.example",
+        },
+      },
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(403);
+    expect(generateExecute).not.toHaveBeenCalled();
+  });
+
 });

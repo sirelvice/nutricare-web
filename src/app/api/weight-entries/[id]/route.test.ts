@@ -53,8 +53,11 @@ describe("DELETE /api/weight-entries/:id", () => {
     });
 
     const response = await DELETE(
-      new Request("http://localhost/api/weight-entries/", {
+      new Request("http://localhost:3000/api/weight-entries/", {
         method: "DELETE",
+        headers: {
+          Origin: "http://localhost:3000",
+        },
       }),
       { params: Promise.resolve({ id: "" }) },
     );
@@ -74,8 +77,11 @@ describe("DELETE /api/weight-entries/:id", () => {
     mockDeleteExecute.mockResolvedValue(undefined);
 
     const response = await DELETE(
-      new Request("http://localhost/api/weight-entries/entry-1", {
+      new Request("http://localhost:3000/api/weight-entries/entry-1", {
         method: "DELETE",
+        headers: {
+          Origin: "http://localhost:3000",
+        },
       }),
       { params: Promise.resolve({ id: "entry-1" }) },
     );
@@ -83,4 +89,28 @@ describe("DELETE /api/weight-entries/:id", () => {
     expect(response.status).toBe(204);
     expect(mockDeleteExecute).toHaveBeenCalledWith("user-1", "entry-1");
   });
+  it("returns 403 and does not call the service for a foreign origin", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: "user-1" },
+    } as never);
+
+    const response = await DELETE(
+      new Request(
+        "http://localhost:3000/api/weight-entries/entry-1",
+        {
+          method: "DELETE",
+          headers: {
+            Origin: "https://attacker.example",
+          },
+        },
+      ),
+      {
+        params: Promise.resolve({ id: "entry-1" }),
+      },
+    );
+
+    expect(response.status).toBe(403);
+    expect(mockDeleteExecute).not.toHaveBeenCalled();
+  });
+
 });

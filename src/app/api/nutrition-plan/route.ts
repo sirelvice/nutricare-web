@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
+  assertSameOrigin,
+  InvalidRequestOriginError,
+} from "@/lib/security/origin";
+import {
   GetLatestNutritionPlanService,
 } from "@/lib/nutrition-plan/service";
 import { GenerateNutritionPlanService } from "@/lib/nutrition-plan/generate-service";
@@ -42,12 +46,25 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const session = await auth();
 
     if (!session?.user?.id) {
       return unauthorized();
+    }
+
+    try {
+      assertSameOrigin(request);
+    } catch (error) {
+      if (error instanceof InvalidRequestOriginError) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 403 },
+        );
+      }
+
+      throw error;
     }
 
     const plan = await generatePlanService.execute(session.user.id);

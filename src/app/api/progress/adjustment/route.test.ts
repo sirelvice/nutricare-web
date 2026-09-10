@@ -70,6 +70,9 @@ describe("POST /api/progress/adjustment", () => {
     const response = await POST(
       new Request("http://localhost/api/progress/adjustment", {
         method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+        },
         body: JSON.stringify({
           evaluationId: "evaluation-1",
           decision: "PENDING",
@@ -109,6 +112,9 @@ describe("POST /api/progress/adjustment", () => {
     const response = await POST(
       new Request("http://localhost/api/progress/adjustment", {
         method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+        },
         body: JSON.stringify({
           evaluationId: "evaluation-1",
           decision: "ACCEPTED",
@@ -154,6 +160,9 @@ describe("POST /api/progress/adjustment", () => {
     const response = await POST(
       new Request("http://localhost/api/progress/adjustment", {
         method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+        },
         body: JSON.stringify({
           evaluationId: "evaluation-1",
           decision: "DECLINED",
@@ -186,6 +195,9 @@ describe("POST /api/progress/adjustment", () => {
     const response = await POST(
       new Request("http://localhost/api/progress/adjustment", {
         method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+        },
         body: JSON.stringify({
           evaluationId: "evaluation-1",
           decision: "ACCEPTED",
@@ -209,6 +221,9 @@ describe("POST /api/progress/adjustment", () => {
     const response = await POST(
       new Request("http://localhost/api/progress/adjustment", {
         method: "POST",
+        headers: {
+          Origin: "http://localhost:3000",
+        },
         body: JSON.stringify({
           evaluationId: "evaluation-1",
           decision: "ACCEPTED",
@@ -221,4 +236,29 @@ describe("POST /api/progress/adjustment", () => {
       error: "Unable to process adjustment response.",
     });
   });
+  it("returns 403 and does not call the service for a foreign origin", async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: { id: "user-1" },
+    } as never);
+
+    const request = new Request(
+      "http://localhost:3000/api/progress/adjustment",
+      {
+        method: "POST",
+        headers: {
+          Origin: "https://attacker.example",
+        },
+        body: JSON.stringify({
+          evaluationId: "evaluation-1",
+          decision: "ACCEPTED",
+        }),
+      },
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(403);
+    expect(applyExecute).not.toHaveBeenCalled();
+  });
+
 });

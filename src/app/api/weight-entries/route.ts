@@ -6,6 +6,10 @@ import {
 } from "@/lib/api/errors";
 import { z } from "zod";
 import { auth } from "@/auth";
+import {
+  assertSameOrigin,
+  InvalidRequestOriginError,
+} from "@/lib/security/origin";
 import { prisma } from "@/lib/db";
 import {
   InvalidWeightEntryError,
@@ -30,6 +34,19 @@ export async function POST(req: Request) {
 
   if (!session?.user?.id) {
     return unauthorized();
+  }
+
+  try {
+    assertSameOrigin(req);
+  } catch (error) {
+    if (error instanceof InvalidRequestOriginError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 },
+      );
+    }
+
+    throw error;
   }
 
   const body = await req.json().catch(() => null);

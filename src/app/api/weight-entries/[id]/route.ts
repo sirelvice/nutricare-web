@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import {
+  assertSameOrigin,
+  InvalidRequestOriginError,
+} from "@/lib/security/origin";
 import { prisma } from "@/lib/db";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
 import { DeleteWeightEntryService } from "@/lib/tracking/services/delete-weight-entry";
@@ -16,6 +20,19 @@ export async function DELETE(
 
   if (!session?.user?.id) {
     return unauthorized();
+  }
+
+  try {
+    assertSameOrigin(_req);
+  } catch (error) {
+    if (error instanceof InvalidRequestOriginError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 },
+      );
+    }
+
+    throw error;
   }
 
   const { id } = await params;

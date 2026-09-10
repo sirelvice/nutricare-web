@@ -33,6 +33,11 @@ export async function POST(req: Request) {
     });
 
     if (!limit.allowed) {
+      await recordSecurityEvent({
+        type: SECURITY_EVENT_TYPES.PASSWORD_RESET_COMPLETE,
+        outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+      });
+
       return apiError(
         "Too many password reset attempts. Please try again later.",
         429,
@@ -43,6 +48,11 @@ export async function POST(req: Request) {
     const parsed = schema.safeParse(await req.json());
 
     if (!parsed.success) {
+      await recordSecurityEvent({
+        type: SECURITY_EVENT_TYPES.PASSWORD_RESET_COMPLETE,
+        outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+      });
+
       return badRequest("Invalid reset request.");
     }
 
@@ -61,6 +71,11 @@ export async function POST(req: Request) {
     });
 
     if (!resetToken || resetToken.usedAt || resetToken.expiresAt <= now) {
+      await recordSecurityEvent({
+        type: SECURITY_EVENT_TYPES.PASSWORD_RESET_COMPLETE,
+        outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+      });
+
       return badRequest("This password reset link is invalid or has expired.");
     }
 
@@ -107,6 +122,11 @@ export async function POST(req: Request) {
       message: "Your password has been reset successfully.",
     });
   } catch (error) {
+    await recordSecurityEvent({
+      type: SECURITY_EVENT_TYPES.PASSWORD_RESET_COMPLETE,
+      outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+    });
+
     console.error("Reset-password route failed.");
 
     return internalServerError("Unable to reset the password right now.");

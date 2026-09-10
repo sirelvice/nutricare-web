@@ -40,7 +40,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           password: credentials?.password?.toString(),
         });
 
-        if (!parsed.success) return null;
+        if (!parsed.success) {
+          await recordSecurityEvent({
+            type: SECURITY_EVENT_TYPES.AUTH_LOGIN,
+            outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+          });
+          return null;
+        }
 
         const { email, password } = parsed.data;
 
@@ -48,11 +54,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email },
         });
 
-        if (!user) return null;
+        if (!user) {
+          await recordSecurityEvent({
+            type: SECURITY_EVENT_TYPES.AUTH_LOGIN,
+            outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+          });
+          return null;
+        }
 
         const isValid = await bcrypt.compare(password, user.passwordHash);
 
-        if (!isValid) return null;
+        if (!isValid) {
+          await recordSecurityEvent({
+            type: SECURITY_EVENT_TYPES.AUTH_LOGIN,
+            outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+          });
+          return null;
+        }
 
         await recordSecurityEvent({
           type: SECURITY_EVENT_TYPES.AUTH_LOGIN,

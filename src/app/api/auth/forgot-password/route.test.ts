@@ -84,6 +84,16 @@ describe("POST /api/auth/forgot-password", () => {
       error: "Too many password reset requests. Please try again later.",
     });
     expect(response.headers.get("Retry-After")).toBe("120");
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_REQUEST",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
   });
 
   beforeEach(() => {
@@ -127,6 +137,7 @@ describe("POST /api/auth/forgot-password", () => {
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(securityEventCreate).not.toHaveBeenCalled();
   });
 
   it("returns 503 when email delivery is not configured", async () => {
@@ -142,6 +153,16 @@ describe("POST /api/auth/forgot-password", () => {
     const response = await POST(request);
 
     expect(response.status).toBe(503);
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_REQUEST",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
   });
 
   it("creates a reset token and sends the reset email", async () => {
@@ -248,6 +269,16 @@ describe("POST /api/auth/forgot-password", () => {
     expect(response.status).toBe(500);
     expect(deleteMany).toHaveBeenCalledWith({
       where: { tokenHash: expect.any(String) },
+    });
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_REQUEST",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
     });
   });
 });

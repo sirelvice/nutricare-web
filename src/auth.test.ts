@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { userFindUnique, nextAuth } = vi.hoisted(() => ({
+const { userFindUnique, securityEventCreate, nextAuth } = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
+  securityEventCreate: vi.fn(),
   nextAuth: vi.fn(),
 }));
 
@@ -11,6 +12,9 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     user: {
       findUnique: userFindUnique,
+    },
+    securityEvent: {
+      create: securityEventCreate,
     },
   },
 }));
@@ -26,8 +30,83 @@ vi.mock("next-auth/providers/credentials", () => ({
 beforeEach(() => {
   vi.resetModules();
   userFindUnique.mockReset();
+  securityEventCreate.mockReset();
   nextAuth.mockReset();
   credentialsProvider.mockReset();
+});
+
+describe("Auth.js authentication security events", () => {
+  it("records a failed login when credentials are invalid", async () => {
+    nextAuth.mockReturnValue({
+      handlers: {},
+      auth: vi.fn(),
+      signIn: vi.fn(),
+      signOut: vi.fn(),
+    });
+
+    credentialsProvider.mockImplementation((providerConfig) => providerConfig);
+
+    await import("./auth");
+
+    const authConfig = vi.mocked(nextAuth).mock.calls[0]?.[0];
+    const credentialsConfig = authConfig?.providers?.[0] as {
+      authorize?: (credentials: Record<string, unknown>) => Promise<unknown>;
+    };
+
+    const result = await credentialsConfig.authorize?.({
+      email: "not-an-email",
+      password: "short",
+    });
+
+    expect(result).toBeNull();
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "AUTH_LOGIN",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
+  });
+
+  it("records a failed login without identifying an unknown account", async () => {
+    userFindUnique.mockResolvedValue(null);
+
+    nextAuth.mockReturnValue({
+      handlers: {},
+      auth: vi.fn(),
+      signIn: vi.fn(),
+      signOut: vi.fn(),
+    });
+
+    credentialsProvider.mockImplementation((providerConfig) => providerConfig);
+
+    await import("./auth");
+
+    const authConfig = vi.mocked(nextAuth).mock.calls[0]?.[0];
+    const credentialsConfig = authConfig?.providers?.[0] as {
+      authorize?: (credentials: Record<string, unknown>) => Promise<unknown>;
+    };
+
+    const result = await credentialsConfig.authorize?.({
+      email: "unknown@example.com",
+      password: "password-123",
+    });
+
+    expect(result).toBeNull();
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "AUTH_LOGIN",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
+  });
 });
 
 describe("Auth.js session invalidation", () => {

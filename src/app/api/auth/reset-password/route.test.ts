@@ -92,6 +92,16 @@ describe("POST /api/auth/reset-password", () => {
       error: "Too many password reset attempts. Please try again later.",
     });
     expect(response.headers.get("Retry-After")).toBe("120");
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_COMPLETE",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
   });
 
   beforeEach(() => {
@@ -129,6 +139,16 @@ describe("POST /api/auth/reset-password", () => {
 
     expect(response.status).toBe(400);
     expect(findUnique).not.toHaveBeenCalled();
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_COMPLETE",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
   });
 
   it("rejects a missing token", async () => {
@@ -147,6 +167,16 @@ describe("POST /api/auth/reset-password", () => {
 
     expect(response.status).toBe(400);
     expect(userUpdate).not.toHaveBeenCalled();
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_COMPLETE",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
   });
 
   it("rejects an expired token", async () => {
@@ -170,6 +200,16 @@ describe("POST /api/auth/reset-password", () => {
 
     expect(response.status).toBe(400);
     expect(userUpdate).not.toHaveBeenCalled();
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_COMPLETE",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
   });
 
   it("rejects an already-used token", async () => {
@@ -193,6 +233,16 @@ describe("POST /api/auth/reset-password", () => {
 
     expect(response.status).toBe(400);
     expect(userUpdate).not.toHaveBeenCalled();
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_COMPLETE",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
   });
 
   it("resets the password and consumes the token atomically", async () => {
@@ -276,5 +326,15 @@ describe("POST /api/auth/reset-password", () => {
 
     expect(response.status).toBe(500);
     expect(userUpdate).not.toHaveBeenCalled();
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "PASSWORD_RESET_COMPLETE",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
   });
 });

@@ -24,6 +24,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!limit.allowed) {
+      await recordSecurityEvent({
+        type: SECURITY_EVENT_TYPES.AUTH_REGISTER,
+        outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+      });
+
       return apiError(
         "Too many registration attempts. Please try again later.",
         429,

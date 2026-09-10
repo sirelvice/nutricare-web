@@ -74,6 +74,11 @@ export async function POST(req: Request) {
     });
 
     if (!ipLimit.allowed) {
+      await recordSecurityEvent({
+        type: SECURITY_EVENT_TYPES.PASSWORD_RESET_REQUEST,
+        outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+      });
+
       return apiError(
         "Too many password reset requests. Please try again later.",
         429,
@@ -89,6 +94,11 @@ export async function POST(req: Request) {
     });
 
     if (!accountLimit.allowed) {
+      await recordSecurityEvent({
+        type: SECURITY_EVENT_TYPES.PASSWORD_RESET_REQUEST,
+        outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+      });
+
       return apiError(
         "Too many password reset requests. Please try again later.",
         429,
@@ -101,6 +111,11 @@ export async function POST(req: Request) {
     );
 
     if (!apiKeyConfigured) {
+      await recordSecurityEvent({
+        type: SECURITY_EVENT_TYPES.PASSWORD_RESET_REQUEST,
+        outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+      });
+
       console.error("Password reset email service is not configured.");
       return NextResponse.json(
         { error: "Password reset is temporarily unavailable." },
@@ -181,6 +196,11 @@ export async function POST(req: Request) {
         "If an account exists for that email, reset instructions will be sent shortly.",
     });
   } catch (error) {
+    await recordSecurityEvent({
+      type: SECURITY_EVENT_TYPES.PASSWORD_RESET_REQUEST,
+      outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+    });
+
     console.error("Forgot-password route failed.");
 
     return internalServerError(

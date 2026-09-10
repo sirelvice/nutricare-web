@@ -77,6 +77,16 @@ describe("POST /api/auth/register", () => {
     expect(response.headers.get("Retry-After")).toBe("120");
     expect(userFindUnique).not.toHaveBeenCalled();
     expect(userCreate).not.toHaveBeenCalled();
+    expect(securityEventCreate).toHaveBeenCalledWith({
+      data: {
+        type: "AUTH_REGISTER",
+        outcome: "FAILURE",
+        userId: null,
+        ipAddress: null,
+        userAgent: null,
+        metadata: undefined,
+      },
+    });
   });
 
   it("does not reveal whether an email already has an account", async () => {

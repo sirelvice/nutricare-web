@@ -41,6 +41,7 @@ export default function ReportPage() {
   const latestBmi = report?.bmi.latest ?? null;
   const latestCal = report?.nutritionPlan ?? null;
   const weightStats = report?.weight.stats ?? null;
+  const progress = report?.progress ?? null;
 
   const weightTrend = weightStats
     ? weightStats.change > 0
@@ -48,13 +49,12 @@ export default function ReportPage() {
       : `${weightStats.change} kg`
     : "—";
 
-  const weightInsight = weightStats
-    ? weightStats.change < 0
-      ? "Weight trending down"
-      : weightStats.change > 0
-      ? "Weight increasing"
-      : "Weight stable"
-    : "No data";
+  const weightInsight =
+    progress?.evaluation?.headline ?? "No progress evaluation available";
+
+  const weightSummary =
+    progress?.evaluation?.summary ??
+    "We don't have enough information to describe your progress yet.";
 
   async function onDownloadPDF() {
     if (!pdfRef.current) return;
@@ -186,6 +186,9 @@ export default function ReportPage() {
           <CardContent>
             <div className="text-3xl font-semibold">{weightTrend}</div>
             <p className="text-sm text-slate-600">{weightInsight}</p>
+            {progress?.evaluation && (
+              <p className="mt-2 text-sm text-slate-500">{weightSummary}</p>
+            )}
           </CardContent>
         </Card>
           </div>
@@ -240,6 +243,7 @@ export default function ReportPage() {
             </h2>
             <p style={{ fontSize: "18px" }}>{weightTrend}</p>
             <p>{weightInsight}</p>
+            <p>{weightSummary}</p>
           </div>
 
           <div>
@@ -248,6 +252,7 @@ export default function ReportPage() {
             </h2>
             <p>Your current BMI status: {latestBmi?.category.label ?? "—"}</p>
             <p>{weightInsight}</p>
+            <p>{weightSummary}</p>
           </div>
         </div>
       </div>

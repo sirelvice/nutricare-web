@@ -3,6 +3,7 @@ import type { UserProfile } from "@/lib/profile/domain";
 import type { ProfileRepository } from "@/lib/profile/repositories/profile-repository";
 import type { NutritionPlan } from "@/lib/nutrition-plan/domain";
 import type { NutritionPlanRepository } from "@/lib/nutrition-plan/repository";
+import { GetCurrentProgressService } from "@/lib/progress/get-current-progress-service";
 import { summarize, type WeightEntry } from "@/lib/tracking/domain";
 import type { WeightRepository } from "@/lib/tracking/repositories/weight-repository";
 
@@ -21,6 +22,7 @@ export type Report = {
     entriesCount: number;
     entries: WeightEntry[];
   };
+  progress: Awaited<ReturnType<GetCurrentProgressService["execute"]>>;
 };
 
 export class GetReportService {
@@ -28,6 +30,7 @@ export class GetReportService {
     private readonly profileRepository: ProfileRepository,
     private readonly weightRepository: WeightRepository,
     private readonly nutritionPlanRepository: NutritionPlanRepository,
+    private readonly currentProgressService: GetCurrentProgressService,
   ) {}
 
   async execute(userId: string): Promise<Report | null> {
@@ -35,11 +38,13 @@ export class GetReportService {
       throw new Error("User ID is required");
     }
 
-    const [profile, weightEntries, nutritionPlan] = await Promise.all([
-      this.profileRepository.findByUserId(userId),
-      this.weightRepository.findByUserId(userId),
-      this.nutritionPlanRepository.findLatestByUserId(userId),
-    ]);
+    const [profile, weightEntries, nutritionPlan, progress] =
+      await Promise.all([
+        this.profileRepository.findByUserId(userId),
+        this.weightRepository.findByUserId(userId),
+        this.nutritionPlanRepository.findLatestByUserId(userId),
+        this.currentProgressService.execute(userId),
+      ]);
 
     if (!profile) {
       return null;
@@ -72,6 +77,7 @@ export class GetReportService {
         entriesCount: weightEntries.length,
         entries: weightEntries,
       },
+      progress,
     };
   }
 }

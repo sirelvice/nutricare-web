@@ -6,6 +6,8 @@ import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weigh
 import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
 import { prisma } from "@/lib/db";
 import { GetReportService } from "@/lib/report/service";
+import { GetCurrentProgressService } from "@/lib/progress/get-current-progress-service";
+import { PrismaProgressEvaluationRepository } from "@/lib/progress/repositories/prisma-progress-evaluation-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,10 @@ const reportService = new GetReportService(
   new PrismaProfileRepository(prisma),
   new PrismaWeightRepository(prisma),
   prismaNutritionPlanRepository,
+  new GetCurrentProgressService(
+    prismaNutritionPlanRepository,
+    new PrismaProgressEvaluationRepository(prisma),
+  ),
 );
 
 export async function GET() {

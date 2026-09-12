@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { GetReportService } from "@/lib/report/service";
+import { GetCurrentProgressService } from "@/lib/progress/get-current-progress-service";
 import type { ProfileRepository } from "@/lib/profile/repositories/profile-repository";
 import type { WeightRepository } from "@/lib/tracking/repositories/weight-repository";
 import type { NutritionPlanRepository } from "@/lib/nutrition-plan/repository";
@@ -23,10 +24,15 @@ function createRepositories() {
     findAllByUserId: vi.fn(),
   };
 
+  const currentProgressService = {
+    execute: vi.fn(),
+  } as unknown as GetCurrentProgressService;
+
   return {
     profileRepository,
     weightRepository,
     nutritionPlanRepository,
+    currentProgressService,
   };
 }
 
@@ -36,6 +42,7 @@ describe("GetReportService", () => {
       profileRepository,
       weightRepository,
       nutritionPlanRepository,
+      currentProgressService,
     } = createRepositories();
 
     vi.mocked(profileRepository.findByUserId).mockResolvedValue({
@@ -71,10 +78,32 @@ describe("GetReportService", () => {
       createdAt: "2026-09-03T00:00:00.000Z",
     });
 
+    vi.mocked(currentProgressService.execute).mockResolvedValue({
+      planVersionId: "plan-2",
+      evaluation: {
+        id: "evaluation-1",
+        state: "ON_TRACK",
+        changeKg: 2,
+        entriesCount: 2,
+        evaluationDays: 33,
+        evaluatedAt: "2026-09-03T00:00:00.000Z",
+        headline: "You're moving toward your goal",
+        summary: "Your logged weight increased by 2.0 kg over 33 days.",
+      },
+      recommendation: {
+        recommendedAction: "CONTINUE",
+        reason: "on_track",
+        adjustmentDecision: "PENDING",
+        respondedAt: null,
+        message: "Your recent results are consistent with your current goal.",
+      },
+    });
+
     const service = new GetReportService(
       profileRepository,
       weightRepository,
       nutritionPlanRepository,
+      currentProgressService,
     );
 
     const result = await service.execute("user-1");
@@ -86,6 +115,13 @@ describe("GetReportService", () => {
     expect(result?.nutritionPlan?.version).toBe(2);
     expect(result?.weight.entriesCount).toBe(2);
     expect(result?.weight.stats?.change).toBe(2);
+    expect(result?.progress?.evaluation?.headline).toBe(
+      "You're moving toward your goal",
+    );
+    expect(result?.progress?.evaluation?.summary).toBe(
+      "Your logged weight increased by 2.0 kg over 33 days.",
+    );
+    expect(result?.progress?.recommendation?.recommendedAction).toBe("CONTINUE");
   });
 
   it("returns a report without BMI when height is unavailable", async () => {
@@ -93,6 +129,7 @@ describe("GetReportService", () => {
       profileRepository,
       weightRepository,
       nutritionPlanRepository,
+      currentProgressService,
     } = createRepositories();
 
     vi.mocked(profileRepository.findByUserId).mockResolvedValue({
@@ -119,6 +156,7 @@ describe("GetReportService", () => {
       profileRepository,
       weightRepository,
       nutritionPlanRepository,
+      currentProgressService,
     );
 
     const result = await service.execute("user-1");
@@ -133,6 +171,7 @@ describe("GetReportService", () => {
       profileRepository,
       weightRepository,
       nutritionPlanRepository,
+      currentProgressService,
     } = createRepositories();
 
     vi.mocked(profileRepository.findByUserId).mockResolvedValue(null);
@@ -145,6 +184,7 @@ describe("GetReportService", () => {
       profileRepository,
       weightRepository,
       nutritionPlanRepository,
+      currentProgressService,
     );
 
     await expect(service.execute("user-1")).resolves.toBeNull();
@@ -155,12 +195,14 @@ describe("GetReportService", () => {
       profileRepository,
       weightRepository,
       nutritionPlanRepository,
+      currentProgressService,
     } = createRepositories();
 
     const service = new GetReportService(
       profileRepository,
       weightRepository,
       nutritionPlanRepository,
+      currentProgressService,
     );
 
     await expect(service.execute("")).rejects.toThrow("User ID is required");

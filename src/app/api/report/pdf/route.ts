@@ -7,6 +7,8 @@ import { GetReportService } from "@/lib/report/service";
 import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
 import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
+import { GetCurrentProgressService } from "@/lib/progress/get-current-progress-service";
+import { PrismaProgressEvaluationRepository } from "@/lib/progress/repositories/prisma-progress-evaluation-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +17,10 @@ const reportService = new GetReportService(
   new PrismaProfileRepository(prisma),
   new PrismaWeightRepository(prisma),
   prismaNutritionPlanRepository,
+  new GetCurrentProgressService(
+    prismaNutritionPlanRepository,
+    new PrismaProgressEvaluationRepository(prisma),
+  ),
 );
 
 export async function GET() {

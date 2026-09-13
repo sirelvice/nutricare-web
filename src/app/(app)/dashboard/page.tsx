@@ -9,6 +9,12 @@ import { Button } from "@/components/ui/button";
 import type { UserProfile } from "@/lib/profile/domain";
 import type { WeightEntry } from "@/lib/tracking/domain";
 import type { NutritionPlan } from "@/lib/nutrition-plan/domain";
+import {
+  getAdjustmentResultMessage,
+  getOptionalLoadMessage,
+  getPrimaryAction,
+  getSetupProgress,
+} from "./dashboard-state";
 
 
 import {
@@ -91,6 +97,8 @@ export default function DashboardPage() {
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [progressLoadError, setProgressLoadError] = useState(false);
+  const [recommendationsLoadError, setRecommendationsLoadError] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
@@ -127,12 +135,21 @@ export default function DashboardPage() {
 
         if (recommendationsRes.ok) {
           setRecommendations(await recommendationsRes.json());
+          setRecommendationsLoadError(false);
+        } else {
+          setRecommendations(null);
+          setRecommendationsLoadError(true);
         }
 
         if (progressRes.ok) {
           const data = await progressRes.json();
           setProgressEvaluation(data.progress.evaluation);
           setProgressRecommendation(data.progress.recommendation);
+          setProgressLoadError(false);
+        } else {
+          setProgressEvaluation(null);
+          setProgressRecommendation(null);
+          setProgressLoadError(true);
         }
       } catch (error) {
         if (!cancelled) {
@@ -233,13 +250,11 @@ export default function DashboardPage() {
   const hasWeight = !!latestWeight;
   const hasCalories = !!nutritionPlan;
 
-  const progress = [
+  const progressPercent = getSetupProgress({
     hasProfile,
     hasWeight,
     hasCalories,
-  ].filter(Boolean).length;
-
-  const progressPercent = Math.round((progress / 3) * 100);
+  });
 
   async function generateNutritionPlan() {
     setGenerating(true);
@@ -269,13 +284,11 @@ export default function DashboardPage() {
     }
   }
 
-  const primaryAction = !hasProfile
-    ? { label: "Add your details", href: "/profile" }
-    : !hasWeight
-      ? { label: "Log your first weight", href: "/tools/tracking/weight" }
-      : !hasCalories
-        ? { label: "Generate your nutrition plan", href: null }
-        : null;
+  const primaryAction = getPrimaryAction({
+    hasProfile,
+    hasWeight,
+    hasCalories,
+  });
 
   const chartData = [...weightEntries]
     .sort((a, b) => (a.date > b.date ? 1 : -1))
@@ -443,7 +456,11 @@ export default function DashboardPage() {
           <CardContent className="p-5 space-y-3">
             <p className="text-sm text-slate-500">Goal Progress</p>
 
-            {progressEvaluation ? (
+            {progressLoadError ? (
+              <p className="text-sm text-slate-600">
+                {getOptionalLoadMessage("progress")}
+              </p>
+            ) : progressEvaluation ? (
               <>
                 <div className="text-2xl font-semibold">
                   {progressEvaluation.headline}
@@ -510,10 +527,14 @@ export default function DashboardPage() {
                         <p className="mt-3 text-xs text-slate-500">
                           {progressRecommendation.adjustmentDecision ===
                           "ACCEPTED"
-                            ? nutritionPlan
-                              ? `Your new plan is active (version ${nutritionPlan.version}) with a target of ${nutritionPlan.targetCalories} kcal/day.`
-                              : "You accepted the recommendation and a new plan has been created."
-                            : "You chose to keep your current plan for now."}
+                            ? getAdjustmentResultMessage({
+                                decision: "ACCEPTED",
+                                nutritionPlan,
+                              })
+                            : getAdjustmentResultMessage({
+                                decision: "DECLINED",
+                                nutritionPlan,
+                              })}
                         </p>
                       )}
                   </div>
@@ -570,7 +591,11 @@ export default function DashboardPage() {
           <CardContent className="p-5 space-y-3">
             <p className="text-sm text-slate-500">Recommendations</p>
 
-            {rec ? (
+            {recommendationsLoadError ? (
+              <p className="text-sm text-slate-600">
+                {getOptionalLoadMessage("recommendations")}
+              </p>
+            ) : rec ? (
               <>
                 <p className="text-sm text-slate-600 line-clamp-3">
                   {rec.summary}
@@ -584,9 +609,17 @@ export default function DashboardPage() {
                 </Link>
               </>
             ) : (
-              <Link href="/tools/bmi" className="text-green-600 text-sm">
-                Generate →
-              </Link>
+              <div className="space-y-2">
+                <p className="text-sm text-slate-500">
+                  Recommendations will appear once your profile is ready.
+                </p>
+                <Link
+                  href="/tools/recommendations"
+                  className="text-green-600 text-sm"
+                >
+                  View recommendations →
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>

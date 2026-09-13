@@ -328,21 +328,21 @@ export default function DashboardPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{getGreeting()}</h1>
 
-        <p className="text-slate-600 mt-1">
+        <p className="mt-2 text-sm text-slate-600">
           {hasProfile
             ? `Goal: ${formatGoal(profile?.goal)}`
             : "Add your details to get started"}
         </p>
 
-        <div className="mt-4">
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div className="mt-5 max-w-xl">
+          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full bg-emerald-500"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Setup progress: {progressPercent}%
+          <p className="mt-1 text-xs text-slate-500">
+            Setup {progressPercent}% complete
           </p>
         </div>
 
@@ -353,7 +353,10 @@ export default function DashboardPage() {
         )}
 
         {primaryAction && (
-          <div className="mt-4">
+          <div className="mt-5">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+              Next step
+            </p>
             {primaryAction.href ? (
               <Button asChild>
                 <Link href={primaryAction.href}>
@@ -388,7 +391,7 @@ export default function DashboardPage() {
                 </p>
               </>
             ) : (
-              <Link href="/tools/bmi" className="text-green-600 text-sm">
+              <Link href="/tools/bmi" className="text-emerald-700 text-sm hover:underline">
                 Calculate →
               </Link>
             )}
@@ -422,7 +425,7 @@ export default function DashboardPage() {
             ) : (
               <Link
                 href="/tools/tracking/weight"
-                className="text-green-600 text-sm"
+                className="text-emerald-700 text-sm hover:underline"
               >
                 Add weight →
               </Link>
@@ -614,7 +617,7 @@ export default function DashboardPage() {
 
                 <Link
                   href="/tools/recommendations"
-                  className="text-green-600 text-sm"
+                  className="text-emerald-700 text-sm hover:underline"
                 >
                   View full →
                 </Link>
@@ -626,7 +629,7 @@ export default function DashboardPage() {
                 </p>
                 <Link
                   href="/tools/recommendations"
-                  className="text-green-600 text-sm"
+                  className="text-emerald-700 text-sm hover:underline"
                 >
                   View recommendations →
                 </Link>

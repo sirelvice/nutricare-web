@@ -313,7 +313,7 @@ export default function DashboardPage() {
   if (loadError) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold">Dashboard unavailable</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Dashboard unavailable</h1>
         <p className="text-sm text-slate-600">{loadError}</p>
         <Button onClick={() => window.location.reload()}>
           Try again
@@ -323,10 +323,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       {/* HERO */}
-      <div className="rounded-3xl bg-gradient-to-br from-green-50 via-white to-green-50 p-6 border shadow-sm">
-        <h1 className="text-2xl font-semibold">{getGreeting()}</h1>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{getGreeting()}</h1>
 
         <p className="text-slate-600 mt-1">
           {hasProfile
@@ -375,7 +375,7 @@ export default function DashboardPage() {
       {/* CORE */}
       <div className="grid gap-4 md:grid-cols-3">
         {/* BMI */}
-        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <CardContent className="p-5">
             <p className="text-sm text-slate-500">BMI</p>
             {recommendations ? (
@@ -396,7 +396,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* WEIGHT */}
-        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <CardContent className="p-5 space-y-3">
             <p className="text-sm text-slate-500">Weight</p>
 
@@ -431,7 +431,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* CALORIES */}
-        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <CardContent className="p-5">
             <p className="text-sm text-slate-500">Calories</p>
 
@@ -452,7 +452,7 @@ export default function DashboardPage() {
       {/* INSIGHTS */}
       <div className="grid gap-4 md:grid-cols-3">
         {/* PROGRESS */}
-        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <CardContent className="p-5 space-y-3">
             <p className="text-sm text-slate-500">Goal Progress</p>
 
@@ -462,7 +462,7 @@ export default function DashboardPage() {
               </p>
             ) : progressEvaluation ? (
               <>
-                <div className="text-2xl font-semibold">
+                <div className="text-3xl font-semibold tracking-tight text-slate-900">
                   {progressEvaluation.headline}
                 </div>
 
@@ -551,7 +551,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* MACROS */}
-        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <CardContent className="p-5 space-y-3">
             <p className="text-sm text-slate-500">Macros</p>
 
@@ -587,7 +587,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* RECOMMENDATIONS */}
-        <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <CardContent className="p-5 space-y-3">
             <p className="text-sm text-slate-500">Recommendations</p>
 

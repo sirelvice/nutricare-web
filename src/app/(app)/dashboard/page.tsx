@@ -450,9 +450,20 @@ export default function DashboardPage() {
       </div>
 
       {/* INSIGHTS */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <section aria-labelledby="insights-heading">
+        <div className="mb-3">
+          <p className="text-sm font-medium text-slate-500">Your progress</p>
+          <h2
+            id="insights-heading"
+            className="text-xl font-semibold tracking-tight text-slate-900"
+          >
+            Progress & insights
+          </h2>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
         {/* PROGRESS */}
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm md:col-span-2">
           <CardContent className="p-5 space-y-3">
             <p className="text-sm text-slate-500">Goal Progress</p>
 
@@ -466,12 +477,12 @@ export default function DashboardPage() {
                   {progressEvaluation.headline}
                 </div>
 
-                <p className="text-sm text-slate-600">
+                <p className="max-w-2xl text-sm leading-6 text-slate-600">
                   {progressEvaluation.summary}
                 </p>
 
                 {progressRecommendation && (
-                  <div className="rounded-2xl bg-white/70 border p-3">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs font-medium text-slate-500">
                       Next step
                     </p>
@@ -513,7 +524,7 @@ export default function DashboardPage() {
                           </div>
 
                           {adjustmentError && (
-                            <p className="text-xs text-red-600">
+                            <p role="alert" className="text-xs text-red-600">
                               {adjustmentError}
                             </p>
                           )}
@@ -551,7 +562,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* MACROS */}
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm md:col-span-1">
           <CardContent className="p-5 space-y-3">
             <p className="text-sm text-slate-500">Macros</p>
 
@@ -587,7 +598,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* RECOMMENDATIONS */}
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm md:col-span-1">
           <CardContent className="p-5 space-y-3">
             <p className="text-sm text-slate-500">Recommendations</p>
 
@@ -623,7 +634,8 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

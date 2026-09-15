@@ -100,6 +100,7 @@ export default function DashboardPage() {
   const [progressLoadError, setProgressLoadError] = useState(false);
   const [recommendationsLoadError, setRecommendationsLoadError] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generationSuccess, setGenerationSuccess] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -259,6 +260,7 @@ export default function DashboardPage() {
   async function generateNutritionPlan() {
     setGenerating(true);
     setGenerationError(null);
+    setGenerationSuccess(false);
 
     try {
       const response = await fetch("/api/nutrition-plan", {
@@ -272,6 +274,7 @@ export default function DashboardPage() {
       }
 
       setNutritionPlan(data.plan);
+      setGenerationSuccess(true);
     } catch (error) {
       console.error("Failed to generate nutrition plan:", error);
       setGenerationError(
@@ -374,6 +377,16 @@ export default function DashboardPage() {
             role="alert"
           >
             {generationError}
+          </p>
+        )}
+
+        {generationSuccess && !generationError && (
+          <p
+            className="mt-4 text-sm text-emerald-700"
+            role="status"
+            aria-live="polite"
+          >
+            Your nutrition plan is ready.
           </p>
         )}
 

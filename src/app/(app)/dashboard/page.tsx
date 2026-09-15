@@ -604,10 +604,18 @@ export default function DashboardPage() {
 
               </>
             ) : (
-              <p className="text-sm text-slate-500">
-                Keep logging your weight so we can understand how things are
-                changing over time.
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-slate-500">
+                  Keep logging your weight so we can understand how things are
+                  changing over time.
+                </p>
+                <Link
+                  href="/tools/tracking/weight"
+                  className="text-emerald-700 text-sm hover:underline"
+                >
+                  Log weight →
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>

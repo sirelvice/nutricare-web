@@ -526,7 +526,7 @@ export default function DashboardPage() {
                 {progressRecommendation && (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs font-medium text-slate-500">
-                      Next step
+                      Recommendation
                     </p>
 
                     <p className="text-sm text-slate-700 mt-1">

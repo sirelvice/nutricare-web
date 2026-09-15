@@ -538,7 +538,7 @@ export default function DashboardPage() {
                       progressRecommendation.adjustmentDecision ===
                         "PENDING" && (
                         <div className="mt-3 space-y-2">
-                          <div className="flex gap-2">
+                          <div className="flex flex-col gap-2 sm:flex-row">
                             <Button
                               type="button"
                               size="sm"

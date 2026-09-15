@@ -392,7 +392,7 @@ export default function DashboardPage() {
               </>
             ) : (
               <Link href="/tools/bmi" className="text-emerald-700 text-sm hover:underline">
-                Calculate →
+                Calculate BMI →
               </Link>
             )}
           </CardContent>
@@ -444,8 +444,8 @@ export default function DashboardPage() {
               </div>
             ) : (
               <p className="text-sm text-slate-500">
-                Generate your nutrition plan from your profile and current
-                weight.
+                Complete your profile and add your current weight to generate
+                your nutrition plan.
               </p>
             )}
           </CardContent>
@@ -623,17 +623,9 @@ export default function DashboardPage() {
                 </Link>
               </>
             ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-slate-500">
-                  Recommendations will appear once your profile is ready.
-                </p>
-                <Link
-                  href="/tools/recommendations"
-                  className="text-emerald-700 text-sm hover:underline"
-                >
-                  View recommendations →
-                </Link>
-              </div>
+              <p className="text-sm text-slate-500">
+                Recommendations will appear once your profile is ready.
+              </p>
             )}
           </CardContent>
         </Card>

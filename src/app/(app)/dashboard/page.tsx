@@ -650,7 +650,8 @@ export default function DashboardPage() {
               </div>
             ) : (
               <p className="text-sm text-slate-500">
-                Your macros will appear once your nutrition plan is generated.
+                Your protein, carbs, and fat targets will appear once your
+                nutrition plan is generated.
               </p>
             )}
           </CardContent>

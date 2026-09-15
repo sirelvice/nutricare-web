@@ -679,9 +679,17 @@ export default function DashboardPage() {
                 </Link>
               </>
             ) : (
-              <p className="text-sm text-slate-500">
-                Recommendations will appear once your profile is ready.
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-slate-500">
+                  Complete your profile to get personalized recommendations.
+                </p>
+                <Link
+                  href="/tools/recommendations"
+                  className="text-emerald-700 text-sm hover:underline"
+                >
+                  View recommendations →
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>

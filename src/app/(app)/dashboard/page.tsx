@@ -302,9 +302,19 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="text-sm text-slate-500">
-          Loading your dashboard...
+      <div
+        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div className="space-y-4">
+          <div className="h-8 w-48 animate-pulse rounded-lg bg-slate-100" />
+          <div className="h-4 w-64 animate-pulse rounded bg-slate-100" />
+          <div className="h-2 max-w-xl animate-pulse rounded-full bg-slate-100" />
+          <p className="text-sm text-slate-500">
+            Loading your dashboard...
+          </p>
         </div>
       </div>
     );
@@ -312,12 +322,24 @@ export default function DashboardPage() {
 
   if (loadError) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Dashboard unavailable</h1>
-        <p className="text-sm text-slate-600">{loadError}</p>
-        <Button onClick={() => window.location.reload()}>
-          Try again
-        </Button>
+      <div
+        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        role="alert"
+      >
+        <div className="space-y-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+              Dashboard unavailable
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {loadError}
+            </p>
+          </div>
+
+          <Button onClick={() => window.location.reload()}>
+            Try again
+          </Button>
+        </div>
       </div>
     );
   }
@@ -347,7 +369,10 @@ export default function DashboardPage() {
         </div>
 
         {generationError && (
-          <p className="mt-4 text-sm text-red-600">
+          <p
+            className="mt-4 text-sm text-red-600"
+            role="alert"
+          >
             {generationError}
           </p>
         )}

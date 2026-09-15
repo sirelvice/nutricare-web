@@ -576,7 +576,16 @@ export default function DashboardPage() {
                       "CONSIDER_ADJUSTMENT" &&
                       progressRecommendation.adjustmentDecision !==
                         "PENDING" && (
-                        <p className="mt-3 text-xs text-slate-500">
+                        <p
+                          className={`mt-3 text-xs ${
+                            progressRecommendation.adjustmentDecision ===
+                            "ACCEPTED"
+                              ? "text-emerald-700"
+                              : "text-slate-500"
+                          }`}
+                          role="status"
+                          aria-live="polite"
+                        >
                           {progressRecommendation.adjustmentDecision ===
                           "ACCEPTED"
                             ? getAdjustmentResultMessage({

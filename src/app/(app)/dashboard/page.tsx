@@ -396,13 +396,14 @@ export default function DashboardPage() {
               Next step
             </p>
             {primaryAction.href ? (
-              <Button asChild>
+              <Button asChild className="w-full sm:w-auto">
                 <Link href={primaryAction.href}>
                   {primaryAction.label}
                 </Link>
               </Button>
             ) : (
               <Button
+                className="w-full sm:w-auto"
                 onClick={generateNutritionPlan}
                 disabled={generating}
               >

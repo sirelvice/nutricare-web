@@ -481,8 +481,11 @@ export default function DashboardPage() {
             <p className="text-sm text-slate-500">Calories</p>
 
             {nutritionPlan ? (
-              <div className="text-4xl font-semibold">
-                {nutritionPlan.targetCalories}
+              <div>
+                <div className="text-4xl font-semibold">
+                  {nutritionPlan.targetCalories.toLocaleString()}
+                </div>
+                <p className="text-sm text-slate-500">kcal/day</p>
               </div>
             ) : (
               <p className="text-sm text-slate-500">

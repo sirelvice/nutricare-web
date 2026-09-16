@@ -508,10 +508,23 @@ export default function DashboardPage() {
                 <p className="text-sm text-slate-500">kcal/day</p>
               </div>
             ) : (
-              <p className="text-sm text-slate-500">
-                Complete your profile and add your current weight to generate
-                your nutrition plan.
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-slate-500">
+                  Complete your profile and add your current weight to generate
+                  your nutrition plan.
+                </p>
+                {hasProfile && hasWeight && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto p-0 text-emerald-700 text-sm"
+                    onClick={generateNutritionPlan}
+                    disabled={generating}
+                  >
+                    {generating ? "Generating..." : "Generate nutrition plan →"}
+                  </Button>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

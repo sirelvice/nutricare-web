@@ -463,6 +463,13 @@ export default function DashboardPage() {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
+
+                <Link
+                  href="/tools/tracking/weight"
+                  className="text-emerald-700 text-sm hover:underline"
+                >
+                  Log weight →
+                </Link>
               </>
             ) : (
               <Link

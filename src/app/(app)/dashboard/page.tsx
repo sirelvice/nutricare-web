@@ -447,6 +447,9 @@ export default function DashboardPage() {
                 <div className="text-4xl font-semibold">
                   {latestWeight.weightKg} kg
                 </div>
+                <p className="text-sm text-slate-500">
+                  Recorded {latestWeight.date}
+                </p>
 
                 <div className="h-20">
                   <ResponsiveContainer width="100%" height="100%">

@@ -682,7 +682,7 @@ export default function DashboardPage() {
                   href="/tools/recommendations"
                   className="text-emerald-700 text-sm hover:underline"
                 >
-                  View full →
+                  View all recommendations →
                 </Link>
               </>
             ) : (

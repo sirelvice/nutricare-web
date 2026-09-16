@@ -633,21 +633,21 @@ export default function DashboardPage() {
 
             {nutritionPlan ? (
               <div className="grid grid-cols-3 text-center">
-                <div>
+                <div className="pr-3">
                   <div className="text-xl font-semibold">
                     {nutritionPlan.proteinG}g
                   </div>
                   <p className="text-xs text-slate-500">Protein</p>
                 </div>
 
-                <div>
+                <div className="border-x border-slate-200 px-3">
                   <div className="text-xl font-semibold">
                     {nutritionPlan.carbsG}g
                   </div>
                   <p className="text-xs text-slate-500">Carbs</p>
                 </div>
 
-                <div>
+                <div className="pl-3">
                   <div className="text-xl font-semibold">
                     {nutritionPlan.fatG}g
                   </div>

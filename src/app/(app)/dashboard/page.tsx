@@ -588,7 +588,7 @@ export default function DashboardPage() {
                             >
                               {adjustmentSubmitting
                                 ? "Saving..."
-                                : "Accept"}
+                                : "Use adjusted plan"}
                             </Button>
 
                             <Button
@@ -600,7 +600,7 @@ export default function DashboardPage() {
                               }
                               disabled={adjustmentSubmitting}
                             >
-                              Decline
+                              Keep current plan
                             </Button>
                           </div>
 

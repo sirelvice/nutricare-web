@@ -433,7 +433,12 @@ export default function DashboardPage() {
         <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <CardContent className="p-5">
             <p className="text-sm text-slate-500">BMI</p>
-            {recommendations ? (
+            {recommendationsLoadError ? (
+              <p className="text-sm text-slate-600">
+                BMI information is temporarily unavailable. Your other
+                dashboard information is still available.
+              </p>
+            ) : recommendations ? (
               <>
                 <div className="text-4xl font-semibold">
                   {recommendations.bmi.toFixed(1)}

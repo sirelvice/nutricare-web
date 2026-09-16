@@ -38,6 +38,19 @@ function formatGoal(goal?: string) {
   return goal;
 }
 
+function formatRecordedDate(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+
+  if (!year || !month || !day) return date;
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
 export default function DashboardPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
@@ -448,7 +461,7 @@ export default function DashboardPage() {
                   {latestWeight.weightKg} kg
                 </div>
                 <p className="text-sm text-slate-500">
-                  Recorded {latestWeight.date}
+                  Recorded {formatRecordedDate(latestWeight.date)}
                 </p>
 
                 <div className="h-20">

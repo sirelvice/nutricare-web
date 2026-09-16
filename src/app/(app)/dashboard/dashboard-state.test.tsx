@@ -57,6 +57,45 @@ describe("dashboard state", () => {
         }),
       ).toBeNull();
     });
+
+    it("keeps profile setup as the first priority", () => {
+      expect(
+        getPrimaryAction({
+          hasProfile: false,
+          hasWeight: true,
+          hasCalories: true,
+        }),
+      ).toEqual({
+        label: "Add your details",
+        href: "/profile",
+      });
+    });
+
+    it("keeps weight setup ahead of plan generation", () => {
+      expect(
+        getPrimaryAction({
+          hasProfile: true,
+          hasWeight: false,
+          hasCalories: true,
+        }),
+      ).toEqual({
+        label: "Log your first weight",
+        href: "/tools/tracking/weight",
+      });
+    });
+
+    it("offers plan generation only after profile and weight setup", () => {
+      expect(
+        getPrimaryAction({
+          hasProfile: true,
+          hasWeight: true,
+          hasCalories: false,
+        }),
+      ).toEqual({
+        label: "Generate your nutrition plan",
+        href: null,
+      });
+    });
   });
 
   describe("getSetupProgress", () => {

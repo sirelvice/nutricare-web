@@ -254,6 +254,96 @@ test("user can add and delete a weight entry", async ({ page }) => {
 });
 
 
+test("user can calculate and recalculate BMI", async ({ page }) => {
+  const email = `e2e-bmi-${Date.now()}@example.com`;
+  const password = "NutriCareE2E!2026";
+
+  await page.goto("/register");
+
+  await expect(
+    page.getByRole("heading", { name: "Create your account" }),
+  ).toBeVisible();
+
+  await page.getByLabel("Full name").fill("NutriCare BMI User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  const registerResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/register"),
+  );
+
+  await page.getByRole("button", { name: "Create free account" }).click();
+
+  const registerResponse = await registerResponsePromise;
+  if (registerResponse.status() != 201) {
+    throw new Error(
+      `Registration failed with HTTP ${registerResponse.status()}: ${await registerResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText("Account created successfully. You can now sign in."),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  await page.goto("/tools/bmi");
+
+  await expect(
+    page.getByRole("heading", { name: "BMI Calculator", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(
+      "Enter your height and weight, then click calculate.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+
+  const height = page.locator("#height");
+  const weight = page.locator("#weight");
+
+  await height.fill("170");
+  await weight.fill("60");
+
+  const calculateButton = page.getByRole("button", {
+    name: "Calculate BMI",
+    exact: true,
+  });
+
+  await expect(calculateButton).toBeEnabled();
+  await calculateButton.click();
+
+  await expect(page.getByText("20.8", { exact: true })).toBeVisible();
+  await expect(page.getByText("Normal", { exact: true })).toBeVisible();
+
+  await expect(
+    page.getByText(
+      "BMI is a screening tool and does not capture all health factors. It should not be used as a diagnosis.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+
+  await weight.fill("80");
+
+  await expect(
+    page.getByText(
+      "Enter your height and weight, then click calculate.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+
+  await calculateButton.click();
+
+  await expect(page.getByText("27.7", { exact: true })).toBeVisible();
+  await expect(page.getByText("Overweight", { exact: true })).toBeVisible();
+});
+
 test("user can review weight and nutrition plan history", async ({ page }) => {
   const email = `e2e-history-${Date.now()}@example.com`;
   const password = "NutriCareE2E!2026";

@@ -125,6 +125,134 @@ test("dashboard remains usable when recommendations are unavailable", async ({
   ).toBeVisible();
 });
 
+
+test("user can add and delete a weight entry", async ({ page }) => {
+  const email = `e2e-weight-lifecycle-${Date.now()}@example.com`;
+  const password = "NutriCareE2E!2026";
+
+  await page.goto("/register");
+
+  await page.getByLabel("Full name").fill("NutriCare Weight User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  const registerResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/register"),
+  );
+
+  await page.getByRole("button", { name: "Create free account" }).click();
+
+  const registerResponse = await registerResponsePromise;
+  if (registerResponse.status() !== 201) {
+    throw new Error(
+      `Registration failed with HTTP ${registerResponse.status()}: ${await registerResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText("Account created successfully. You can now sign in."),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  await page.goto("/tools/tracking/weight");
+
+  await expect(
+    page.getByRole("heading", { name: /weight tracking/i }),
+  ).toBeVisible();
+
+  const today = new Date();
+  const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+  const entryDate = formatDate(today);
+
+  await page.locator('input[type="date"]').fill(entryDate);
+  await page.getByPlaceholder("e.g. 70.5").fill("72.5");
+  await page.getByPlaceholder("e.g. after workout").fill("E2E lifecycle");
+
+  const addResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/weight-entries") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Add entry" }).click();
+
+  const addResponse = await addResponsePromise;
+  if (addResponse.status() !== 201) {
+    throw new Error(
+      `Weight creation failed with HTTP ${addResponse.status()}: ${await addResponse.text()}`,
+    );
+  }
+
+  const createdEntry = await addResponse.json();
+
+  expect(createdEntry.weightKg).toBe(72.5);
+  expect(createdEntry.date).toBe(entryDate);
+  expect(createdEntry.note).toBe("E2E lifecycle");
+
+  await expect(
+    page
+      .getByText("Latest weight")
+      .locator("..")
+      .getByText("72.5 kg", { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`${entryDate} • E2E lifecycle`, { exact: true }),
+  ).toBeVisible();
+
+  const entryRow = page
+    .locator("div")
+    .filter({
+      hasText: "72.5 kg",
+    })
+    .filter({
+      hasText: `${entryDate} • E2E lifecycle`,
+    })
+    .filter({
+      has: page.getByRole("button", { name: "Delete" }),
+    })
+    .first();
+
+  await expect(entryRow).toBeVisible();
+
+  const deleteResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/weight-entries/${createdEntry.id}`) &&
+      response.request().method() === "DELETE",
+  );
+
+  await entryRow.getByRole("button", { name: "Delete" }).click();
+
+  const deleteResponse = await deleteResponsePromise;
+
+  if (deleteResponse.status() !== 204) {
+    throw new Error(
+      `Weight deletion failed with HTTP ${deleteResponse.status()}: ${await deleteResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText(`${entryDate} • E2E lifecycle`, { exact: true }),
+  ).not.toBeVisible();
+
+  await expect(
+    page.getByText("Your weight history will appear here", {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText("No entries yet — add your first weight above", {
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
 test("user can generate a nutrition plan, log weight, and observe progress", async ({
   page,
 }) => {

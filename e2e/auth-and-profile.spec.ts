@@ -344,6 +344,198 @@ test("user can calculate and recalculate BMI", async ({ page }) => {
   await expect(page.getByText("Overweight", { exact: true })).toBeVisible();
 });
 
+test("user can view personalized nutrition recommendations", async ({
+  page,
+}) => {
+  const email = `e2e-recommendations-${Date.now()}@example.com`;
+  const password = "NutriCareE2E!2026";
+
+  await page.goto("/register");
+
+  await page.getByLabel("Full name").fill("NutriCare Recommendations User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  const registerResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/register"),
+  );
+
+  await page.getByRole("button", { name: "Create free account" }).click();
+
+  const registerResponse = await registerResponsePromise;
+
+  if (registerResponse.status() !== 201) {
+    throw new Error(
+      `Registration failed with HTTP ${registerResponse.status()}: ${await registerResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText("Account created successfully. You can now sign in."),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  await page.goto("/profile");
+
+  await expect(
+    page.getByRole("heading", { name: "Your profile" }),
+  ).toBeVisible();
+
+  await page.getByLabel("Height (cm)").fill("175");
+  await page.getByLabel("Age (years)").fill("30");
+  await page.getByLabel("Gender").selectOption("male");
+  await page.getByLabel("Your goal").selectOption("lose");
+  await page.getByLabel("Activity level").selectOption("moderate");
+
+  await page.getByRole("button", { name: "Save profile" }).click();
+
+  await expect(page.getByText("Saved ✓")).toBeVisible();
+
+  await page.goto("/tools/tracking/weight");
+
+  const today = new Date();
+  const entryDate = today.toISOString().slice(0, 10);
+
+  await page.locator('input[type="date"]').fill(entryDate);
+  await page.getByPlaceholder("e.g. 70.5").fill("70");
+
+  const weightResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/weight-entries") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Add entry" }).click();
+
+  const weightResponse = await weightResponsePromise;
+
+  if (weightResponse.status() !== 201) {
+    throw new Error(
+      `Weight creation failed with HTTP ${weightResponse.status()}: ${await weightResponse.text()}`,
+    );
+  }
+
+  await page.goto("/dashboard");
+
+  const planResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/nutrition-plan") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+
+  const planResponse = await planResponsePromise;
+
+  if (planResponse.status() !== 201) {
+    throw new Error(
+      `Nutrition plan generation failed with HTTP ${planResponse.status()}: ${await planResponse.text()}`,
+    );
+  }
+
+  await expect(page.getByText("Your nutrition plan is ready.")).toBeVisible();
+
+  const recommendationsResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/recommendations") &&
+      response.request().method() === "GET",
+  );
+
+  await page.goto("/tools/recommendations");
+
+  const recommendationsResponse = await recommendationsResponsePromise;
+
+  if (recommendationsResponse.status() !== 200) {
+    throw new Error(
+      `Recommendations request failed with HTTP ${recommendationsResponse.status()}: ${await recommendationsResponse.text()}`,
+    );
+  }
+
+  const data = await recommendationsResponse.json();
+
+  expect(data.bmi).toBe(22.9);
+  expect(data.category).toBeTruthy();
+  expect(data.category.label).toBe("Normal");
+
+  expect(data.targetCalories).toBeGreaterThan(0);
+
+  expect(data.macros).toBeTruthy();
+  expect(data.macros.proteinG).toBeGreaterThan(0);
+  expect(data.macros.carbsG).toBeGreaterThan(0);
+  expect(data.macros.fatG).toBeGreaterThan(0);
+
+  expect(data.recommendations).toBeTruthy();
+  expect(data.recommendations.summary).toBeTruthy();
+  expect(data.recommendations.priorities.length).toBeGreaterThan(0);
+  expect(data.recommendations.foodsToFocus.length).toBeGreaterThan(0);
+  expect(data.recommendations.foodsToLimit.length).toBeGreaterThan(0);
+  expect(data.recommendations.nextSteps.length).toBeGreaterThan(0);
+
+  await expect(
+    page.getByRole("heading", { name: "Recommendations", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`BMI: ${data.bmi.toFixed(1)}`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(data.category.label, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`${data.targetCalories} kcal/day`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`${data.macros.proteinG}g`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`${data.macros.carbsG}g`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`${data.macros.fatG}g`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Your recommendations", exact: true }),
+  ).toBeVisible();
+
+  await expect(page.getByText(data.recommendations.summary, {
+    exact: true,
+  })).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Top priorities", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Next steps", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Foods to focus", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Foods to limit", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(
+      "Guidance is informational and not a medical diagnosis.",
+      { exact: false },
+    ),
+  ).toBeVisible();
+});
+
 test("user can review weight and nutrition plan history", async ({ page }) => {
   const email = `e2e-history-${Date.now()}@example.com`;
   const password = "NutriCareE2E!2026";

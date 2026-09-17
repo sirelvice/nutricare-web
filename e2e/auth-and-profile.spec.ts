@@ -253,6 +253,176 @@ test("user can add and delete a weight entry", async ({ page }) => {
   ).toBeVisible();
 });
 
+
+test("user can review weight and nutrition plan history", async ({ page }) => {
+  const email = `e2e-history-${Date.now()}@example.com`;
+  const password = "NutriCareE2E!2026";
+
+  await page.goto("/register");
+
+  await page.getByLabel("Full name").fill("NutriCare History User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  const registerResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/register"),
+  );
+
+  await page.getByRole("button", { name: "Create free account" }).click();
+
+  const registerResponse = await registerResponsePromise;
+  if (registerResponse.status() !== 201) {
+    throw new Error(
+      `Registration failed with HTTP ${registerResponse.status()}: ${await registerResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText("Account created successfully. You can now sign in."),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  await page.goto("/profile");
+
+  await expect(
+    page.getByRole("heading", { name: "Your profile" }),
+  ).toBeVisible();
+
+  await page.getByLabel("Height (cm)").fill("175");
+  await page.getByLabel("Age (years)").fill("30");
+  await page.getByLabel("Gender").selectOption("male");
+  await page.getByLabel("Your goal").selectOption("lose");
+  await page.getByLabel("Activity level").selectOption("moderate");
+
+  await page.getByRole("button", { name: "Save profile" }).click();
+
+  await expect(page.getByText("Saved ✓")).toBeVisible();
+
+  await page.goto("/tools/tracking/weight");
+
+  const today = new Date();
+  const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+  const entryDate = formatDate(today);
+
+  await page.locator('input[type="date"]').fill(entryDate);
+  await page.getByPlaceholder("e.g. 70.5").fill("70");
+  await page.getByPlaceholder("e.g. after workout").fill("History check");
+
+  const weightResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/weight-entries") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Add entry" }).click();
+
+  const weightResponse = await weightResponsePromise;
+
+  if (weightResponse.status() !== 201) {
+    throw new Error(
+      `Weight creation failed with HTTP ${weightResponse.status()}: ${await weightResponse.text()}`,
+    );
+  }
+
+  const weightBody = await weightResponse.json();
+
+  expect(weightBody.weightKg).toBe(70);
+  expect(weightBody.date).toBe(entryDate);
+
+  await page.goto("/dashboard");
+
+  const planResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/nutrition-plan") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+
+  const planResponse = await planResponsePromise;
+
+  if (planResponse.status() !== 201) {
+    throw new Error(
+      `Nutrition plan generation failed with HTTP ${planResponse.status()}: ${await planResponse.text()}`,
+    );
+  }
+
+  const planBody = await planResponse.json();
+
+  expect(planBody.plan).toBeTruthy();
+  expect(planBody.plan.version).toBeTruthy();
+  expect(planBody.plan.targetCalories).toBeTruthy();
+
+  await expect(page.getByText("Your nutrition plan is ready.")).toBeVisible();
+
+  await page.goto("/history");
+
+  await expect(
+    page.getByRole("heading", { name: "History", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("button", { name: "Weight" }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("button", { name: "Nutrition Plans" }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Weight history", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`${entryDate} • History check`, { exact: true }),
+  ).toBeVisible();
+
+  const weightHistoryCard = page
+    .getByRole("heading", { name: "Weight history", exact: true })
+    .locator("..")
+    .locator("..");
+
+  await expect(
+    weightHistoryCard.getByText("70 kg", { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(/BMI 22\.9 • Normal/, { exact: true }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Nutrition Plans" }).click();
+
+  await expect(
+    page.getByRole("heading", {
+      name: "Nutrition plan history",
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(
+      `Version ${planBody.plan.version} • ${planBody.plan.targetCalories} kcal`,
+      { exact: true },
+    ),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`Goal: ${planBody.plan.goal}`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(
+      `P ${planBody.plan.proteinG}g • C ${planBody.plan.carbsG}g • F ${planBody.plan.fatG}g`,
+      { exact: true },
+    ),
+  ).toBeVisible();
+});
+
 test("user can generate a nutrition plan, log weight, and observe progress", async ({
   page,
 }) => {

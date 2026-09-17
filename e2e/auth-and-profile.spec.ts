@@ -344,6 +344,187 @@ test("user can calculate and recalculate BMI", async ({ page }) => {
   await expect(page.getByText("Overweight", { exact: true })).toBeVisible();
 });
 
+test("user can view current nutrition macros", async ({ page }) => {
+  const email = `e2e-macros-${Date.now()}@example.com`;
+  const password = "NutriCareE2E!2026";
+
+  await page.goto("/register");
+
+  await page.getByLabel("Full name").fill("NutriCare Macros User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  const registerResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/register"),
+  );
+
+  await page.getByRole("button", { name: "Create free account" }).click();
+
+  const registerResponse = await registerResponsePromise;
+
+  if (registerResponse.status() !== 201) {
+    throw new Error(
+      `Registration failed with HTTP ${registerResponse.status()}: ${await registerResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText("Account created successfully. You can now sign in."),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  await page.goto("/profile");
+
+  await expect(
+    page.getByRole("heading", { name: "Your profile" }),
+  ).toBeVisible();
+
+  await page.getByLabel("Height (cm)").fill("175");
+  await page.getByLabel("Age (years)").fill("30");
+  await page.getByLabel("Gender").selectOption("male");
+  await page.getByLabel("Your goal").selectOption("lose");
+  await page.getByLabel("Activity level").selectOption("moderate");
+
+  await page.getByRole("button", { name: "Save profile" }).click();
+
+  await expect(page.getByText("Saved ✓")).toBeVisible();
+
+  await page.goto("/tools/tracking/weight");
+
+  const today = new Date();
+  const entryDate = today.toISOString().slice(0, 10);
+
+  await page.locator('input[type="date"]').fill(entryDate);
+  await page.getByPlaceholder("e.g. 70.5").fill("70");
+
+  const weightResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/weight-entries") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Add entry" }).click();
+
+  const weightResponse = await weightResponsePromise;
+
+  if (weightResponse.status() !== 201) {
+    throw new Error(
+      `Weight creation failed with HTTP ${weightResponse.status()}: ${await weightResponse.text()}`,
+    );
+  }
+
+  await page.goto("/dashboard");
+
+  const planResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/nutrition-plan") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+
+  const planResponse = await planResponsePromise;
+
+  if (planResponse.status() !== 201) {
+    throw new Error(
+      `Nutrition plan generation failed with HTTP ${planResponse.status()}: ${await planResponse.text()}`,
+    );
+  }
+
+  const planData = await planResponse.json();
+  const plan = planData.plan;
+
+  expect(plan).toBeTruthy();
+  expect(plan.goal).toBe("lose");
+  expect(plan.version).toBeGreaterThanOrEqual(1);
+  expect(plan.targetCalories).toBeGreaterThan(0);
+  expect(plan.proteinG).toBeGreaterThan(0);
+  expect(plan.carbsG).toBeGreaterThan(0);
+  expect(plan.fatG).toBeGreaterThan(0);
+
+  const macrosResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/nutrition-plan") &&
+      response.request().method() === "GET",
+  );
+
+  await page.goto("/tools/macros");
+
+  const macrosResponse = await macrosResponsePromise;
+
+  expect(macrosResponse.status()).toBe(200);
+
+  const macrosData = await macrosResponse.json();
+  expect(macrosData.plan).toBeTruthy();
+
+  const currentPlan = macrosData.plan;
+
+  expect(currentPlan.id).toBe(plan.id);
+  expect(currentPlan.version).toBe(plan.version);
+  expect(currentPlan.goal).toBe(plan.goal);
+  expect(currentPlan.targetCalories).toBe(plan.targetCalories);
+  expect(currentPlan.proteinG).toBe(plan.proteinG);
+  expect(currentPlan.carbsG).toBe(plan.carbsG);
+  expect(currentPlan.fatG).toBe(plan.fatG);
+
+  await expect(
+    page.getByRole("heading", { name: "Macros", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText("Your current daily macro targets from your nutrition plan.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Current plan", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`Goal: ${currentPlan.goal}`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`${currentPlan.targetCalories} kcal/day`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`Plan v${currentPlan.version}`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`${currentPlan.proteinG} g`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`${currentPlan.carbsG} g`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(`${currentPlan.fatG} g`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(
+      "These targets are estimates based on your current profile and weight.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(
+      "Your plan may be updated as your goals and progress change.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+});
+
 test("user can view personalized nutrition recommendations", async ({
   page,
 }) => {

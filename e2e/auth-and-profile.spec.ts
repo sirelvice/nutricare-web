@@ -344,6 +344,207 @@ test("user can calculate and recalculate BMI", async ({ page }) => {
   await expect(page.getByText("Overweight", { exact: true })).toBeVisible();
 });
 
+test("user can view the health report", async ({ page }) => {
+  const email = `e2e-report-${Date.now()}@example.com`;
+  const password = "NutriCareE2E!2026";
+
+  await page.goto("/register");
+
+  await page.getByLabel("Full name").fill("NutriCare Report User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  const registerResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/register"),
+  );
+
+  await page.getByRole("button", { name: "Create free account" }).click();
+
+  const registerResponse = await registerResponsePromise;
+
+  if (registerResponse.status() !== 201) {
+    throw new Error(
+      `Registration failed with HTTP ${registerResponse.status()}: ${await registerResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText("Account created successfully. You can now sign in."),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  await page.goto("/profile");
+
+  await expect(
+    page.getByRole("heading", { name: "Your profile" }),
+  ).toBeVisible();
+
+  await page.getByLabel("Height (cm)").fill("175");
+  await page.getByLabel("Age (years)").fill("30");
+  await page.getByLabel("Gender").selectOption("male");
+  await page.getByLabel("Your goal").selectOption("lose");
+  await page.getByLabel("Activity level").selectOption("moderate");
+
+  await page.getByRole("button", { name: "Save profile" }).click();
+
+  await expect(page.getByText("Saved ✓")).toBeVisible();
+
+  await page.goto("/tools/tracking/weight");
+
+  const today = new Date();
+  const entryDate = today.toISOString().slice(0, 10);
+
+  await page.locator('input[type="date"]').fill(entryDate);
+  await page.getByPlaceholder("e.g. 70.5").fill("70");
+
+  const weightResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/weight-entries") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Add entry" }).click();
+
+  const weightResponse = await weightResponsePromise;
+
+  if (weightResponse.status() !== 201) {
+    throw new Error(
+      `Weight creation failed with HTTP ${weightResponse.status()}: ${await weightResponse.text()}`,
+    );
+  }
+
+  await page.goto("/dashboard");
+
+  const planResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/nutrition-plan") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+
+  const planResponse = await planResponsePromise;
+
+  if (planResponse.status() !== 201) {
+    throw new Error(
+      `Nutrition plan generation failed with HTTP ${planResponse.status()}: ${await planResponse.text()}`,
+    );
+  }
+
+  await expect(page.getByText("Your nutrition plan is ready.")).toBeVisible();
+
+  const reportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/report") &&
+      response.request().method() === "GET",
+  );
+
+  await page.goto("/report");
+
+  const reportResponse = await reportResponsePromise;
+
+  if (reportResponse.status() !== 200) {
+    throw new Error(
+      `Report request failed with HTTP ${reportResponse.status()}: ${await reportResponse.text()}`,
+    );
+  }
+
+  const report = await reportResponse.json();
+
+  expect(report.profile).toBeTruthy();
+  expect(report.profile.heightCm).toBe(175);
+  expect(report.profile.age).toBe(30);
+  expect(report.profile.gender).toBe("male");
+  expect(report.profile.goal).toBe("lose");
+  expect(report.profile.activity).toBe("moderate");
+
+  expect(report.bmi).toBeTruthy();
+  expect(report.bmi.latest).toBeTruthy();
+  expect(report.bmi.latest.value).toBe(22.9);
+  expect(report.bmi.latest.category.label).toBe("Normal");
+
+  expect(report.nutritionPlan).toBeTruthy();
+  expect(report.nutritionPlan.targetCalories).toBeGreaterThan(0);
+  expect(report.nutritionPlan.goal).toBe("lose");
+
+  expect(report.weight).toBeTruthy();
+  expect(report.weight.entriesCount).toBe(1);
+  expect(report.weight.entries[0].weightKg).toBe(70);
+
+  await expect(
+    page.getByRole("heading", { name: "Health Report", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText("A snapshot of your nutrition, weight, and health indicators.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "BMI", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(report.bmi.latest.value.toFixed(1), { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(report.bmi.latest.category.label, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Calories", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(String(report.nutritionPlan.targetCalories), {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  const caloriesCard = page
+    .getByRole("heading", { name: "Calories", exact: true })
+    .locator("..")
+    .locator("..");
+
+  await expect(
+    caloriesCard.getByText(`Goal: ${report.nutritionPlan.goal}`, {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Weight", exact: true }),
+  ).toBeVisible();
+
+  const weightCard = page
+    .getByRole("heading", { name: "Weight", exact: true })
+    .locator("..")
+    .locator("..");
+
+  await expect(
+    weightCard.getByText("0 kg", { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    weightCard.getByText("No progress evaluation available", { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Export Full Report", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("button", { name: "Download PDF Report", exact: true }),
+  ).toBeEnabled();
+});
+
 test("user can view current nutrition macros", async ({ page }) => {
   const email = `e2e-macros-${Date.now()}@example.com`;
   const password = "NutriCareE2E!2026";

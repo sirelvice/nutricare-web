@@ -77,6 +77,18 @@ export default function ReportPage() {
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
+        onclone: (clonedDocument) => {
+          // The report template uses inline styles, so isolate the capture
+          // from application styles that may contain unsupported CSS
+          // colour functions such as lab().
+          clonedDocument
+            .querySelectorAll("style, link[rel=\"stylesheet\"]")
+            .forEach((element) => element.remove());
+
+          clonedDocument.documentElement.style.backgroundColor = "#ffffff";
+          clonedDocument.body.style.backgroundColor = "#ffffff";
+          clonedDocument.body.style.color = "#0f172a";
+        },
       });
 
       // Restore original hidden state

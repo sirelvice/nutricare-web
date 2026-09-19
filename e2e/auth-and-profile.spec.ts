@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import { prisma } from "../src/lib/db";
 
 test("user can register, sign in, and save a profile goal", async ({ page }) => {
@@ -543,6 +544,143 @@ test("user can view the health report", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Download PDF Report", exact: true }),
   ).toBeEnabled();
+});
+
+test("user can export the health report as PDF", async ({ page }) => {
+  const email = `e2e-report-pdf-${Date.now()}@example.com`;
+  const password = "NutriCareE2E!2026";
+
+  await page.goto("/register");
+
+  await page.getByLabel("Full name").fill("NutriCare PDF User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  const registerResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/register"),
+  );
+
+  await page.getByRole("button", { name: "Create free account" }).click();
+
+  const registerResponse = await registerResponsePromise;
+
+  if (registerResponse.status() !== 201) {
+    throw new Error(
+      `Registration failed with HTTP ${registerResponse.status()}: ${await registerResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText("Account created successfully. You can now sign in."),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  await page.goto("/profile");
+
+  await expect(
+    page.getByRole("heading", { name: "Your profile" }),
+  ).toBeVisible();
+
+  await page.getByLabel("Height (cm)").fill("175");
+  await page.getByLabel("Age (years)").fill("30");
+  await page.getByLabel("Gender").selectOption("male");
+  await page.getByLabel("Your goal").selectOption("lose");
+  await page.getByLabel("Activity level").selectOption("moderate");
+
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.getByText("Saved ✓")).toBeVisible();
+
+  await page.goto("/tools/tracking/weight");
+
+  const today = new Date();
+  const entryDate = today.toISOString().slice(0, 10);
+
+  await page.locator('input[type="date"]').fill(entryDate);
+  await page.getByPlaceholder("e.g. 70.5").fill("70");
+
+  const weightResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/weight-entries") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Add entry" }).click();
+
+  const weightResponse = await weightResponsePromise;
+
+  if (weightResponse.status() !== 201) {
+    throw new Error(
+      `Weight creation failed with HTTP ${weightResponse.status()}: ${await weightResponse.text()}`,
+    );
+  }
+
+  await page.goto("/dashboard");
+
+  const planResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/nutrition-plan") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+
+  const planResponse = await planResponsePromise;
+
+  if (planResponse.status() !== 201) {
+    throw new Error(
+      `Nutrition plan generation failed with HTTP ${planResponse.status()}: ${await planResponse.text()}`,
+    );
+  }
+
+  await expect(page.getByText("Your nutrition plan is ready.")).toBeVisible();
+
+  // Verify the dedicated server-side PDF endpoint.
+  const pdfResponse = await page.request.get("/api/report/pdf");
+
+  expect(pdfResponse.status()).toBe(200);
+  expect(pdfResponse.headers()["content-type"]).toContain("application/pdf");
+  expect(pdfResponse.headers()["content-disposition"]).toContain(
+    'filename="nutricare-personal-report.pdf"',
+  );
+
+  const pdfBytes = await pdfResponse.body();
+
+  expect(pdfBytes.length).toBeGreaterThan(100);
+  expect(pdfBytes.subarray(0, 4).toString()).toBe("%PDF");
+
+  // Verify the Report page's client-side PDF export.
+  await page.goto("/report");
+
+  await expect(
+    page.getByRole("heading", { name: "Health Report", exact: true }),
+  ).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+
+  await page
+    .getByRole("button", { name: "Download PDF Report", exact: true })
+    .click();
+
+  const download = await downloadPromise;
+  const filename = download.suggestedFilename();
+
+  expect(filename).toMatch(/^nutricare-report-.*\.pdf$/);
+
+  const downloadPath = await download.path();
+
+  if (!downloadPath) {
+    throw new Error("PDF download path was not available.");
+  }
+
+  const downloadedPdf = await readFile(downloadPath);
+
+  expect(downloadedPdf.length).toBeGreaterThan(100);
+  expect(downloadedPdf.subarray(0, 4).toString()).toBe("%PDF");
 });
 
 test("user can view current nutrition macros", async ({ page }) => {

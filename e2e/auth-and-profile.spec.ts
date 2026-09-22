@@ -784,6 +784,28 @@ test("user sees password reset service failure", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("user sees an invalid password reset link state", async ({ page }) => {
+  await page.goto("/reset-password");
+
+  await expect(
+    page.getByRole("heading", { name: "Reset Password" }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText("This password reset link is invalid.", { exact: true }),
+  ).toBeVisible();
+
+  await expect(page.getByLabel("New password")).toBeDisabled();
+  await expect(page.getByLabel("Confirm password")).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Reset password" }),
+  ).toBeDisabled();
+
+  await expect(
+    page.getByRole("link", { name: "Back to sign in" }),
+  ).toHaveAttribute("href", "/login");
+});
+
 test("user can view and recalculate nutrition calories", async ({
   page,
 }) => {

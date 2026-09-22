@@ -683,6 +683,69 @@ test("user can export the health report as PDF", async ({ page }) => {
   expect(downloadedPdf.subarray(0, 4).toString()).toBe("%PDF");
 });
 
+test("user can edit and persist their profile", async ({ page }) => {
+  const email = `profile-${Date.now()}@example.com`;
+  const password = "NutriCareE2E!2026";
+
+  await page.goto("/register");
+
+  await expect(
+    page.getByRole("heading", { name: "Create your account" }),
+  ).toBeVisible();
+
+  await page.getByLabel("Full name").fill("NutriCare Profile User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  const registerResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/register"),
+  );
+
+  await page.getByRole("button", { name: "Create free account" }).click();
+
+  const registerResponse = await registerResponsePromise;
+  if (registerResponse.status() !== 201) {
+    throw new Error(
+      `Registration failed with HTTP ${registerResponse.status()}: ${await registerResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText("Account created successfully. You can now sign in."),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  await page.goto("/profile");
+
+  await expect(
+    page.getByRole("heading", { name: "Your profile" }),
+  ).toBeVisible();
+
+  await page.getByLabel("Height (cm)").fill("180");
+  await page.getByLabel("Age (years)").fill("31");
+  await page.getByLabel("Gender").selectOption("male");
+  await page.getByLabel("Your goal").selectOption("gain");
+  await page.getByLabel("Activity level").selectOption("moderate");
+
+  await page.getByRole("button", { name: "Save profile" }).click();
+
+  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByText("Goal: Gain weight")).toBeVisible();
+
+  await page.reload();
+
+  await expect(page.getByLabel("Height (cm)")).toHaveValue("180");
+  await expect(page.getByLabel("Age (years)")).toHaveValue("31");
+  await expect(page.getByLabel("Gender")).toHaveValue("male");
+  await expect(page.getByLabel("Your goal")).toHaveValue("gain");
+  await expect(page.getByLabel("Activity level")).toHaveValue("moderate");
+});
+
 test("user can view and recalculate nutrition calories", async ({
   page,
 }) => {

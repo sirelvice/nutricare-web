@@ -746,6 +746,44 @@ test("user can edit and persist their profile", async ({ page }) => {
   await expect(page.getByLabel("Activity level")).toHaveValue("moderate");
 });
 
+test("user sees password reset service failure", async ({ page }) => {
+  const email = `forgot-password-${Date.now()}@example.com`;
+
+  await page.goto("/forgot-password");
+
+  await expect(
+    page.getByRole("heading", { name: "Forgot Password?" }),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+
+  const resetResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/forgot-password"),
+  );
+
+  await page
+    .getByRole("button", { name: "Send reset instructions" })
+    .click();
+
+  const resetResponse = await resetResponsePromise;
+
+  expect(resetResponse.status()).toBe(503);
+
+  await expect(
+    page.locator("p.text-sm.text-red-600"),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: "Forgot Password?" }),
+  ).toBeVisible();
+
+  await expect(page.getByLabel("Email address")).toHaveValue(email);
+
+  await expect(
+    page.getByRole("button", { name: "Send reset instructions" }),
+  ).toBeVisible();
+});
+
 test("user can view and recalculate nutrition calories", async ({
   page,
 }) => {

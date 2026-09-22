@@ -683,6 +683,206 @@ test("user can export the health report as PDF", async ({ page }) => {
   expect(downloadedPdf.subarray(0, 4).toString()).toBe("%PDF");
 });
 
+test("user can view and recalculate nutrition calories", async ({
+  page,
+}) => {
+  const email = `e2e-calories-${Date.now()}@example.com`;
+  const password = "NutriCareE2E!2026";
+
+  await page.goto("/register");
+
+  await page.getByLabel("Full name").fill("NutriCare Calories User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  const registerResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/register"),
+  );
+
+  await page.getByRole("button", { name: "Create free account" }).click();
+
+  const registerResponse = await registerResponsePromise;
+
+  if (registerResponse.status() !== 201) {
+    throw new Error(
+      `Registration failed with HTTP ${registerResponse.status()}: ${await registerResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText("Account created successfully. You can now sign in."),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  await page.goto("/profile");
+
+  await expect(
+    page.getByRole("heading", { name: "Your profile" }),
+  ).toBeVisible();
+
+  await page.getByLabel("Height (cm)").fill("175");
+  await page.getByLabel("Age (years)").fill("30");
+  await page.getByLabel("Gender").selectOption("male");
+  await page.getByLabel("Your goal").selectOption("lose");
+  await page.getByLabel("Activity level").selectOption("moderate");
+
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.getByText("Saved ✓")).toBeVisible();
+
+  await page.goto("/tools/tracking/weight");
+
+  const today = new Date();
+  const entryDate = today.toISOString().slice(0, 10);
+
+  await page.locator('input[type="date"]').fill(entryDate);
+  await page.getByPlaceholder("e.g. 70.5").fill("70");
+
+  const weightResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/weight-entries") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Add entry" }).click();
+
+  const weightResponse = await weightResponsePromise;
+
+  if (weightResponse.status() !== 201) {
+    throw new Error(
+      `Weight creation failed with HTTP ${weightResponse.status()}: ${await weightResponse.text()}`,
+    );
+  }
+
+  // Generate the initial plan so the Calories page has an existing plan
+  // that can be recalculated.
+  await page.goto("/dashboard");
+
+  const initialPlanResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/nutrition-plan") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+
+  const initialPlanResponse = await initialPlanResponsePromise;
+
+  if (initialPlanResponse.status() !== 201) {
+    throw new Error(
+      `Initial nutrition plan generation failed with HTTP ${initialPlanResponse.status()}: ${await initialPlanResponse.text()}`,
+    );
+  }
+
+  const initialPlan = await initialPlanResponse.json();
+
+  await expect(page.getByText("Your nutrition plan is ready.")).toBeVisible();
+
+  await page.goto("/tools/calories");
+
+  await expect(
+    page.getByRole("heading", { name: "Calories", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(
+      "Your current nutrition target based on your profile and latest weight.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+
+  const planCard = page
+    .getByRole("heading", {
+      name: "Current nutrition plan",
+      exact: true,
+    })
+    .locator("..")
+    .locator("..");
+
+  await expect(
+    planCard.getByText(`Goal: ${initialPlan.plan.goal}`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    planCard.getByText(`Plan version: ${initialPlan.plan.version}`, {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await expect(
+    planCard.getByText(`${initialPlan.plan.targetCalories} kcal`, {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await expect(
+    planCard.getByText(`${initialPlan.plan.proteinG}g`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    planCard.getByText(`${initialPlan.plan.carbsG}g`, { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    planCard.getByText(`${initialPlan.plan.fatG}g`, { exact: true }),
+  ).toBeVisible();
+
+  const recalculateResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/nutrition-plan") &&
+      response.request().method() === "POST",
+  );
+
+  await page.getByRole("button", { name: "Recalculate plan" }).click();
+
+  const recalculateResponse = await recalculateResponsePromise;
+
+  if (recalculateResponse.status() !== 201) {
+    throw new Error(
+      `Nutrition plan recalculation failed with HTTP ${recalculateResponse.status()}: ${await recalculateResponse.text()}`,
+    );
+  }
+
+  const recalculatedPlan = await recalculateResponse.json();
+
+  expect(recalculatedPlan.plan).toBeTruthy();
+  expect(recalculatedPlan.plan.version).toBe(initialPlan.plan.version + 1);
+  expect(recalculatedPlan.plan.goal).toBe(initialPlan.plan.goal);
+  expect(recalculatedPlan.plan.targetCalories).toBeGreaterThan(0);
+
+  await expect(
+    planCard.getByText(
+      `Plan version: ${recalculatedPlan.plan.version}`,
+      { exact: true },
+    ),
+  ).toBeVisible();
+
+  await expect(
+    planCard.getByText(`${recalculatedPlan.plan.targetCalories} kcal`, {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("button", { name: "Recalculate plan", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(
+      "Recalculating creates a new plan version using your current profile and latest weight.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("link", { name: "View History", exact: true }),
+  ).toHaveAttribute("href", "/history");
+});
+
 test("user can view current nutrition macros", async ({ page }) => {
   const email = `e2e-macros-${Date.now()}@example.com`;
   const password = "NutriCareE2E!2026";

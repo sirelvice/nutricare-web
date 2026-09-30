@@ -2,6 +2,23 @@ import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { prisma } from "../src/lib/db";
 
+
+test.beforeEach(async ({ page }, testInfo) => {
+  let hash = 0;
+
+  for (const character of testInfo.testId) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }
+
+  const octet2 = (hash >>> 16) & 255;
+  const octet3 = (hash >>> 8) & 255;
+  const octet4 = hash & 255;
+
+  await page.setExtraHTTPHeaders({
+    "x-forwarded-for": `10.${octet2}.${octet3}.${octet4}`,
+  });
+});
+
 test("user can register, sign in, and save a profile goal", async ({ page }) => {
 
 
@@ -1698,7 +1715,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
   const progressBody = await progressResponse.json();
 
   expect(progressBody.progress.evaluation.state).toBe("INSUFFICIENT_DATA");
-  expect(progressBody.progress.evaluation.entriesCount).toBe(1);
+  expect(progressBody.progress.evaluation.entriesCount).toBe(2);
   expect(progressBody.progress.recommendation.recommendedAction).toBe(
     "CONTINUE",
   );

@@ -564,207 +564,230 @@ export default function DashboardPage() {
 
       {/* INSIGHTS */}
       <section aria-labelledby="insights-heading">
-        <div className="mb-3">
+        <div className="mb-5">
           <p className="text-sm font-medium text-slate-500">Your progress</p>
           <h2
             id="insights-heading"
-            className="text-xl font-semibold tracking-tight text-slate-900"
+            className="mt-1 text-2xl font-semibold tracking-tight text-slate-950"
           >
             Progress & insights
           </h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+            A clearer view of how your plan is working and what to focus on next.
+          </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-        {/* PROGRESS */}
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm md:col-span-2">
-          <CardContent className="p-5 space-y-3">
-            <p className="text-sm text-slate-500">Goal Progress</p>
-
-            {progressLoadError ? (
-              <p className="text-sm text-slate-600">
-                {getOptionalLoadMessage("progress")}
-              </p>
-            ) : progressEvaluation ? (
-              <>
-                <div className="text-3xl font-semibold tracking-tight text-slate-900">
-                  {progressEvaluation.headline}
+        <div className="grid gap-5 md:grid-cols-2">
+          {/* PROGRESS */}
+          <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md md:col-span-2">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">
+                    Goal progress
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    How your current plan is tracking
+                  </p>
                 </div>
+              </div>
 
-                <p className="max-w-2xl text-sm leading-6 text-slate-600">
-                  {progressEvaluation.summary}
+              {progressLoadError ? (
+                <p className="mt-6 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm leading-5 text-slate-600">
+                  {getOptionalLoadMessage("progress")}
                 </p>
+              ) : progressEvaluation ? (
+                <div className="mt-6">
+                  <div className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                    {progressEvaluation.headline}
+                  </div>
 
-                {progressRecommendation && (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-medium text-slate-500">
-                      Recommendation
-                    </p>
+                  <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+                    {progressEvaluation.summary}
+                  </p>
 
-                    <p className="text-sm text-slate-700 mt-1">
-                      {progressRecommendation.message}
-                    </p>
+                  {progressRecommendation && (
+                    <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Recommendation
+                      </p>
 
-                    {progressRecommendation.recommendedAction ===
-                      "CONSIDER_ADJUSTMENT" &&
-                      progressRecommendation.adjustmentDecision ===
-                        "PENDING" && (
-                        <div className="mt-3 space-y-2">
-                          <div className="flex flex-col gap-2 sm:flex-row">
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() =>
-                                respondToAdjustment("ACCEPTED")
-                              }
-                              disabled={adjustmentSubmitting}
-                            >
-                              {adjustmentSubmitting
-                                ? "Saving..."
-                                : "Use adjusted plan"}
-                            </Button>
+                      <p className="mt-2 text-sm leading-6 text-slate-700">
+                        {progressRecommendation.message}
+                      </p>
 
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                respondToAdjustment("DECLINED")
-                              }
-                              disabled={adjustmentSubmitting}
-                            >
-                              Keep current plan
-                            </Button>
+                      {progressRecommendation.recommendedAction ===
+                        "CONSIDER_ADJUSTMENT" &&
+                        progressRecommendation.adjustmentDecision ===
+                          "PENDING" && (
+                          <div className="mt-4 space-y-2">
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() =>
+                                  respondToAdjustment("ACCEPTED")
+                                }
+                                disabled={adjustmentSubmitting}
+                              >
+                                {adjustmentSubmitting
+                                  ? "Saving..."
+                                  : "Use adjusted plan"}
+                              </Button>
+
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  respondToAdjustment("DECLINED")
+                                }
+                                disabled={adjustmentSubmitting}
+                              >
+                                Keep current plan
+                              </Button>
+                            </div>
+
+                            {adjustmentError && (
+                              <p role="alert" className="text-xs text-red-600">
+                                {adjustmentError}
+                              </p>
+                            )}
                           </div>
+                        )}
 
-                          {adjustmentError && (
-                            <p role="alert" className="text-xs text-red-600">
-                              {adjustmentError}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                    {progressRecommendation.recommendedAction ===
-                      "CONSIDER_ADJUSTMENT" &&
-                      progressRecommendation.adjustmentDecision !==
-                        "PENDING" && (
-                        <p
-                          className={`mt-3 text-xs ${
-                            progressRecommendation.adjustmentDecision ===
+                      {progressRecommendation.recommendedAction ===
+                        "CONSIDER_ADJUSTMENT" &&
+                        progressRecommendation.adjustmentDecision !==
+                          "PENDING" && (
+                          <p
+                            className={`mt-4 text-xs ${
+                              progressRecommendation.adjustmentDecision ===
+                              "ACCEPTED"
+                                ? "text-emerald-700"
+                                : "text-slate-500"
+                            }`}
+                            role="status"
+                            aria-live="polite"
+                          >
+                            {progressRecommendation.adjustmentDecision ===
                             "ACCEPTED"
-                              ? "text-emerald-700"
-                              : "text-slate-500"
-                          }`}
-                          role="status"
-                          aria-live="polite"
-                        >
-                          {progressRecommendation.adjustmentDecision ===
-                          "ACCEPTED"
-                            ? getAdjustmentResultMessage({
-                                decision: "ACCEPTED",
-                                nutritionPlan,
-                              })
-                            : getAdjustmentResultMessage({
-                                decision: "DECLINED",
-                                nutritionPlan,
-                              })}
-                        </p>
-                      )}
-                  </div>
-                )}
+                              ? getAdjustmentResultMessage({
+                                  decision: "ACCEPTED",
+                                  nutritionPlan,
+                                })
+                              : getAdjustmentResultMessage({
+                                  decision: "DECLINED",
+                                  nutritionPlan,
+                                })}
+                          </p>
+                        )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-6">
+                  <p className="max-w-2xl text-sm leading-6 text-slate-500">
+                    Keep logging your weight so we can understand how things
+                    are changing over time.
+                  </p>
+                  <Link
+                    href="/tools/tracking/weight"
+                    className="mt-3 inline-flex text-sm font-medium text-emerald-700 hover:underline"
+                  >
+                    Log weight →
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-              </>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-slate-500">
-                  Keep logging your weight so we can understand how things are
-                  changing over time.
+          {/* MACROS */}
+          <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+            <CardContent className="p-6">
+              <p className="text-sm font-medium text-slate-500">Macros</p>
+              <p className="mt-1 text-xs text-slate-400">Daily targets</p>
+
+              {nutritionPlan ? (
+                <div className="mt-6 grid grid-cols-3">
+                  <div className="pr-3">
+                    <div className="text-2xl font-semibold tracking-tight text-slate-950">
+                      {nutritionPlan.proteinG}g
+                    </div>
+                    <p className="mt-1 text-xs font-medium text-slate-500">
+                      Protein
+                    </p>
+                  </div>
+
+                  <div className="border-x border-slate-200 px-3">
+                    <div className="text-2xl font-semibold tracking-tight text-slate-950">
+                      {nutritionPlan.carbsG}g
+                    </div>
+                    <p className="mt-1 text-xs font-medium text-slate-500">
+                      Carbs
+                    </p>
+                  </div>
+
+                  <div className="pl-3">
+                    <div className="text-2xl font-semibold tracking-tight text-slate-950">
+                      {nutritionPlan.fatG}g
+                    </div>
+                    <p className="mt-1 text-xs font-medium text-slate-500">
+                      Fat
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-6 text-sm leading-6 text-slate-500">
+                  Your protein, carbs, and fat targets will appear once your
+                  nutrition plan is generated.
                 </p>
-                <Link
-                  href="/tools/tracking/weight"
-                  className="text-emerald-700 text-sm hover:underline"
-                >
-                  Log weight →
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* MACROS */}
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm md:col-span-1">
-          <CardContent className="p-5 space-y-3">
-            <p className="text-sm text-slate-500">Macros</p>
-
-            {nutritionPlan ? (
-              <div className="grid grid-cols-3 text-center">
-                <div className="pr-3">
-                  <div className="text-xl font-semibold">
-                    {nutritionPlan.proteinG}g
-                  </div>
-                  <p className="text-xs text-slate-500">Protein</p>
-                </div>
-
-                <div className="border-x border-slate-200 px-3">
-                  <div className="text-xl font-semibold">
-                    {nutritionPlan.carbsG}g
-                  </div>
-                  <p className="text-xs text-slate-500">Carbs</p>
-                </div>
-
-                <div className="pl-3">
-                  <div className="text-xl font-semibold">
-                    {nutritionPlan.fatG}g
-                  </div>
-                  <p className="text-xs text-slate-500">Fat</p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">
-                Your protein, carbs, and fat targets will appear once your
-                nutrition plan is generated.
+          {/* RECOMMENDATIONS */}
+          <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+            <CardContent className="p-6">
+              <p className="text-sm font-medium text-slate-500">
+                Recommendations
               </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* RECOMMENDATIONS */}
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm md:col-span-1">
-          <CardContent className="p-5 space-y-3">
-            <p className="text-sm text-slate-500">Recommendations</p>
-
-            {recommendationsLoadError ? (
-              <p className="text-sm text-slate-600">
-                {getOptionalLoadMessage("recommendations")}
+              <p className="mt-1 text-xs text-slate-400">
+                Personalised guidance
               </p>
-            ) : rec ? (
-              <>
-                <p className="text-sm text-slate-600 line-clamp-3">
-                  {rec.summary}
-                </p>
 
-                <Link
-                  href="/tools/recommendations"
-                  className="text-emerald-700 text-sm hover:underline"
-                >
-                  View all recommendations →
-                </Link>
-              </>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-slate-500">
-                  Complete your profile to get personalized recommendations.
+              {recommendationsLoadError ? (
+                <p className="mt-6 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm leading-5 text-slate-600">
+                  {getOptionalLoadMessage("recommendations")}
                 </p>
-                <Link
-                  href="/tools/recommendations"
-                  className="text-emerald-700 text-sm hover:underline"
-                >
-                  View recommendations →
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              ) : rec ? (
+                <div className="mt-6">
+                  <p className="text-sm leading-6 text-slate-600 line-clamp-3">
+                    {rec.summary}
+                  </p>
+
+                  <Link
+                    href="/tools/recommendations"
+                    className="mt-4 inline-flex text-sm font-medium text-emerald-700 hover:underline"
+                  >
+                    View all recommendations →
+                  </Link>
+                </div>
+              ) : (
+                <div className="mt-6">
+                  <p className="text-sm leading-6 text-slate-500">
+                    Complete your profile to get personalised recommendations.
+                  </p>
+                  <Link
+                    href="/tools/recommendations"
+                    className="mt-3 inline-flex text-sm font-medium text-emerald-700 hover:underline"
+                  >
+                    View recommendations →
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </section>
     </div>

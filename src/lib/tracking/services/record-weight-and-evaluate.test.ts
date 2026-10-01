@@ -1,4 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import type { NutritionPlanRepository } from "@/lib/nutrition-plan/repository";
+import type { ProgressEvaluationRepository } from "@/lib/progress/repositories/progress-evaluation-repository";
+import { EvaluateAndRecordProgressService } from "@/lib/progress/evaluate-and-record-service";
+import { RecordWeightEntryService } from "./record-weight-entry";
 import {
   PROGRESS_EVALUATION_CADENCE_DAYS,
   RecordWeightAndEvaluateService,
@@ -28,26 +32,37 @@ describe("RecordWeightAndEvaluateService", () => {
   };
 
   function createDependencies() {
+    const recordWeightService = {
+      execute: vi.fn().mockResolvedValue(savedEntry),
+    } satisfies Pick<RecordWeightEntryService, "execute">;
+
+    const nutritionPlanRepository = {
+      findLatestByUserId: vi.fn().mockResolvedValue(plan),
+    } satisfies Pick<NutritionPlanRepository, "findLatestByUserId">;
+
+    const evaluationRepository = {
+      findLatestByPlanVersionId: vi.fn().mockResolvedValue(null),
+    } satisfies Pick<
+      ProgressEvaluationRepository,
+      "findLatestByPlanVersionId"
+    >;
+
+    const evaluateAndRecordProgressService = {
+      execute: vi.fn().mockResolvedValue({
+        evaluation: {
+          state: "INSUFFICIENT_DATA",
+          changeKg: null,
+          entriesCount: 1,
+          evaluationDays: null,
+        },
+      }),
+    } satisfies Pick<EvaluateAndRecordProgressService, "execute">;
+
     return {
-      recordWeightService: {
-        execute: vi.fn().mockResolvedValue(savedEntry),
-      },
-      nutritionPlanRepository: {
-        findLatestByUserId: vi.fn().mockResolvedValue(plan),
-      },
-      evaluationRepository: {
-        findLatestByPlanVersionId: vi.fn().mockResolvedValue(null),
-      },
-      evaluateAndRecordProgressService: {
-        execute: vi.fn().mockResolvedValue({
-          evaluation: {
-            state: "INSUFFICIENT_DATA",
-            changeKg: null,
-            entriesCount: 1,
-            evaluationDays: null,
-          },
-        }),
-      },
+      recordWeightService,
+      nutritionPlanRepository,
+      evaluationRepository,
+      evaluateAndRecordProgressService,
     };
   }
 
@@ -55,10 +70,10 @@ describe("RecordWeightAndEvaluateService", () => {
     const dependencies = createDependencies();
 
     const service = new RecordWeightAndEvaluateService(
-      dependencies.recordWeightService as any,
-      dependencies.nutritionPlanRepository as any,
-      dependencies.evaluationRepository as any,
-      dependencies.evaluateAndRecordProgressService as any,
+      dependencies.recordWeightService,
+      dependencies.nutritionPlanRepository,
+      dependencies.evaluationRepository,
+      dependencies.evaluateAndRecordProgressService,
     );
 
     await expect(service.execute("user-1", entry)).resolves.toEqual({
@@ -101,10 +116,10 @@ describe("RecordWeightAndEvaluateService", () => {
     );
 
     const service = new RecordWeightAndEvaluateService(
-      dependencies.recordWeightService as any,
-      dependencies.nutritionPlanRepository as any,
-      dependencies.evaluationRepository as any,
-      dependencies.evaluateAndRecordProgressService as any,
+      dependencies.recordWeightService,
+      dependencies.nutritionPlanRepository,
+      dependencies.evaluationRepository,
+      dependencies.evaluateAndRecordProgressService,
     );
 
     await expect(service.execute("user-1", entry)).resolves.toEqual({
@@ -139,10 +154,10 @@ describe("RecordWeightAndEvaluateService", () => {
     );
 
     const service = new RecordWeightAndEvaluateService(
-      dependencies.recordWeightService as any,
-      dependencies.nutritionPlanRepository as any,
-      dependencies.evaluationRepository as any,
-      dependencies.evaluateAndRecordProgressService as any,
+      dependencies.recordWeightService,
+      dependencies.nutritionPlanRepository,
+      dependencies.evaluationRepository,
+      dependencies.evaluateAndRecordProgressService,
     );
 
     await expect(service.execute("user-1", entry)).resolves.toEqual({
@@ -163,10 +178,10 @@ describe("RecordWeightAndEvaluateService", () => {
     );
 
     const service = new RecordWeightAndEvaluateService(
-      dependencies.recordWeightService as any,
-      dependencies.nutritionPlanRepository as any,
-      dependencies.evaluationRepository as any,
-      dependencies.evaluateAndRecordProgressService as any,
+      dependencies.recordWeightService,
+      dependencies.nutritionPlanRepository,
+      dependencies.evaluationRepository,
+      dependencies.evaluateAndRecordProgressService,
     );
 
     await service.execute("user-1", entry);
@@ -184,10 +199,10 @@ describe("RecordWeightAndEvaluateService", () => {
     );
 
     const service = new RecordWeightAndEvaluateService(
-      dependencies.recordWeightService as any,
-      dependencies.nutritionPlanRepository as any,
-      dependencies.evaluationRepository as any,
-      dependencies.evaluateAndRecordProgressService as any,
+      dependencies.recordWeightService,
+      dependencies.nutritionPlanRepository,
+      dependencies.evaluationRepository,
+      dependencies.evaluateAndRecordProgressService,
     );
 
     await expect(service.execute("user-1", entry)).resolves.toEqual({

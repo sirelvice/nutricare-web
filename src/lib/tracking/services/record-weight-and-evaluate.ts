@@ -5,10 +5,7 @@ import {
   type NewWeightEntry,
   type WeightEntry,
 } from "../domain";
-import {
-  InvalidWeightEntryError,
-  RecordWeightEntryService,
-} from "./record-weight-entry";
+import { RecordWeightEntryService } from "./record-weight-entry";
 
 export const PROGRESS_EVALUATION_CADENCE_DAYS = 7;
 
@@ -17,12 +14,26 @@ export type RecordWeightAndEvaluateResult = {
   evaluationTriggered: boolean;
 };
 
+type RecordWeightService = Pick<RecordWeightEntryService, "execute">;
+type NutritionPlanReader = Pick<
+  NutritionPlanRepository,
+  "findLatestByUserId"
+>;
+type ProgressEvaluationReader = Pick<
+  ProgressEvaluationRepository,
+  "findLatestByPlanVersionId"
+>;
+type ProgressEvaluator = Pick<
+  EvaluateAndRecordProgressService,
+  "execute"
+>;
+
 export class RecordWeightAndEvaluateService {
   constructor(
-    private readonly recordWeightService: RecordWeightEntryService,
-    private readonly nutritionPlanRepository: NutritionPlanRepository,
-    private readonly evaluationRepository: ProgressEvaluationRepository,
-    private readonly evaluateAndRecordProgressService: EvaluateAndRecordProgressService,
+    private readonly recordWeightService: RecordWeightService,
+    private readonly nutritionPlanRepository: NutritionPlanReader,
+    private readonly evaluationRepository: ProgressEvaluationReader,
+    private readonly evaluateAndRecordProgressService: ProgressEvaluator,
   ) {}
 
   async execute(

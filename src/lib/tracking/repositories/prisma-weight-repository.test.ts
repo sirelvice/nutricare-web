@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
+import type { PrismaClient } from "@prisma/client";
 import { PrismaWeightRepository } from "./prisma-weight-repository";
+
+type WeightDb = {
+  weightEntry: Pick<
+    PrismaClient["weightEntry"],
+    "create" | "findMany" | "findFirst" | "deleteMany"
+  >;
+};
 
 describe("PrismaWeightRepository", () => {
   it("creates and maps a weight entry", async () => {
@@ -11,8 +19,11 @@ describe("PrismaWeightRepository", () => {
           weightKg: 60.5,
           note: "Morning weight",
         }),
+        findMany: vi.fn(),
+        findFirst: vi.fn(),
+        deleteMany: vi.fn(),
       },
-    } as any;
+    } satisfies WeightDb;
 
     const repository = new PrismaWeightRepository(db);
 
@@ -42,6 +53,7 @@ describe("PrismaWeightRepository", () => {
   it("lists only the authenticated user's entries", async () => {
     const db = {
       weightEntry: {
+        create: vi.fn(),
         findMany: vi.fn().mockResolvedValue([
           {
             id: "entry-1",
@@ -50,8 +62,10 @@ describe("PrismaWeightRepository", () => {
             note: null,
           },
         ]),
+        findFirst: vi.fn(),
+        deleteMany: vi.fn(),
       },
-    } as any;
+    } satisfies WeightDb;
 
     const repository = new PrismaWeightRepository(db);
 
@@ -74,14 +88,17 @@ describe("PrismaWeightRepository", () => {
   it("finds the latest entry for the authenticated user", async () => {
     const db = {
       weightEntry: {
+        create: vi.fn(),
+        findMany: vi.fn(),
         findFirst: vi.fn().mockResolvedValue({
           id: "entry-2",
           date: new Date("2026-09-03T00:00:00.000Z"),
           weightKg: 61.2,
           note: null,
         }),
+        deleteMany: vi.fn(),
       },
-    } as any;
+    } satisfies WeightDb;
 
     const repository = new PrismaWeightRepository(db);
 
@@ -102,9 +119,12 @@ describe("PrismaWeightRepository", () => {
   it("returns null when the user has no weight entries", async () => {
     const db = {
       weightEntry: {
+        create: vi.fn(),
+        findMany: vi.fn(),
         findFirst: vi.fn().mockResolvedValue(null),
+        deleteMany: vi.fn(),
       },
-    } as any;
+    } satisfies WeightDb;
 
     const repository = new PrismaWeightRepository(db);
 
@@ -116,9 +136,12 @@ describe("PrismaWeightRepository", () => {
   it("deletes only an entry belonging to the user", async () => {
     const db = {
       weightEntry: {
+        create: vi.fn(),
+        findMany: vi.fn(),
+        findFirst: vi.fn(),
         deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
-    } as any;
+    } satisfies WeightDb;
 
     const repository = new PrismaWeightRepository(db);
 

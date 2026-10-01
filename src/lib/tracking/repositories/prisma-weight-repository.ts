@@ -16,8 +16,15 @@ function toDomain(entry: {
   };
 }
 
+type WeightDb = {
+  weightEntry: Pick<
+    PrismaClient["weightEntry"],
+    "create" | "findMany" | "findFirst" | "deleteMany"
+  >;
+};
+
 export class PrismaWeightRepository implements WeightRepository {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(private readonly db: WeightDb) {}
 
   async create(
     userId: string,

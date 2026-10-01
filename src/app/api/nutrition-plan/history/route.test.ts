@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type MockedFunction } from "vitest";
+import type { Session } from "next-auth";
 
 const historyExecute = vi.hoisted(() => vi.fn());
 
@@ -19,6 +20,9 @@ vi.mock("@/lib/nutrition-plan/prisma-repository", () => ({
 }));
 
 import { auth } from "@/auth";
+const authMock = auth as unknown as MockedFunction<
+  () => Promise<Session | null>
+>;
 import { GET } from "@/app/api/nutrition-plan/history/route";
 
 describe("/api/nutrition-plan/history", () => {
@@ -27,7 +31,7 @@ describe("/api/nutrition-plan/history", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null as any);
+    authMock.mockResolvedValue(null);
 
     const response = await GET();
 
@@ -35,9 +39,15 @@ describe("/api/nutrition-plan/history", () => {
   });
 
   it("returns plan history when authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     const plans = [
       {
@@ -72,9 +82,15 @@ describe("/api/nutrition-plan/history", () => {
   });
 
   it("returns 500 when loading history fails", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     historyExecute.mockRejectedValue(new Error("Database failure"));
 

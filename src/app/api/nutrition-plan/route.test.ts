@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type MockedFunction } from "vitest";
+import type { Session } from "next-auth";
 
 const generateExecute = vi.hoisted(() => vi.fn());
 
@@ -39,6 +40,9 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import { auth } from "@/auth";
+const authMock = auth as unknown as MockedFunction<
+  () => Promise<Session | null>
+>;
 import { GET, POST } from "@/app/api/nutrition-plan/route";
 
 describe("/api/nutrition-plan", () => {
@@ -47,7 +51,7 @@ describe("/api/nutrition-plan", () => {
   });
 
   it("GET returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null as any);
+    authMock.mockResolvedValue(null);
 
     const response = await GET();
 
@@ -55,9 +59,15 @@ describe("/api/nutrition-plan", () => {
   });
 
   it("GET returns 200 when authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     const response = await GET();
 
@@ -68,7 +78,7 @@ describe("/api/nutrition-plan", () => {
   });
 
   it("POST returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null as any);
+    authMock.mockResolvedValue(null);
 
     const response = await POST(
       new Request("http://localhost/api/nutrition-plan", {
@@ -83,9 +93,15 @@ describe("/api/nutrition-plan", () => {
   });
 
   it("POST returns 422 when profile or current weight is missing", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     generateExecute.mockResolvedValue(null);
 
@@ -107,9 +123,15 @@ describe("/api/nutrition-plan", () => {
   });
 
   it("POST returns 201 with the generated plan", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     const plan = {
       id: "plan-1",
@@ -138,9 +160,15 @@ describe("/api/nutrition-plan", () => {
     expect(generateExecute).toHaveBeenCalledWith("user-123");
   });
   it("returns 403 and does not call the service for a foreign origin", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-1" },
-    } as never);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-1",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     const request = new Request(
       "http://localhost:3000/api/nutrition-plan",

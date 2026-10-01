@@ -431,48 +431,59 @@ export default function DashboardPage() {
       </section>
 
       {/* CORE */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-3">
         {/* BMI */}
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <CardContent className="p-5">
-            <p className="text-sm text-slate-500">BMI</p>
+        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-slate-500">BMI</p>
+            <p className="mt-1 text-xs text-slate-400">Current reading</p>
+
             {recommendationsLoadError ? (
-              <p className="text-sm text-slate-600">
+              <p className="mt-5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm leading-5 text-slate-600">
                 BMI information is temporarily unavailable. Your other
                 dashboard information is still available.
               </p>
             ) : recommendations ? (
-              <>
-                <div className="text-4xl font-semibold">
+              <div className="mt-6">
+                <div className="text-4xl font-semibold tracking-tight text-slate-950">
                   {recommendations.bmi.toFixed(1)}
                 </div>
-                <p className="text-sm text-slate-600">
+                <p className="mt-2 text-sm font-medium text-slate-600">
                   {recommendations.category.label}
                 </p>
-              </>
+              </div>
             ) : (
-              <Link href="/tools/bmi" className="text-emerald-700 text-sm hover:underline">
-                Calculate BMI →
-              </Link>
+              <div className="mt-6">
+                <p className="text-sm leading-6 text-slate-500">
+                  Calculate your BMI to see your current reading.
+                </p>
+                <Link
+                  href="/tools/bmi"
+                  className="mt-3 inline-flex text-sm font-medium text-emerald-700 hover:underline"
+                >
+                  Calculate BMI →
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {/* WEIGHT */}
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <CardContent className="p-5 space-y-3">
-            <p className="text-sm text-slate-500">Weight</p>
+        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-slate-500">Weight</p>
+            <p className="mt-1 text-xs text-slate-400">Latest measurement</p>
 
             {latestWeight ? (
-              <>
-                <div className="text-4xl font-semibold">
+              <div className="mt-6">
+                <div className="text-4xl font-semibold tracking-tight text-slate-950">
                   {latestWeight.weightKg} kg
                 </div>
-                <p className="text-sm text-slate-500">
+                <p className="mt-2 text-xs text-slate-400">
                   Recorded {formatRecordedDate(latestWeight.date)}
                 </p>
 
-                <div className="h-20">
+                <div className="mt-4 h-20">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <Line
@@ -487,37 +498,50 @@ export default function DashboardPage() {
 
                 <Link
                   href="/tools/tracking/weight"
-                  className="text-emerald-700 text-sm hover:underline"
+                  className="mt-3 inline-flex text-sm font-medium text-emerald-700 hover:underline"
                 >
                   Log weight →
                 </Link>
-              </>
+              </div>
             ) : (
-              <Link
-                href="/tools/tracking/weight"
-                className="text-emerald-700 text-sm hover:underline"
-              >
-                Add weight →
-              </Link>
+              <div className="mt-6">
+                <p className="text-sm leading-6 text-slate-500">
+                  Start tracking your weight to see your progress here.
+                </p>
+                <Link
+                  href="/tools/tracking/weight"
+                  className="mt-3 inline-flex text-sm font-medium text-emerald-700 hover:underline"
+                >
+                  Add weight →
+                </Link>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {/* CALORIES */}
-        <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <CardContent className="p-5">
-            <p className="text-sm text-slate-500">Calories</p>
+        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-slate-500">Calories</p>
+            <p className="mt-1 text-xs text-slate-400">Daily target</p>
 
             {nutritionPlan ? (
-              <div>
-                <div className="text-4xl font-semibold">
-                  {nutritionPlan.targetCalories.toLocaleString()}
+              <div className="mt-6">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-semibold tracking-tight text-slate-950">
+                    {nutritionPlan.targetCalories.toLocaleString()}
+                  </span>
+                  <span className="text-sm font-medium text-slate-500">
+                    kcal/day
+                  </span>
                 </div>
-                <p className="text-sm text-slate-500">kcal/day</p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Your current recommended daily intake.
+                </p>
               </div>
             ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-slate-500">
+              <div className="mt-6 space-y-2">
+                <p className="text-sm leading-6 text-slate-500">
                   Complete your profile and add your current weight to generate
                   your nutrition plan.
                 </p>
@@ -525,7 +549,7 @@ export default function DashboardPage() {
                   <Button
                     type="button"
                     variant="link"
-                    className="h-auto p-0 text-emerald-700 text-sm"
+                    className="h-auto p-0 text-sm text-emerald-700"
                     onClick={generateNutritionPlan}
                     disabled={generating}
                   >

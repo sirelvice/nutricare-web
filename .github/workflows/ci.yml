@@ -1,4 +1,4 @@
-name: CI
+name: ci
 
 on:
   push:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify
+    name: verify
     runs-on: ubuntu-latest
 
     services:
@@ -35,6 +35,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://nutricare:nutricare@localhost:5432/nutricare_test
       DIRECT_URL: postgresql://nutricare:nutricare@localhost:5432/nutricare_test
+      PGSSLMODE: disable
       NODE_ENV: test
       CI: true
       AUTH_SECRET: ci-test-auth-secret

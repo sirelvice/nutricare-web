@@ -17,16 +17,19 @@ if (!connectionString) {
 }
 
 const sslRootCert = process.env.PGSSLROOTCERT;
+const sslMode = process.env.PGSSLMODE;
 
 const ssl =
-  sslRootCert
-    ? {
-        ca: readFileSync(resolve(process.cwd(), sslRootCert), "utf8"),
-        rejectUnauthorized: true,
-      }
-    : {
-        rejectUnauthorized: true,
-      };
+  sslMode === "disable"
+    ? false
+    : sslRootCert
+      ? {
+          ca: readFileSync(resolve(process.cwd(), sslRootCert), "utf8"),
+          rejectUnauthorized: true,
+        }
+      : {
+          rejectUnauthorized: true,
+        };
 
 const adapter = new PrismaPg({
   connectionString,

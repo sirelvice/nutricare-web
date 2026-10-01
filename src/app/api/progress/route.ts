@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
-import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
 import { prisma } from "@/lib/db";
 import { GetCurrentProgressService } from "@/lib/progress/get-current-progress-service";
 import { PrismaProgressEvaluationRepository } from "@/lib/progress/repositories/prisma-progress-evaluation-repository";

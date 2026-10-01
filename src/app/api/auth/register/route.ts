@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     console.log("New user registration completed.");
 
     return NextResponse.json({ ok: true }, { status: 201 });
-  } catch (error) {
+  } catch {
     console.error("Register API request failed.");
     return internalServerError(
       "Something went wrong. Please try again later.",

@@ -195,7 +195,7 @@ export async function POST(req: Request) {
       message:
         "If an account exists for that email, reset instructions will be sent shortly.",
     });
-  } catch (error) {
+  } catch {
     await recordSecurityEvent({
       type: SECURITY_EVENT_TYPES.PASSWORD_RESET_REQUEST,
       outcome: SECURITY_EVENT_OUTCOMES.FAILURE,

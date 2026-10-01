@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       ok: true,
       message: "Your password has been reset successfully.",
     });
-  } catch (error) {
+  } catch {
     await recordSecurityEvent({
       type: SECURITY_EVENT_TYPES.PASSWORD_RESET_COMPLETE,
       outcome: SECURITY_EVENT_OUTCOMES.FAILURE,

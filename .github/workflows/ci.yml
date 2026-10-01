@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "refactor/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nutricare
+          POSTGRES_PASSWORD: nutricare
+          POSTGRES_DB: nutricare_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nutricare -d nutricare_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://nutricare:nutricare@localhost:5432/nutricare_test
+      DIRECT_URL: postgresql://nutricare:nutricare@localhost:5432/nutricare_test
+      NODE_ENV: test
+      CI: true
+      AUTH_SECRET: ci-test-auth-secret
+      NEXTAUTH_SECRET: ci-test-nextauth-secret
+      APP_URL: http://localhost:3000
+      CONTACT_FROM_EMAIL: test@example.com
+      CONTACT_TO_EMAIL: test@example.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Prepare test database
+        run: npx prisma db push
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm test
+
+      - name: Production build
+        run: npm run build

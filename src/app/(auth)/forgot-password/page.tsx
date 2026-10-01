@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
               Forgot Password?
             </CardTitle>
             <p className="text-center text-slate-600 text-sm">
-              No worries. We'll help you reset it.
+              No worries. We&apos;ll help you reset it.
             </p>
           </CardHeader>
 
@@ -97,7 +97,7 @@ export default function ForgotPasswordPage() {
                     />
                   </div>
                   <p className="text-xs text-slate-500">
-                    If an account exists for this email, we'll send password reset instructions.
+                    If an account exists for this email, we&apos;ll send password reset instructions.
                   </p>
                   {error && <p className="text-sm text-red-600">{error}</p>}
                 </div>
@@ -127,7 +127,7 @@ export default function ForgotPasswordPage() {
                   If an account exists with <strong>{email}</strong>, you will receive password reset instructions shortly.
                 </p>
                 <p className="text-sm text-slate-500">
-                  Didn't receive the email? Check your spam folder or try again.
+                  Didn&apos;t receive the email? Check your spam folder or try again.
                 </p>
 
                 <Button

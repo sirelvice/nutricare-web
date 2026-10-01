@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { PrismaProfileRepository } from "./prisma-profile-repository";
 import type { UserProfile } from "../domain";
 
+type ProfileDb = ConstructorParameters<typeof PrismaProfileRepository>[0];
+
 const profile: UserProfile = {
   heightCm: 170,
   age: 30,
@@ -15,8 +17,9 @@ describe("PrismaProfileRepository", () => {
     const db = {
       profile: {
         findUnique: vi.fn().mockResolvedValue(null),
+        upsert: vi.fn(),
       },
-    } as any;
+    } satisfies ProfileDb;
 
     const repository = new PrismaProfileRepository(db);
 
@@ -36,8 +39,9 @@ describe("PrismaProfileRepository", () => {
           activity: "MODERATE",
           goal: "GAIN",
         }),
+        upsert: vi.fn(),
       },
-    } as any;
+    } satisfies ProfileDb;
 
     const repository = new PrismaProfileRepository(db);
 
@@ -47,6 +51,7 @@ describe("PrismaProfileRepository", () => {
   it("upserts and returns the saved domain profile", async () => {
     const db = {
       profile: {
+        findUnique: vi.fn(),
         upsert: vi.fn().mockResolvedValue({
           heightCm: 170,
           age: 30,
@@ -55,7 +60,7 @@ describe("PrismaProfileRepository", () => {
           goal: "GAIN",
         }),
       },
-    } as any;
+    } satisfies ProfileDb;
 
     const repository = new PrismaProfileRepository(db);
 

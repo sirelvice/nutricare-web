@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { NutritionPlan } from "@/lib/nutrition-plan/domain";
 
 import {
   getAdjustmentResultMessage,
@@ -155,7 +156,7 @@ describe("dashboard state", () => {
       const plan = {
         version: 3,
         targetCalories: 2400,
-      } as any;
+      } as NutritionPlan;
 
       expect(
         getAdjustmentResultMessage({

@@ -19,8 +19,12 @@ function toPrismaGoal(value: UserProfile["goal"]): PrismaGoal {
   return value.toUpperCase() as PrismaGoal;
 }
 
+type ProfileDb = {
+  profile: Pick<PrismaClient["profile"], "findUnique" | "upsert">;
+};
+
 export class PrismaProfileRepository implements ProfileRepository {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(private readonly db: ProfileDb) {}
 
   async findByUserId(userId: string): Promise<UserProfile | null> {
     const profile = await this.db.profile.findUnique({

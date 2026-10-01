@@ -361,32 +361,34 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* HERO */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{getGreeting()}</h1>
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
+        <div className="max-w-3xl">
+          <p className="text-sm font-medium text-emerald-700">Your health workspace</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{getGreeting()}</h1>
 
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
           {hasProfile
             ? `Goal: ${formatGoal(profile?.goal)}`
             : "Add your details to get started"}
         </p>
 
-        <div className="mt-5 max-w-xl">
-          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="mt-6 max-w-xl">
+          <div className="h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-slate-200/70">
             <div
-              className="h-full bg-emerald-500"
+              className="h-full rounded-full bg-primary transition-[width] duration-500"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-2 text-xs font-medium text-slate-500">
             Setup {progressPercent}% complete
           </p>
         </div>
 
         {generationError && (
           <p
-            className="mt-4 text-sm text-red-600"
+            className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
             role="alert"
           >
             {generationError}
@@ -395,7 +397,7 @@ export default function DashboardPage() {
 
         {generationSuccess && !generationError && (
           <p
-            className="mt-4 text-sm text-emerald-700"
+            className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
             role="status"
             aria-live="polite"
           >
@@ -404,7 +406,7 @@ export default function DashboardPage() {
         )}
 
         {primaryAction && (
-          <div className="mt-5">
+          <div className="mt-6">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
               Next step
             </p>
@@ -425,7 +427,8 @@ export default function DashboardPage() {
             )}
           </div>
         )}
-      </div>
+        </div>
+      </section>
 
       {/* CORE */}
       <div className="grid gap-4 md:grid-cols-3">

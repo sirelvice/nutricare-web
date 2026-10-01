@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type MockedFunction } from "vitest";
 
 const progressExecute = vi.hoisted(() => vi.fn());
 
@@ -24,6 +24,11 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import { auth } from "@/auth";
+import type { Session } from "next-auth";
+
+const authMock = auth as unknown as MockedFunction<
+  () => Promise<Session | null>
+>;
 import { GET } from "@/app/api/progress/route";
 
 describe("/api/progress", () => {
@@ -32,7 +37,7 @@ describe("/api/progress", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null as any);
+    authMock.mockResolvedValue(null);
 
     const response = await GET();
 
@@ -44,9 +49,15 @@ describe("/api/progress", () => {
   });
 
   it("returns persisted progress and recommendation when authenticated", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     const progress = {
       planVersionId: "plan-1",
@@ -73,9 +84,15 @@ describe("/api/progress", () => {
   });
 
   it("returns 404 when current persisted progress is unavailable", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     progressExecute.mockResolvedValue(null);
 
@@ -88,9 +105,15 @@ describe("/api/progress", () => {
   });
 
   it("returns 500 when progress loading fails", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     progressExecute.mockRejectedValue(new Error("Database failure"));
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type MockedFunction } from "vitest";
 
 const respondExecute = vi.hoisted(() => vi.fn());
 const applyExecute = vi.hoisted(() => vi.fn());
@@ -35,6 +35,11 @@ vi.mock("@/lib/progress/apply-plan-adjustment-service", () => ({
 }));
 
 import { auth } from "@/auth";
+import type { Session } from "next-auth";
+
+const authMock = auth as unknown as MockedFunction<
+  () => Promise<Session | null>
+>;
 import { POST } from "@/app/api/progress/adjustment/route";
 
 describe("POST /api/progress/adjustment", () => {
@@ -43,7 +48,7 @@ describe("POST /api/progress/adjustment", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    vi.mocked(auth).mockResolvedValue(null as any);
+    authMock.mockResolvedValue(null);
 
     const response = await POST(
       new Request("http://localhost/api/progress/adjustment", {
@@ -63,9 +68,15 @@ describe("POST /api/progress/adjustment", () => {
   });
 
   it("returns 400 for an invalid request body", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     const response = await POST(
       new Request("http://localhost/api/progress/adjustment", {
@@ -89,9 +100,15 @@ describe("POST /api/progress/adjustment", () => {
   });
 
   it("applies an accepted adjustment and returns the new plan", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     applyExecute.mockResolvedValue({
       evaluationId: "evaluation-1",
@@ -147,9 +164,15 @@ describe("POST /api/progress/adjustment", () => {
   });
 
   it("records a declined adjustment response", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     respondExecute.mockResolvedValue({
       id: "evaluation-1",
@@ -184,9 +207,15 @@ describe("POST /api/progress/adjustment", () => {
   });
 
   it("returns 409 when the evaluation cannot accept a response", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     applyExecute.mockRejectedValue(
       new Error("Adjustment response is not applicable"),
@@ -212,9 +241,15 @@ describe("POST /api/progress/adjustment", () => {
   });
 
   it("returns 500 for an unexpected service failure", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-123" },
-    } as any);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-123",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     applyExecute.mockRejectedValue(new Error("Database failure"));
 
@@ -237,9 +272,15 @@ describe("POST /api/progress/adjustment", () => {
     });
   });
   it("returns 403 and does not call the service for a foreign origin", async () => {
-    vi.mocked(auth).mockResolvedValue({
-      user: { id: "user-1" },
-    } as never);
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: {
+        id: "user-1",
+        email: "user@example.com",
+        name: "Test User",
+        role: "USER",
+      },
+    } satisfies Session);
 
     const request = new Request(
       "http://localhost:3000/api/progress/adjustment",

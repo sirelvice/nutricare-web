@@ -60,105 +60,158 @@ export default function BMIPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">BMI Calculator</h1>
-        <p className="text-slate-600">
-          Calculate your BMI and understand its general screening category.
+    <div className="space-y-8">
+      <header className="max-w-3xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          Health tool
         </p>
-      </div>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+          BMI Calculator
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
+          Calculate your body mass index from your height and weight, then
+          review its general screening category.
+        </p>
+      </header>
 
-      {/* Inputs */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Your details</CardTitle>
+      <Card className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
+          <CardTitle className="text-lg text-slate-950">
+            Enter your details
+          </CardTitle>
+          <p className="mt-1 text-sm text-slate-500">
+            Use your current height and weight for the calculation.
+          </p>
         </CardHeader>
 
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-1">
-            <Label htmlFor="height">Height (cm)</Label>
-            <Input
-              id="height"
-              className="h-10 rounded-xl"
-              value={heightCm}
-              onChange={(e) => {
-                setHeightCm(e.target.value);
-                setCalculated(false);
-              }}
-              placeholder="e.g. 172"
-              inputMode="decimal"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="weight">Weight (kg)</Label>
-            <Input
-              id="weight"
-              className="h-10 rounded-xl"
-              value={weightKg}
-              onChange={(e) => {
-                setWeightKg(e.target.value);
-                setCalculated(false);
-              }}
-              placeholder="e.g. 70"
-              inputMode="decimal"
-            />
-          </div>
-
-          <div className="md:col-span-3">
-            <Button
-              onClick={calculate}
-              disabled={!valid}
-              className="w-full md:w-auto"
-            >
-              Calculate BMI
-            </Button>
-
-            {!valid && (
-              <p className="mt-2 text-xs text-slate-500">
-                Enter realistic values (Height 80–250cm, Weight 20–350kg).
+        <CardContent className="p-6">
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="height">Height (cm)</Label>
+              <Input
+                id="height"
+                value={heightCm}
+                onChange={(e) => {
+                  setHeightCm(e.target.value);
+                  setCalculated(false);
+                }}
+                placeholder="e.g. 172"
+                inputMode="decimal"
+                className="h-11"
+              />
+              <p className="text-xs text-slate-500">
+                Enter a value between 80 and 250 cm.
               </p>
-            )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="weight">Weight (kg)</Label>
+              <Input
+                id="weight"
+                value={weightKg}
+                onChange={(e) => {
+                  setWeightKg(e.target.value);
+                  setCalculated(false);
+                }}
+                placeholder="e.g. 70"
+                inputMode="decimal"
+                className="h-11"
+              />
+              <p className="text-xs text-slate-500">
+                Enter a value between 20 and 350 kg.
+              </p>
+            </div>
+
+            <div className="md:col-span-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-slate-500">
+                  Both values are required before you can calculate BMI.
+                </p>
+                <Button
+                  onClick={calculate}
+                  disabled={!valid}
+                  className="w-full sm:w-auto"
+                >
+                  Calculate BMI
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Result */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-lg">Result</CardTitle>
-          <Button asChild variant="outline" size="sm">
+      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+        <CardHeader className="flex-row items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div>
+            <CardTitle className="text-lg text-slate-950">
+              Your result
+            </CardTitle>
+            <p className="mt-1 text-sm text-slate-500">
+              Your BMI calculation and general screening category.
+            </p>
+          </div>
+
+          <Button asChild variant="outline" size="sm" className="shrink-0">
             <a href="/history">View History</a>
           </Button>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="p-6">
           {!calculated ? (
-            <p className="text-slate-600">
-              Enter your height and weight, then click calculate.
-            </p>
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm font-medium text-slate-700">
+                Your result will appear here.
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Enter your height and weight above, then calculate your BMI.
+              </p>
+            </div>
           ) : !result ? (
-            <p className="text-slate-600">
-              Enter valid height and weight values to calculate BMI.
-            </p>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+              <p className="text-sm font-medium text-amber-900">
+                We could not calculate your BMI yet.
+              </p>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Check that your height and weight are within the accepted
+                ranges and try again.
+              </p>
+            </div>
           ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="text-3xl font-semibold">
-                  {result.bmi.toFixed(1)}
+            <div className="space-y-5">
+              <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Body mass index
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-end gap-3">
+                    <span className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+                      {result.bmi.toFixed(1)}
+                    </span>
+                    <span className="pb-1 text-sm font-medium text-slate-500">
+                      BMI
+                    </span>
+                  </div>
                 </div>
-                <Badge variant="secondary">
+
+                <Badge variant="secondary" className="w-fit text-sm">
                   {result.category.label}
                 </Badge>
               </div>
 
-              <p className="text-slate-600">{result.category.note}</p>
+              <div className="rounded-xl border border-slate-200 bg-white p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  What this means
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  {result.category.note}
+                </p>
+              </div>
 
-              <p className="text-xs text-slate-500">
+              <p className="text-xs leading-5 text-slate-500">
                 BMI is a screening tool and does not capture all health
                 factors. It should not be used as a diagnosis.
               </p>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>

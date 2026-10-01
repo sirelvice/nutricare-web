@@ -70,7 +70,14 @@ describe("/api/nutrition-plan", () => {
   it("POST returns 401 when unauthenticated", async () => {
     vi.mocked(auth).mockResolvedValue(null as any);
 
-    const response = await POST();
+    const response = await POST(
+      new Request("http://localhost/api/nutrition-plan", {
+        method: "POST",
+        headers: {
+          origin: "http://localhost:3000",
+        },
+      }),
+    );
 
     expect(response.status).toBe(401);
   });

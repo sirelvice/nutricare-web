@@ -13,8 +13,17 @@ const profile: UserProfile = {
 describe("ChangeGoalService", () => {
   it("requires a user ID", async () => {
     const service = new ChangeGoalService(
-      { findLatestByUserId: vi.fn() },
-      { findLatestByUserId: vi.fn() },
+      {
+          findLatestByUserId: vi.fn(),
+          create: vi.fn(),
+          findByUserId: vi.fn(),
+          delete: vi.fn(),
+        },
+      {
+        create: vi.fn(),
+        findLatestByUserId: vi.fn(),
+        findAllByUserId: vi.fn(),
+      },
       { changeGoal: vi.fn() },
     );
 
@@ -26,6 +35,9 @@ describe("ChangeGoalService", () => {
   it("requires a current weight", async () => {
     const weightRepository = {
       findLatestByUserId: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+        findByUserId: vi.fn(),
+        delete: vi.fn(),
     };
     const workflowRepository = {
       changeGoal: vi.fn(),
@@ -33,7 +45,11 @@ describe("ChangeGoalService", () => {
 
     const service = new ChangeGoalService(
       weightRepository,
-      { findLatestByUserId: vi.fn().mockResolvedValue(null) },
+      {
+          create: vi.fn(),
+          findLatestByUserId: vi.fn().mockResolvedValue(null),
+          findAllByUserId: vi.fn(),
+        },
       workflowRepository,
     );
 
@@ -51,6 +67,9 @@ describe("ChangeGoalService", () => {
         date: "2026-09-03",
         weightKg: 60,
       }),
+        create: vi.fn(),
+        findByUserId: vi.fn(),
+        delete: vi.fn(),
     };
     const workflowRepository = {
       changeGoal: vi.fn(),
@@ -58,7 +77,11 @@ describe("ChangeGoalService", () => {
 
     const service = new ChangeGoalService(
       weightRepository,
-      { findLatestByUserId: vi.fn().mockResolvedValue(null) },
+      {
+          create: vi.fn(),
+          findLatestByUserId: vi.fn().mockResolvedValue(null),
+          findAllByUserId: vi.fn(),
+        },
       workflowRepository,
     );
 
@@ -81,6 +104,9 @@ describe("ChangeGoalService", () => {
         date: "2026-09-03",
         weightKg: 60,
       }),
+        create: vi.fn(),
+        findByUserId: vi.fn(),
+        delete: vi.fn(),
     };
     const workflowRepository = {
       changeGoal: vi.fn().mockResolvedValue({
@@ -100,7 +126,11 @@ describe("ChangeGoalService", () => {
 
     const service = new ChangeGoalService(
       weightRepository,
-      { findLatestByUserId: vi.fn().mockResolvedValue(null) },
+      {
+          create: vi.fn(),
+          findLatestByUserId: vi.fn().mockResolvedValue(null),
+          findAllByUserId: vi.fn(),
+        },
       workflowRepository,
     );
 
@@ -130,9 +160,13 @@ describe("ChangeGoalService", () => {
         date: "2026-09-03",
         weightKg: 60,
       }),
+        create: vi.fn(),
+        findByUserId: vi.fn(),
+        delete: vi.fn(),
     };
 
     const nutritionPlanRepository = {
+      create: vi.fn(),
       findLatestByUserId: vi.fn().mockResolvedValue({
         id: "plan-2",
         version: 2,
@@ -143,6 +177,7 @@ describe("ChangeGoalService", () => {
         fatG: 72,
         createdAt: "2026-09-08T00:00:00.000Z",
       }),
+      findAllByUserId: vi.fn(),
     };
 
     const workflowRepository = {

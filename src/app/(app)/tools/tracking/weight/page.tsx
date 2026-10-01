@@ -131,12 +131,11 @@ export default function WeightTrackingPage() {
     }
   }
 
-  // 🔥 Today vs last delta
   const latestDelta = useMemo(() => {
     if (!stats || stats.count < 2) return null;
 
     const sorted = [...entries].sort((a, b) =>
-      a.date > b.date ? 1 : -1
+      a.date > b.date ? 1 : -1,
     );
 
     const last = sorted[sorted.length - 1];
@@ -146,168 +145,278 @@ export default function WeightTrackingPage() {
   }, [entries, stats]);
 
   return (
-    <div className="space-y-6">
-      {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-semibold">Weight tracking</h1>
-        <p className="text-slate-600">
-          Track your weight over time to see progress.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">
+            Tracking tool
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+            Weight tracking
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+            Record your weight over time and use the history to understand how
+            your progress is changing.
+          </p>
+        </div>
+      </section>
 
       {loading && (
-        <p className="text-sm text-slate-500">Loading your weight history...</p>
+        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+          <CardContent className="p-5">
+            <p className="text-sm text-slate-500">
+              Loading your weight history...
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {loadError && (
-        <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
-          {loadError}
-        </div>
+        <Card className="rounded-2xl border-red-200 bg-red-50 shadow-sm">
+          <CardContent className="p-5">
+            <p className="text-sm font-medium text-red-700">{loadError}</p>
+          </CardContent>
+        </Card>
       )}
 
-      {/* ADD ENTRY */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Add entry</CardTitle>
+      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              Keep your record current
+            </p>
+            <CardTitle className="mt-1 text-xl text-slate-950">
+              Add a weight entry
+            </CardTitle>
+          </div>
         </CardHeader>
 
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <Label>Date</Label>
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
+        <CardContent className="p-6">
+          <div className="grid gap-5 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="weight-date">Date</Label>
+              <Input
+                id="weight-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="weight-value">Weight (kg)</Label>
+              <Input
+                id="weight-value"
+                value={weightKg}
+                onChange={(e) => setWeightKg(e.target.value)}
+                inputMode="decimal"
+                placeholder="e.g. 70.5"
+              />
+              <p className="text-xs text-slate-500">
+                Enter a value between 20 and 350 kg.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="weight-note">Note (optional)</Label>
+              <Input
+                id="weight-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="e.g. after workout"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Weight (kg)</Label>
-            <Input
-              value={weightKg}
-              onChange={(e) => setWeightKg(e.target.value)}
-              inputMode="decimal"
-              placeholder="e.g. 70.5"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Note (optional)</Label>
-            <Input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. after workout"
-            />
-          </div>
-
-          <div className="md:col-span-3 flex flex-wrap items-center gap-2">
+          <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center">
             <Button onClick={onAdd} disabled={!valid || saving}>
-              Add entry
+              {saving ? "Adding entry..." : "Add entry"}
             </Button>
 
             {error && (
-              <span className="text-sm text-red-600">{error}</span>
+              <div
+                role="alert"
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              >
+                {error}
+              </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* SUMMARY (REDESIGNED) */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Summary</CardTitle>
-        </CardHeader>
+      <section className="space-y-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            Your progress
+          </p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+            Weight summary
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            A quick view of your recorded weight and changes over time.
+          </p>
+        </div>
 
-        <CardContent className="space-y-4">
-          {stats ? (
-            <>
-              {/* MAIN STAT */}
-              <div>
-                <p className="text-sm text-slate-500">Latest weight</p>
-                <div className="text-4xl font-semibold">
-                  {stats.last.weightKg} kg
-                </div>
-                <p className="text-xs text-slate-500">
-                  {stats.last.date}
+        {stats ? (
+          <div className="grid gap-5 md:grid-cols-4">
+            <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md md:col-span-2">
+              <CardContent className="p-6">
+                <p className="text-sm font-medium text-slate-500">
+                  Latest weight
                 </p>
-              </div>
-
-              {/* METRICS */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-2xl border p-3 text-center">
-                  <p className="text-xs text-slate-500">Start</p>
-                  <p className="font-semibold">
-                    {stats.first.weightKg} kg
-                  </p>
+                <div className="mt-2 text-4xl font-semibold tracking-tight text-slate-950">
+                  {stats.last.weightKg}
+                  <span className="ml-1 text-xl font-medium text-slate-500">
+                    kg
+                  </span>
                 </div>
+                <p className="mt-1 text-sm text-slate-500">
+                  Recorded on {stats.last.date}
+                </p>
+              </CardContent>
+            </Card>
 
-                <div className="rounded-2xl border p-3 text-center">
-                  <p className="text-xs text-slate-500">Change</p>
-                  <p className="font-semibold">
-                    {stats.change > 0 ? "+" : ""}
-                    {stats.change} kg
-                  </p>
-                </div>
+            <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+              <CardContent className="p-6">
+                <p className="text-sm font-medium text-slate-500">
+                  Starting weight
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">
+                  {stats.first.weightKg}
+                  <span className="ml-1 text-base font-medium text-slate-500">
+                    kg
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  First recorded entry
+                </p>
+              </CardContent>
+            </Card>
 
-                <div className="rounded-2xl border p-3 text-center">
-                  <p className="text-xs text-slate-500">Last Δ</p>
-                  <p className="font-semibold">
-                    {latestDelta !== null
-                      ? `${latestDelta > 0 ? "+" : ""}${latestDelta} kg`
-                      : "—"}
-                  </p>
-                </div>
-              </div>
+            <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+              <CardContent className="p-6">
+                <p className="text-sm font-medium text-slate-500">
+                  Overall change
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">
+                  {stats.change > 0 ? "+" : ""}
+                  {stats.change}
+                  <span className="ml-1 text-base font-medium text-slate-500">
+                    kg
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Since your first entry
+                </p>
+              </CardContent>
+            </Card>
 
-            </>
-          ) : (
-            <p className="text-sm text-slate-400">
-              No entries yet — add your first weight above
+            <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md md:col-span-2">
+              <CardContent className="p-6">
+                <p className="text-sm font-medium text-slate-500">
+                  Latest change
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">
+                  {latestDelta !== null
+                    ? `${latestDelta > 0 ? "+" : ""}${latestDelta} kg`
+                    : "—"}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Change between the two most recent entries
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-slate-200 bg-slate-50 shadow-sm md:col-span-2">
+              <CardContent className="p-6">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Recorded entries
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-slate-950">
+                  {stats.count}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  Keep recording consistently to build a clearer picture of
+                  your progress.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <Card className="rounded-2xl border-dashed border-slate-300 bg-slate-50 shadow-none">
+            <CardContent className="p-8 text-center">
+              <p className="text-base font-medium text-slate-800">
+                No weight entries yet
+              </p>
+              <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500">
+                Add your first weight above and your progress summary will
+                appear here.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              Your record
             </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ENTRIES */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Entries</CardTitle>
+            <CardTitle className="mt-1 text-xl text-slate-950">
+              Weight history
+            </CardTitle>
+          </div>
         </CardHeader>
 
-        <CardContent className="space-y-3">
+        <CardContent className="p-6">
           {entries.length === 0 ? (
-            <p className="text-sm text-slate-400">
-              Your weight history will appear here
-            </p>
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+              <p className="text-sm font-medium text-slate-700">
+                Your weight history will appear here
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Add an entry above to start building your record.
+              </p>
+            </div>
           ) : (
-            <div className="divide-y rounded-2xl border bg-white">
-              {entries.map((e, i) => (
-                <div
-                  key={e.id}
-                  className={`flex items-center justify-between gap-3 p-4 ${
-                    i === 0
-                      ? "bg-emerald-50 border-l-4 border-emerald-500"
-                      : ""
-                  }`}
-                >
-                  <div>
-                    <div className="font-semibold">
-                      {e.weightKg} kg
-                    </div>
-                    <div className="text-sm text-slate-600">
-                      {e.date}
-                      {e.note ? ` • ${e.note}` : ""}
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => onDelete(e.id)}
+            <div className="overflow-hidden rounded-xl border border-slate-200">
+              <div className="divide-y divide-slate-100">
+                {entries.map((entry, index) => (
+                  <div
+                    key={entry.id}
+                    className={`flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between ${
+                      index === 0 ? "bg-emerald-50/70" : "bg-white"
+                    }`}
                   >
-                    Delete
-                  </Button>
-                </div>
-              ))}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <span className="text-lg font-semibold text-slate-950">
+                          {entry.weightKg} kg
+                        </span>
+                        {index === 0 && (
+                          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800">
+                            Latest
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {entry.date}
+                        {entry.note ? ` • ${entry.note}` : ""}
+                      </p>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => onDelete(entry.id)}
+                      className="w-full sm:w-auto"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

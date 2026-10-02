@@ -62,33 +62,40 @@ export default function ContactPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-10 py-10">
-      {/* Header */}
-      <section className="space-y-3">
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">Contact</Badge>
-          <Badge variant="secondary">Support</Badge>
-          <Badge variant="secondary">Partners</Badge>
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 px-6 py-10 shadow-sm sm:px-10 lg:py-14">
+        <div className="relative max-w-3xl space-y-5">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">Contact</Badge>
+            <Badge variant="secondary">Support</Badge>
+            <Badge variant="secondary">Partnerships</Badge>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium uppercase tracking-[0.16em] text-emerald-700">
+              We are here to help
+            </p>
+            <h1 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+              Let&apos;s talk about what you need.
+            </h1>
+            <p className="max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+              Have a question about NutriCare, need help with the product, or want to discuss a
+              partnership? Send us a message and tell us what you are working on.
+            </p>
+          </div>
         </div>
-
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-          Contact us
-        </h1>
-
-        <p className="max-w-3xl text-slate-600">
-          NutriCare helps people understand nutrition with clear tools and responsible reporting.
-          Reach out for support, feedback, or partnership discussions.
-        </p>
       </section>
 
-      {/* Body */}
-      <section className="grid gap-6 md:grid-cols-[1fr_380px]">
-        <Card className="rounded-3xl">
-          <CardHeader>
-            <CardTitle className="text-lg">Send a message</CardTitle>
+      <section className="grid gap-6 md:grid-cols-[minmax(0,1fr)_360px]">
+        <Card className="rounded-3xl border-slate-200 shadow-sm">
+          <CardHeader className="space-y-2 border-b border-slate-100 pb-6">
+            <CardTitle className="text-xl text-slate-950">Send a message</CardTitle>
+            <p className="text-sm leading-6 text-slate-500">
+              Share enough detail for us to understand your question and respond appropriately.
+            </p>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+          <CardContent className="pt-6">
+            <div className="space-y-5">
+              <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
                   <Input
@@ -114,7 +121,7 @@ export default function ContactPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone (optional)</Label>
+                <Label htmlFor="phone">Phone <span className="font-normal text-slate-400">(optional)</span></Label>
                 <Input
                   id="phone"
                   value={phone}
@@ -131,12 +138,12 @@ export default function ContactPage() {
                   id="message"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="How can we help?"
-                  className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-slate-200 disabled:opacity-50"
+                  placeholder="Tell us how we can help."
+                  className="min-h-[160px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={loading}
                 />
                 <p className="text-xs text-slate-500">
-                  Your message is submitted securely and stored for follow-up.
+                  Your message is stored so the NutriCare team can follow up.
                 </p>
               </div>
 
@@ -162,34 +169,47 @@ export default function ContactPage() {
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle className="text-lg">Support</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-slate-600 space-y-2">
-              <p>Email: <span className="font-medium text-slate-900">support@nutricare.app</span></p>
-              <p>Hours: Mon–Fri, 9am–5pm</p>
-              <p className="text-xs text-slate-500">
-                Support inquiries are handled through the NutriCare contact channel.
+        <aside className="space-y-6">
+          <Card className="rounded-3xl border-slate-200 shadow-sm">
+            <CardHeader className="space-y-2">
+              <CardTitle className="text-lg text-slate-950">Support</CardTitle>
+              <p className="text-sm leading-6 text-slate-500">
+                Questions about using NutriCare or something that is not working as expected?
               </p>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Email</p>
+                <p className="mt-1 font-medium text-slate-950">support@nutricare.app</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Hours</p>
+                <p className="mt-1 text-slate-700">Monday to Friday, 9am to 5pm</p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-3xl">
-            <CardHeader>
-              <CardTitle className="text-lg">Partners</CardTitle>
+          <Card className="rounded-3xl border-slate-200 bg-slate-950 text-white shadow-sm">
+            <CardHeader className="space-y-2">
+              <CardTitle className="text-lg text-white">Partnerships</CardTitle>
+              <p className="text-sm leading-6 text-slate-300">
+                Exploring a pilot, programme, outcome reporting, or a deployment?
+              </p>
             </CardHeader>
-            <CardContent className="text-sm text-slate-600 space-y-2">
-              <p>
-                For pilots, outcome reporting, or deployments, reach out and we’ll share the partner brief.
+            <CardContent className="space-y-4">
+              <p className="text-sm leading-6 text-slate-300">
+                Tell us about your organisation, the people you serve, and what you would like to
+                explore.
               </p>
-              <p className="text-xs text-slate-500">
-                For programme and impact discussions, use the partner inquiry form.
-              </p>
+              <a
+                href="/partners"
+                className="inline-flex text-sm font-medium text-white underline decoration-slate-500 underline-offset-4 transition hover:decoration-white"
+              >
+                Explore partnerships
+              </a>
             </CardContent>
           </Card>
-        </div>
+        </aside>
       </section>
     </div>
   );

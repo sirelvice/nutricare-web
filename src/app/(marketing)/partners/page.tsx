@@ -101,69 +101,87 @@ export default function PartnersPage() {
 
   return (
     <div className="space-y-10">
-      <section className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">Partners</Badge>
-          <Badge variant="secondary">Pilots</Badge>
-          <Badge variant="secondary">Reporting</Badge>
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 px-6 py-10 shadow-sm sm:px-10 lg:py-14">
+        <div className="relative max-w-3xl space-y-6">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">Partners</Badge>
+            <Badge variant="secondary">Pilots</Badge>
+            <Badge variant="secondary">Reporting</Badge>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium uppercase tracking-[0.16em] text-emerald-700">
+              Explore what we could build together
+            </p>
+            <h1 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+              Partner with NutriCare.
+            </h1>
+            <p className="max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+              Exploring a pilot, research collaboration, integration, or programme
+              deployment? Tell us what you are working on and what you want to achieve.
+            </p>
+          </div>
+
+          <Button asChild variant="outline">
+            <Link href="/impact">View impact model</Link>
+          </Button>
         </div>
-
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-          Partner with NutriCare
-        </h1>
-
-        <p className="max-w-3xl text-slate-600">
-          NutriCare is a privacy-first nutrition intelligence platform built for
-          individuals and programmes. We support pilots with explainable tools,
-          reporting, and a clear impact model.
-        </p>
-
-        <Button asChild variant="outline">
-          <Link href="/impact">View impact model</Link>
-        </Button>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <Card className="rounded-3xl">
-          <CardHeader>
-            <CardTitle className="text-lg">Pilot-ready</CardTitle>
+      <section className="grid gap-5 md:grid-cols-3">
+        <Card className="rounded-3xl border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+          <CardHeader className="space-y-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-sm font-semibold text-emerald-700">
+              01
+            </div>
+            <CardTitle className="text-lg text-slate-950">Pilot and programme use</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-600">
-            Tools for screening, education, and trend tracking designed to be
-            explainable and practical to deploy.
+          <CardContent className="text-sm leading-6 text-slate-600">
+            Explore screening, education, and tracking workflows that can be adapted to a
+            specific programme or use case.
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl">
-          <CardHeader>
-            <CardTitle className="text-lg">Privacy-first</CardTitle>
+        <Card className="rounded-3xl border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+          <CardHeader className="space-y-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-sm font-semibold text-amber-700">
+              02
+            </div>
+            <CardTitle className="text-lg text-slate-950">Privacy-conscious by design</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-600">
-            Personal user data is stored securely in the NutriCare backend, with
-            reporting designed around appropriate access boundaries.
+          <CardContent className="text-sm leading-6 text-slate-600">
+            Personal nutrition data is handled with appropriate access controls, while
+            reporting can be shaped around the needs of a programme or partner.
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl">
-          <CardHeader>
-            <CardTitle className="text-lg">Reporting</CardTitle>
+        <Card className="rounded-3xl border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+          <CardHeader className="space-y-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-slate-700">
+              03
+            </div>
+            <CardTitle className="text-lg text-slate-950">Reporting</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-600">
+          <CardContent className="text-sm leading-6 text-slate-600">
             Personal reporting is available today, while programme and aggregate
             reporting can evolve as partner requirements are validated.
           </CardContent>
         </Card>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <Card className="rounded-3xl">
-          <CardHeader>
-            <CardTitle className="text-lg">Partner inquiry</CardTitle>
+      <section className="grid gap-6 md:grid-cols-[minmax(0,1fr)_360px]">
+        <Card className="rounded-3xl border-slate-200 shadow-sm">
+          <CardHeader className="space-y-2 border-b border-slate-100 pb-6">
+            <CardTitle className="text-xl text-slate-950">Start a conversation</CardTitle>
+            <p className="text-sm leading-6 text-slate-500">
+              A little context helps us understand what you are looking to explore.
+            </p>
           </CardHeader>
 
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
+          <CardContent className="pt-6">
+            <div className="space-y-5">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
                 <Label htmlFor="org">Organisation</Label>
                 <Input
                   id="org"
@@ -219,10 +237,10 @@ export default function PartnersPage() {
                     onClick={() => setInterest(opt.value)}
                     disabled={submitting}
                     className={[
-                      "rounded-2xl border p-3 text-left",
+                      "rounded-2xl border p-4 text-left transition hover:border-slate-300 hover:bg-slate-50",
                       interest === opt.value
-                        ? "border-slate-900 bg-slate-50"
-                        : "hover:bg-slate-50",
+                        ? "border-slate-900 bg-slate-50 shadow-sm"
+                        : "border-slate-200 bg-white",
                     ].join(" ")}
                   >
                     <div className="text-sm font-semibold">{opt.label}</div>
@@ -238,8 +256,8 @@ export default function PartnersPage() {
                 id="msg"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="min-h-[120px] w-full rounded-2xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-200 disabled:opacity-50"
-                placeholder="Tell us about your programme, audience size, and what you want to measure."
+                className="min-h-[160px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Tell us about your programme, audience, and what you would like to explore."
                 disabled={submitting}
               />
             </div>
@@ -266,19 +284,35 @@ export default function PartnersPage() {
                 (10+ characters).
               </p>
             ) : null}
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border bg-slate-50">
-          <CardHeader>
-            <CardTitle className="text-lg">What partners get</CardTitle>
+        <Card className="rounded-3xl border-slate-200 bg-slate-950 text-white shadow-sm">
+          <CardHeader className="space-y-2">
+            <CardTitle className="text-lg text-white">Areas we can explore</CardTitle>
+            <p className="text-sm leading-6 text-slate-300">
+              Partnership conversations can start with a clear use case, audience, and intended outcome.
+            </p>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm text-slate-700">
-            <ul className="list-disc space-y-2 pl-5">
-              <li>Clear pilot plan: screening, education, and tracking</li>
-              <li>Explainable personal and programme-oriented reporting</li>
-              <li>Privacy-first handling of sensitive nutrition data</li>
-              <li>Future programme and site-level capabilities as validated</li>
+          <CardContent>
+            <ul className="space-y-3 text-sm text-slate-200">
+              <li className="flex gap-3">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                Screening, education, and tracking workflows
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                Personal and programme-oriented reporting
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                Appropriate handling of sensitive nutrition data
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                Future programme and site-level capabilities as requirements are validated
+              </li>
             </ul>
           </CardContent>
         </Card>

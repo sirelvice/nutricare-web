@@ -81,6 +81,16 @@ describe("plan-period evaluation lifecycle", () => {
     expect(applied.adjustmentDecision).toBe("ACCEPTED");
     expect(applied.plan.version).toBe(2);
 
+    const planStart = new Date(applied.plan.createdAt);
+    const dayAfterPlanStart = new Date(planStart);
+    dayAfterPlanStart.setUTCDate(dayAfterPlanStart.getUTCDate() + 1);
+
+    const sevenDaysLater = new Date(dayAfterPlanStart);
+    sevenDaysLater.setUTCDate(sevenDaysLater.getUTCDate() + 7);
+
+    const fourteenDaysLater = new Date(dayAfterPlanStart);
+    fourteenDaysLater.setUTCDate(fourteenDaysLater.getUTCDate() + 14);
+
     await prisma.weightEntry.createMany({
       data: [
         {
@@ -90,17 +100,17 @@ describe("plan-period evaluation lifecycle", () => {
         },
         {
           userId: user.id,
-          date: new Date("2026-10-01T00:00:00.000Z"),
+          date: dayAfterPlanStart,
           weightKg: 70,
         },
         {
           userId: user.id,
-          date: new Date("2026-10-08T00:00:00.000Z"),
+          date: sevenDaysLater,
           weightKg: 69.9,
         },
         {
           userId: user.id,
-          date: new Date("2026-10-15T00:00:00.000Z"),
+          date: fourteenDaysLater,
           weightKg: 69.8,
         },
       ],

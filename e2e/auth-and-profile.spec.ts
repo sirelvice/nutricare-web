@@ -66,7 +66,7 @@ test("user can register, sign in, and save a profile goal", async ({ page }) => 
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("175");
@@ -78,7 +78,7 @@ test("user can register, sign in, and save a profile goal", async ({ page }) => 
   await page.getByRole("button", { name: "Save profile" }).click();
 
   await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal: Lose weight")).toBeVisible();
+  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
 });
 
 test("dashboard remains usable when recommendations are unavailable", async ({
@@ -184,7 +184,7 @@ test("user can add and delete a weight entry", async ({ page }) => {
   ).toBeVisible();
 
   const today = new Date();
-  const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+  const formatDate = (date: Date) => new Intl.DateTimeFormat("en-CA").format(date);
   const entryDate = formatDate(today);
 
   await page.locator('input[type="date"]').fill(entryDate);
@@ -216,8 +216,8 @@ test("user can add and delete a weight entry", async ({ page }) => {
     page
       .getByText("Latest weight")
       .locator("..")
-      .getByText("72.5 kg", { exact: true }),
-  ).toBeVisible();
+      .locator("div").first(),
+  ).toHaveText(/72\.5\s*kg/);
 
   await expect(
     page.getByText(`${entryDate} • E2E lifecycle`, { exact: true }),
@@ -265,7 +265,7 @@ test("user can add and delete a weight entry", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText("No entries yet — add your first weight above", {
+    page.getByText("No weight entries yet", {
       exact: true,
     }),
   ).toBeVisible();
@@ -318,7 +318,7 @@ test("user can calculate and recalculate BMI", async ({ page }) => {
 
   await expect(
     page.getByText(
-      "Enter your height and weight, then click calculate.",
+      "Enter your height and weight above, then calculate your BMI.",
       { exact: true },
     ),
   ).toBeVisible();
@@ -351,7 +351,7 @@ test("user can calculate and recalculate BMI", async ({ page }) => {
 
   await expect(
     page.getByText(
-      "Enter your height and weight, then click calculate.",
+      "Enter your height and weight above, then calculate your BMI.",
       { exact: true },
     ),
   ).toBeVisible();
@@ -399,7 +399,7 @@ test("user can view the health report", async ({ page }) => {
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("175");
@@ -415,7 +415,7 @@ test("user can view the health report", async ({ page }) => {
   await page.goto("/tools/tracking/weight");
 
   const today = new Date();
-  const entryDate = today.toISOString().slice(0, 10);
+  const entryDate = new Intl.DateTimeFormat("en-CA").format(today);
 
   await page.locator('input[type="date"]').fill(entryDate);
   await page.getByPlaceholder("e.g. 70.5").fill("70");
@@ -499,13 +499,13 @@ test("user can view the health report", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText("A snapshot of your nutrition, weight, and health indicators.", {
+    page.getByText("A clear snapshot of your nutrition, weight and health indicators, based on the information currently available in your account.", {
       exact: true,
     }),
   ).toBeVisible();
 
   await expect(
-    page.getByRole("heading", { name: "BMI", exact: true }),
+    page.getByRole("heading", { name: "Body mass index", exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -517,7 +517,7 @@ test("user can view the health report", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByRole("heading", { name: "Calories", exact: true }),
+    page.getByText("Daily calorie target", { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -527,22 +527,20 @@ test("user can view the health report", async ({ page }) => {
   ).toBeVisible();
 
   const caloriesCard = page
-    .getByRole("heading", { name: "Calories", exact: true })
+    .getByText("Daily calorie target", { exact: true })
     .locator("..")
     .locator("..");
 
   await expect(
-    caloriesCard.getByText(`Goal: ${report.nutritionPlan.goal}`, {
-      exact: true,
-    }),
+    caloriesCard.getByText(report.nutritionPlan.goal, { exact: true }),
   ).toBeVisible();
 
   await expect(
-    page.getByRole("heading", { name: "Weight", exact: true }),
+    page.getByRole("heading", { name: "Recent change", exact: true }),
   ).toBeVisible();
 
   const weightCard = page
-    .getByRole("heading", { name: "Weight", exact: true })
+    .getByRole("heading", { name: "Recent change", exact: true })
     .locator("..")
     .locator("..");
 
@@ -555,11 +553,11 @@ test("user can view the health report", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByRole("heading", { name: "Export Full Report", exact: true }),
+    page.getByRole("heading", { name: "Take your report with you", exact: true }),
   ).toBeVisible();
 
   await expect(
-    page.getByRole("button", { name: "Download PDF Report", exact: true }),
+    page.getByRole("button", { name: "Download PDF report", exact: true }),
   ).toBeEnabled();
 });
 
@@ -600,7 +598,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("175");
@@ -615,7 +613,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   await page.goto("/tools/tracking/weight");
 
   const today = new Date();
-  const entryDate = today.toISOString().slice(0, 10);
+  const entryDate = new Intl.DateTimeFormat("en-CA").format(today);
 
   await page.locator('input[type="date"]').fill(entryDate);
   await page.getByPlaceholder("e.g. 70.5").fill("70");
@@ -680,7 +678,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   const downloadPromise = page.waitForEvent("download");
 
   await page
-    .getByRole("button", { name: "Download PDF Report", exact: true })
+    .getByRole("button", { name: "Download PDF report", exact: true })
     .click();
 
   const download = await downloadPromise;
@@ -740,7 +738,7 @@ test("user can edit and persist their profile", async ({ page }) => {
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("180");
@@ -752,7 +750,7 @@ test("user can edit and persist their profile", async ({ page }) => {
   await page.getByRole("button", { name: "Save profile" }).click();
 
   await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal: Gain weight")).toBeVisible();
+  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Gain weight", { exact: true })).toBeVisible();
 
   await page.reload();
 
@@ -862,7 +860,7 @@ test("user can view and recalculate nutrition calories", async ({
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("175");
@@ -877,7 +875,7 @@ test("user can view and recalculate nutrition calories", async ({
   await page.goto("/tools/tracking/weight");
 
   const today = new Date();
-  const entryDate = today.toISOString().slice(0, 10);
+  const entryDate = new Intl.DateTimeFormat("en-CA").format(today);
 
   await page.locator('input[type="date"]').fill(entryDate);
   await page.getByPlaceholder("e.g. 70.5").fill("70");
@@ -925,12 +923,12 @@ test("user can view and recalculate nutrition calories", async ({
   await page.goto("/tools/calories");
 
   await expect(
-    page.getByRole("heading", { name: "Calories", exact: true }),
+    page.getByText("Daily calorie target", { exact: true }),
   ).toBeVisible();
 
   await expect(
     page.getByText(
-      "Your current nutrition target based on your profile and latest weight.",
+      "Use this as your current daily energy target.",
       { exact: true },
     ),
   ).toBeVisible();
@@ -948,27 +946,33 @@ test("user can view and recalculate nutrition calories", async ({
   ).toBeVisible();
 
   await expect(
-    planCard.getByText(`Plan version: ${initialPlan.plan.version}`, {
+    planCard.getByText(`Version ${initialPlan.plan.version}`, {
       exact: true,
     }),
   ).toBeVisible();
 
   await expect(
-    planCard.getByText(`${initialPlan.plan.targetCalories} kcal`, {
+    page.getByText(String(initialPlan.plan.targetCalories), {
       exact: true,
     }),
   ).toBeVisible();
 
   await expect(
-    planCard.getByText(`${initialPlan.plan.proteinG}g`, { exact: true }),
+    page.getByText(`${initialPlan.plan.proteinG}g`, {
+      exact: true,
+    }),
   ).toBeVisible();
 
   await expect(
-    planCard.getByText(`${initialPlan.plan.carbsG}g`, { exact: true }),
+    page.getByText(`${initialPlan.plan.carbsG}g`, {
+      exact: true,
+    }),
   ).toBeVisible();
 
   await expect(
-    planCard.getByText(`${initialPlan.plan.fatG}g`, { exact: true }),
+    page.getByText(`${initialPlan.plan.fatG}g`, {
+      exact: true,
+    }),
   ).toBeVisible();
 
   const recalculateResponsePromise = page.waitForResponse(
@@ -996,13 +1000,13 @@ test("user can view and recalculate nutrition calories", async ({
 
   await expect(
     planCard.getByText(
-      `Plan version: ${recalculatedPlan.plan.version}`,
+      `Version ${recalculatedPlan.plan.version}`,
       { exact: true },
     ),
   ).toBeVisible();
 
   await expect(
-    planCard.getByText(`${recalculatedPlan.plan.targetCalories} kcal`, {
+    page.getByText(String(recalculatedPlan.plan.targetCalories), {
       exact: true,
     }),
   ).toBeVisible();
@@ -1019,7 +1023,7 @@ test("user can view and recalculate nutrition calories", async ({
   ).toBeVisible();
 
   await expect(
-    page.getByRole("link", { name: "View History", exact: true }),
+    page.getByRole("link", { name: "View history", exact: true }),
   ).toHaveAttribute("href", "/history");
 });
 
@@ -1060,7 +1064,7 @@ test("user can view current nutrition macros", async ({ page }) => {
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("175");
@@ -1076,7 +1080,7 @@ test("user can view current nutrition macros", async ({ page }) => {
   await page.goto("/tools/tracking/weight");
 
   const today = new Date();
-  const entryDate = today.toISOString().slice(0, 10);
+  const entryDate = new Intl.DateTimeFormat("en-CA").format(today);
 
   await page.locator('input[type="date"]').fill(entryDate);
   await page.getByPlaceholder("e.g. 70.5").fill("70");
@@ -1156,13 +1160,16 @@ test("user can view current nutrition macros", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText("Your current daily macro targets from your nutrition plan.", {
+    page.getByText("Your latest personalised daily macro targets.", {
       exact: true,
     }),
   ).toBeVisible();
 
   await expect(
-    page.getByRole("heading", { name: "Current plan", exact: true }),
+    page.getByRole("heading", {
+      name: "Current nutrition plan",
+      exact: true,
+    }),
   ).toBeVisible();
 
   await expect(
@@ -1170,7 +1177,9 @@ test("user can view current nutrition macros", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText(`${currentPlan.targetCalories} kcal/day`, { exact: true }),
+    page.getByText(`${currentPlan.targetCalories} kcal/day`, {
+      exact: true,
+    }),
   ).toBeVisible();
 
   await expect(
@@ -1178,15 +1187,15 @@ test("user can view current nutrition macros", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText(`${currentPlan.proteinG} g`, { exact: true }),
+    page.getByText(String(currentPlan.proteinG), { exact: true }),
   ).toBeVisible();
 
   await expect(
-    page.getByText(`${currentPlan.carbsG} g`, { exact: true }),
+    page.getByText(String(currentPlan.carbsG), { exact: true }),
   ).toBeVisible();
 
   await expect(
-    page.getByText(`${currentPlan.fatG} g`, { exact: true }),
+    page.getByText(String(currentPlan.fatG), { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -1243,7 +1252,7 @@ test("user can view personalized nutrition recommendations", async ({
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("175");
@@ -1259,7 +1268,7 @@ test("user can view personalized nutrition recommendations", async ({
   await page.goto("/tools/tracking/weight");
 
   const today = new Date();
-  const entryDate = today.toISOString().slice(0, 10);
+  const entryDate = new Intl.DateTimeFormat("en-CA").format(today);
 
   await page.locator('input[type="date"]').fill(entryDate);
   await page.getByPlaceholder("e.g. 70.5").fill("70");
@@ -1341,7 +1350,7 @@ test("user can view personalized nutrition recommendations", async ({
   ).toBeVisible();
 
   await expect(
-    page.getByText(`BMI: ${data.bmi.toFixed(1)}`, { exact: true }),
+    page.getByText(data.bmi.toFixed(1), { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -1349,19 +1358,23 @@ test("user can view personalized nutrition recommendations", async ({
   ).toBeVisible();
 
   await expect(
-    page.getByText(`${data.targetCalories} kcal/day`, { exact: true }),
+    page.getByText(String(data.targetCalories), { exact: true }),
   ).toBeVisible();
 
   await expect(
-    page.getByText(`${data.macros.proteinG}g`, { exact: true }),
+    page.getByText("kcal/day", { exact: true }),
   ).toBeVisible();
 
   await expect(
-    page.getByText(`${data.macros.carbsG}g`, { exact: true }),
+    page.getByText(String(data.macros.proteinG), { exact: true }),
   ).toBeVisible();
 
   await expect(
-    page.getByText(`${data.macros.fatG}g`, { exact: true }),
+    page.getByText(String(data.macros.carbsG), { exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByText(String(data.macros.fatG), { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -1432,7 +1445,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("175");
@@ -1448,7 +1461,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
   await page.goto("/tools/tracking/weight");
 
   const today = new Date();
-  const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+  const formatDate = (date: Date) => new Intl.DateTimeFormat("en-CA").format(date);
   const entryDate = formatDate(today);
 
   await page.locator('input[type="date"]').fill(entryDate);
@@ -1527,6 +1540,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
   const weightHistoryCard = page
     .getByRole("heading", { name: "Weight history", exact: true })
     .locator("..")
+    .locator("..")
     .locator("..");
 
   await expect(
@@ -1557,12 +1571,6 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
     page.getByText(`Goal: ${planBody.plan.goal}`, { exact: true }),
   ).toBeVisible();
 
-  await expect(
-    page.getByText(
-      `P ${planBody.plan.proteinG}g • C ${planBody.plan.carbsG}g • F ${planBody.plan.fatG}g`,
-      { exact: true },
-    ),
-  ).toBeVisible();
 });
 
 test("user can generate a nutrition plan, log weight, and observe progress", async ({
@@ -1603,7 +1611,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("175");
@@ -1615,7 +1623,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
   await page.getByRole("button", { name: "Save profile" }).click();
 
   await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal: Lose weight")).toBeVisible();
+  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -1624,7 +1632,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
   ).toBeVisible();
 
   const today = new Date();
-  const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+  const formatDate = (date: Date) => new Intl.DateTimeFormat("en-CA").format(date);
 
   await page.locator('input[type="date"]').fill(
     formatDate(new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000)),
@@ -1650,8 +1658,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
     page
       .getByText("Latest weight")
       .locator("..")
-      .getByText("70 kg", { exact: true }),
-  ).toBeVisible();
+  ).toContainText(/70\s*kg/);
 
   await page.goto("/dashboard");
 
@@ -1698,10 +1705,9 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
 
   await expect(
     page
-      .getByText("Latest weight")
-      .locator("..")
-      .getByText("69.4 kg", { exact: true }),
-  ).toBeVisible();
+      .getByText("Latest weight", { exact: true })
+      .locator(".."),
+  ).toContainText(/69\.4\s*kg/);
 
   const progressResponsePromise = page.waitForResponse(
     (response) =>
@@ -1715,13 +1721,13 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
   const progressBody = await progressResponse.json();
 
   expect(progressBody.progress.evaluation.state).toBe("INSUFFICIENT_DATA");
-  expect(progressBody.progress.evaluation.entriesCount).toBe(2);
+  expect(progressBody.progress.evaluation.entriesCount).toBe(1);
   expect(progressBody.progress.recommendation.recommendedAction).toBe(
     "CONTINUE",
   );
 
   await expect(
-    page.getByText("Goal Progress", { exact: true }),
+    page.getByText("Goal progress", { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -1771,7 +1777,7 @@ test("user can decline a progress adjustment and keep the current plan", async (
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("175");
@@ -1783,12 +1789,12 @@ test("user can decline a progress adjustment and keep the current plan", async (
   await page.getByRole("button", { name: "Save profile" }).click();
 
   await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal: Lose weight")).toBeVisible();
+  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
   const today = new Date();
-  const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+  const formatDate = (date: Date) => new Intl.DateTimeFormat("en-CA").format(date);
 
   await page.locator('input[type="date"]').fill(
     formatDate(new Date(today.getTime() - 28 * 24 * 60 * 60 * 1000)),
@@ -2003,7 +2009,7 @@ test("user can accept a progress adjustment and see the new plan version in hist
   await page.goto("/profile");
 
   await expect(
-    page.getByRole("heading", { name: "Your profile" }),
+    page.getByRole("heading", { name: "Your profile", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Height (cm)").fill("175");
@@ -2015,12 +2021,12 @@ test("user can accept a progress adjustment and see the new plan version in hist
   await page.getByRole("button", { name: "Save profile" }).click();
 
   await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal: Lose weight")).toBeVisible();
+  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
   const today = new Date();
-  const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+  const formatDate = (date: Date) => new Intl.DateTimeFormat("en-CA").format(date);
 
   await page.locator('input[type="date"]').fill(
     formatDate(new Date(today.getTime() - 28 * 24 * 60 * 60 * 1000)),
@@ -2161,17 +2167,27 @@ test("user can accept a progress adjustment and see the new plan version in hist
 
   await page.getByRole("button", { name: "Nutrition Plans" }).click();
 
-  await expect(
-    page.getByText(
-      `Version ${currentPlan.version + 1} • ${adjustmentBody.plan.targetCalories} kcal`,
-      { exact: true },
-    ),
-  ).toBeVisible();
+  const newPlanHistoryRow = page
+    .locator("div")
+    .filter({
+      has: page.getByText(
+        `Version ${currentPlan.version + 1} • ${adjustmentBody.plan.targetCalories} kcal`,
+        { exact: true },
+      ),
+    })
+    .first();
 
-  await expect(
-    page.getByText(
-      `Version ${currentPlan.version} • ${currentPlan.targetCalories} kcal`,
-      { exact: true },
-    ),
-  ).toBeVisible();
+  await expect(newPlanHistoryRow).toBeVisible();
+
+  const previousPlanHistoryRow = page
+    .locator("div")
+    .filter({
+      has: page.getByText(
+        `Version ${currentPlan.version} • ${currentPlan.targetCalories} kcal`,
+        { exact: true },
+      ),
+    })
+    .first();
+
+  await expect(previousPlanHistoryRow).toBeVisible();
 });

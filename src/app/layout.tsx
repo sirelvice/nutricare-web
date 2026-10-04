@@ -2,7 +2,6 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import AuthProvider from "@/components/providers/SessionProvider";
-import { FloatingChatWidget } from "@/components/ui/FloatingChatWidget";
 import { Geist, Geist_Mono } from "next/font/google";
 
 const geistSans = Geist({
@@ -71,7 +70,6 @@ export default function RootLayout({
           {children}
         </AuthProvider>
 
-        <FloatingChatWidget />
 
         <Analytics />
       </body>

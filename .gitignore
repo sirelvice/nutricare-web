@@ -45,3 +45,13 @@ next-env.d.ts
 # Prisma local database
 dev.db
 prisma/dev.db
+# Local database TLS certificate
+/certs/*.crt
+
+# Local runtime credentials
+.nutricare_runtime_password
+
+# Playwright test artifacts
+playwright-report/
+
+test-results/

@@ -1,41 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { registerSchema } from "@/lib/security/auth-validation";
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
+import { apiError, badRequest, internalServerError } from "@/lib/api/errors";
+import {
+  recordSecurityEvent,
+  SECURITY_EVENT_TYPES,
+  SECURITY_EVENT_OUTCOMES,
+} from "@/lib/security/events";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const limit = await consumeRateLimit({
+      namespace: "auth:register:ip",
+      identifier: getClientIp(request),
+      limit: 5,
+      windowSeconds: 15 * 60,
+    });
 
-    // Validation
-    if (!email || typeof email !== "string") {
-      return NextResponse.json(
-        { ok: false, error: "Email is required." },
-        { status: 400 }
+    if (!limit.allowed) {
+      await recordSecurityEvent({
+        type: SECURITY_EVENT_TYPES.AUTH_REGISTER,
+        outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+      });
+
+      return apiError(
+        "Too many registration attempts. Please try again later.",
+        429,
+        rateLimitHeaders(limit),
+      );
+    }
+    const parsed = registerSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return badRequest(
+        parsed.error.issues[0]?.message ??
+          "Invalid registration details.",
       );
     }
 
-    const trimmedEmail = email.trim().toLowerCase();
-
-    if (!trimmedEmail.includes("@") || trimmedEmail.length < 6) {
-      return NextResponse.json(
-        { ok: false, error: "Please enter a valid email address." },
-        { status: 400 }
-      );
-    }
-
-    if (!password || typeof password !== "string" || password.length < 8) {
-      return NextResponse.json(
-        { ok: false, error: "Password must be at least 8 characters long." },
-        { status: 400 }
-      );
-    }
-
-    if (name && typeof name === "string" && name.trim().length < 2) {
-      return NextResponse.json(
-        { ok: false, error: "Name must be at least 2 characters long." },
-        { status: 400 }
-      );
-    }
+    const { name, email, password } = parsed.data;
+    const trimmedEmail = email;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -44,8 +54,12 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { ok: false, error: "An account with this email already exists." },
-        { status: 409 }
+        {
+          ok: true,
+          message:
+            "If an account can be created with this email, the next step is ready.",
+        },
+        { status: 201 }
       );
     }
 
@@ -53,24 +67,28 @@ export async function POST(request: NextRequest) {
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Create user
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         email: trimmedEmail,
         name: name ? name.trim() : null,
         passwordHash,
-        // role and subscriptionTier will use defaults from schema
       },
     });
 
+    await recordSecurityEvent({
+      type: SECURITY_EVENT_TYPES.AUTH_REGISTER,
+      outcome: SECURITY_EVENT_OUTCOMES.SUCCESS,
+      userId: user.id,
+    });
+
     // Clean logging
-    console.log(`New user registered: ${trimmedEmail}`);
+    console.log("New user registration completed.");
 
     return NextResponse.json({ ok: true }, { status: 201 });
-  } catch (error) {
-    console.error("Register API error:", error);
-    return NextResponse.json(
-      { ok: false, error: "Something went wrong. Please try again later." },
-      { status: 500 }
+  } catch {
+    console.error("Register API request failed.");
+    return internalServerError(
+      "Something went wrong. Please try again later.",
     );
   }
 }

@@ -51,10 +51,20 @@ export default function RegisterPage() {
 
       const json = (await res.json()) as ApiRes;
 
-      if (!res.ok || !json.ok) {
+      if (!res.ok) {
         setMsg({
           type: "error",
-          text: json.error || "Registration failed. Please try again.",
+          text: !json.ok
+            ? json.error
+            : "Registration failed. Please try again.",
+        });
+        return;
+      }
+
+      if (!json.ok) {
+        setMsg({
+          type: "error",
+          text: json.error,
         });
         return;
       }
@@ -197,7 +207,7 @@ export default function RegisterPage() {
         </Card>
 
         <p className="text-center text-xs text-slate-500">
-          Your data is secure • End-to-end encrypted
+          Your account is protected with secure authentication
         </p>
       </div>
     </div>

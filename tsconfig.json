@@ -21,7 +21,7 @@
     },
 
     // ✅ FIX: silence TS 6 → 7 deprecation warning
-    "ignoreDeprecations": "6.0"
+   // "ignoreDeprecations": "6.0"
   },
   "include": [
     "next-env.d.ts",

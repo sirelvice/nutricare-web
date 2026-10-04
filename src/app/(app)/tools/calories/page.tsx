@@ -1,208 +1,259 @@
 "use client";
 
-import { useMemo, useState, useEffect, useSyncExternalStore, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import {
-  subscribeProfile,
-  getProfileSnapshot,
-  getProfileServerSnapshot,
-} from "@/lib/profile/storage";
+import type { NutritionPlan } from "@/lib/nutrition-plan/domain";
 
-import { loadWeightEntries } from "@/lib/tracking/weight";
-import { addCaloriesHistory } from "@/lib/history/calories";
-
-type ApiOk = {
-  targetCalories: number;
+type ApiResponse = {
+  plan?: NutritionPlan | null;
+  error?: string;
 };
 
-type ApiErr = { error: string };
-type ApiResponse = ApiOk | ApiErr;
-
 export default function CaloriesToolPage() {
-  const profile = useSyncExternalStore(
-    subscribeProfile,
-    getProfileSnapshot,
-    getProfileServerSnapshot
-  );
-
-  const weightEntries = useMemo(() => loadWeightEntries(), []);
-  const latestWeight = weightEntries[0]?.weightKg ?? null;
-
-  const [weightKg, setWeightKg] = useState<string>(
-    latestWeight ? String(latestWeight) : ""
-  );
-
-  const [loading, setLoading] = useState(false);
-  const [api, setApi] = useState<ApiResponse | null>(null);
-
-  const valid = useMemo(() => {
-    const w = Number(weightKg);
-    return (
-      !!w &&
-      w >= 20 &&
-      w <= 350 &&
-      profile.heightCm != null &&
-      profile.age != null
-    );
-  }, [weightKg, profile]);
-
-  const calculate = useCallback(async () => {
-    if (!valid) {
-      setApi({ error: "Missing required profile or weight." });
-      return;
-    }
-
-    setLoading(true);
-    setApi(null);
-
-    try {
-      const payload = {
-        heightCm: profile.heightCm as number,
-        weightKg: Number(weightKg),
-        age: profile.age as number,
-        gender: profile.gender,
-        activity: profile.activity,
-        goal: profile.goal,
-      };
-
-      const res = await fetch("/api/recommendations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const json = (await res.json()) as ApiResponse;
-
-      if (!res.ok) {
-        setApi({ error: (json as ApiErr).error ?? "Request failed." });
-      } else {
-        setApi(json);
-
-        if (
-          profile.heightCm != null &&
-          profile.age != null &&
-          "targetCalories" in json
-        ) {
-          addCaloriesHistory({
-            heightCm: profile.heightCm,
-            weightKg: payload.weightKg,
-            ageYears: profile.age,
-            gender: payload.gender,
-            activity: payload.activity,
-            goal: payload.goal,
-            targetCalories: json.targetCalories,
-          });
-        }
-      }
-    } catch {
-      setApi({ error: "Network error. Please try again." });
-    } finally {
-      setLoading(false);
-    }
-  }, [valid, weightKg, profile]);
+  const [plan, setPlan] = useState<NutritionPlan | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (valid && !api) {
-      calculate();
+    let cancelled = false;
+
+    async function loadPlan() {
+      try {
+        const response = await fetch("/api/nutrition-plan");
+        const data = (await response.json()) as ApiResponse;
+
+        if (!response.ok) {
+          throw new Error(data.error ?? "Unable to load nutrition plan.");
+        }
+
+        if (!cancelled) {
+          setPlan(data.plan ?? null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unable to load nutrition plan.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
-  }, [valid, api, calculate]);
+
+    loadPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function generatePlan() {
+    setGenerating(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/nutrition-plan", {
+        method: "POST",
+      });
+
+      const data = (await response.json()) as ApiResponse;
+
+      if (!response.ok || !data.plan) {
+        throw new Error(
+          data.error ?? "Unable to generate nutrition plan.",
+        );
+      }
+
+      setPlan(data.plan);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to generate nutrition plan.",
+      );
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   return (
-    <div className="space-y-6">
-
-      {/* Header */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Calories</h1>
-          <p className="text-slate-600">
-            Automatically calculated from your profile and latest weight.
+    <div className="space-y-8">
+      <section className="flex flex-col gap-5 rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            Nutrition tool
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+            Calories
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
+            View your current daily calorie target and macronutrient plan based
+            on your profile and latest weight.
           </p>
         </div>
 
-        <Button asChild variant="outline">
-          <a href="/history">View History</a>
+        <Button asChild variant="outline" className="shrink-0 bg-white">
+          <a href="/history">View history</a>
         </Button>
-      </div>
+      </section>
 
-      {/* Inputs */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Your inputs</CardTitle>
-        </CardHeader>
+      {error && (
+        <Card className="rounded-2xl border-red-200 bg-red-50 shadow-sm">
+          <CardContent className="p-5">
+            <p className="text-sm font-medium text-red-900">
+              We couldn&apos;t load your nutrition plan.
+            </p>
+            <p className="mt-1 text-sm leading-6 text-red-700">{error}</p>
+          </CardContent>
+        </Card>
+      )}
 
-        <CardContent className="grid gap-4 md:grid-cols-3">
-
-          {/* Weight */}
-          <div className="space-y-1">
-            <Label>Weight (kg)</Label>
-            <Input
-              value={weightKg}
-              onChange={(e) => setWeightKg(e.target.value)}
-              inputMode="numeric"
-              className="h-10 rounded-xl"
-            />
-          </div>
-
-          {/* Profile badges */}
-          <div className="md:col-span-2 flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">Height: {profile.heightCm ?? "-"}</Badge>
-            <Badge variant="secondary">Age: {profile.age ?? "-"}</Badge>
-            <Badge variant="secondary">Gender: {profile.gender ?? "-"}</Badge>
-            <Badge variant="secondary">Activity: {profile.activity ?? "-"}</Badge>
-            <Badge variant="secondary">Goal: {profile.goal ?? "-"}</Badge>
-          </div>
-
-          {/* CTA */}
-          <div className="md:col-span-3">
-            <Button onClick={calculate} disabled={!valid || loading}>
-              {loading ? "Calculating..." : "Recalculate"}
-            </Button>
-
-            {!valid && (
-              <p className="mt-2 text-xs text-slate-500">
-                Ensure profile is complete and weight is valid.
+      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-xl text-slate-950">
+                Current nutrition plan
+              </CardTitle>
+              <p className="mt-1 text-sm text-slate-500">
+                Your latest personalised daily target and macro breakdown.
               </p>
+            </div>
+
+            {plan && (
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="bg-white">
+                  Goal: {plan.goal}
+                </Badge>
+                <Badge variant="secondary" className="bg-white">
+                  Version {plan.version}
+                </Badge>
+              </div>
             )}
           </div>
-
-        </CardContent>
-      </Card>
-
-      {/* Result */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Result</CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-
-          {!api ? (
-            <p className="text-slate-600">Calculating...</p>
-          ) : "error" in api ? (
-            <p className="text-slate-600">{api.error}</p>
-          ) : (
-            <>
-              <div className="text-3xl font-semibold">
-                {api.targetCalories} kcal/day
-              </div>
-
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm text-slate-600">
-                  This estimate is based on your profile, activity level, and goal.
-                  Adjust over time based on progress.
+        <CardContent className="p-6 sm:p-7">
+          {loading ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6">
+              <p className="text-sm font-medium text-slate-700">
+                Loading your nutrition plan
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                We&apos;re retrieving your latest personalised target.
+              </p>
+            </div>
+          ) : plan ? (
+            <div className="space-y-7">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                  Daily calorie target
+                </p>
+                <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
+                  <span className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+                    {plan.targetCalories}
+                  </span>
+                  <span className="pb-1 text-sm font-medium text-slate-600">
+                    kcal/day
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Use this as your current daily energy target.
                 </p>
               </div>
-            </>
-          )}
 
+              <div>
+                <div className="mb-4">
+                  <h2 className="text-base font-semibold text-slate-950">
+                    Macronutrient targets
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Your daily protein, carbohydrate and fat targets.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Protein
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-950">
+                      {plan.proteinG}g
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">per day</p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Carbohydrates
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-950">
+                      {plan.carbsG}g
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">per day</p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Fat
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-950">
+                      {plan.fatG}g
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">per day</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Need an updated target?
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    Recalculating creates a new plan version using your current
+                    profile and latest weight.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={generatePlan}
+                  disabled={generating}
+                  className="shrink-0"
+                >
+                  {generating ? "Updating plan..." : "Recalculate plan"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 sm:p-8">
+              <p className="text-base font-semibold text-slate-950">
+                No nutrition plan yet
+              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                Complete your profile and log your current weight before
+                generating a personalised nutrition plan.
+              </p>
+
+              <Button
+                onClick={generatePlan}
+                disabled={generating}
+                className="mt-5"
+              >
+                {generating ? "Generating plan..." : "Generate nutrition plan"}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
-
     </div>
   );
 }

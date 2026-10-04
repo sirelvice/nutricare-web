@@ -1,0 +1,150 @@
+import { describe, expect, it, vi } from "vitest";
+import { GetRecommendationsService } from "@/lib/reco/service";
+import type { ProfileRepository } from "@/lib/profile/repositories/profile-repository";
+import type { WeightRepository } from "@/lib/tracking/repositories/weight-repository";
+import type { NutritionPlanRepository } from "@/lib/nutrition-plan/repository";
+
+function createService() {
+  const profileRepository: ProfileRepository = {
+    findByUserId: vi.fn(),
+    save: vi.fn(),
+  };
+
+  const weightRepository: WeightRepository = {
+    create: vi.fn(),
+    findByUserId: vi.fn(),
+    findLatestByUserId: vi.fn(),
+    delete: vi.fn(),
+  };
+
+  const nutritionPlanRepository: NutritionPlanRepository = {
+    create: vi.fn(),
+    findLatestByUserId: vi.fn(),
+    findAllByUserId: vi.fn(),
+  };
+
+  return {
+    service: new GetRecommendationsService(
+      profileRepository,
+      weightRepository,
+      nutritionPlanRepository,
+    ),
+    profileRepository,
+    weightRepository,
+    nutritionPlanRepository,
+  };
+}
+
+describe("GetRecommendationsService", () => {
+  it("builds recommendations from the authenticated user's profile, weight, and plan", async () => {
+    const {
+      service,
+      profileRepository,
+      weightRepository,
+      nutritionPlanRepository,
+    } = createService();
+
+    vi.mocked(profileRepository.findByUserId).mockResolvedValue({
+      heightCm: 170,
+      gender: "male",
+      age: 30,
+      activity: "moderate",
+      goal: "maintain",
+    });
+
+    vi.mocked(weightRepository.findLatestByUserId).mockResolvedValue({
+      id: "weight-1",
+      date: "2026-09-03",
+      weightKg: 60,
+      note: "",
+    });
+
+    vi.mocked(nutritionPlanRepository.findLatestByUserId).mockResolvedValue({
+      id: "plan-1",
+      version: 1,
+      goal: "maintain",
+      targetCalories: 2353,
+      proteinG: 147,
+      carbsG: 294,
+      fatG: 65,
+      createdAt: "2026-09-03T00:00:00.000Z",
+    });
+
+    const result = await service.execute("user-1");
+
+    expect(result).not.toBeNull();
+    expect(result?.bmi).toBe(20.8);
+    expect(result?.category.label).toBe("Normal");
+    expect(result?.targetCalories).toBe(2353);
+    expect(result?.macros).toEqual({
+      proteinG: 147,
+      carbsG: 294,
+      fatG: 65,
+    });
+    expect(result?.recommendations).toBeDefined();
+
+    expect(profileRepository.findByUserId).toHaveBeenCalledWith("user-1");
+    expect(weightRepository.findLatestByUserId).toHaveBeenCalledWith("user-1");
+    expect(
+      nutritionPlanRepository.findLatestByUserId,
+    ).toHaveBeenCalledWith("user-1");
+  });
+
+  it("returns null when the profile is missing", async () => {
+    const { service, profileRepository } = createService();
+
+    vi.mocked(profileRepository.findByUserId).mockResolvedValue(null);
+
+    await expect(service.execute("user-1")).resolves.toBeNull();
+  });
+
+  it("returns null when the latest weight is missing", async () => {
+    const { service, profileRepository, weightRepository } = createService();
+
+    vi.mocked(profileRepository.findByUserId).mockResolvedValue({
+      heightCm: 170,
+      gender: "male",
+      age: 30,
+      activity: "moderate",
+      goal: "maintain",
+    });
+
+    vi.mocked(weightRepository.findLatestByUserId).mockResolvedValue(null);
+
+    await expect(service.execute("user-1")).resolves.toBeNull();
+  });
+
+  it("returns null when the nutrition plan is missing", async () => {
+    const {
+      service,
+      profileRepository,
+      weightRepository,
+      nutritionPlanRepository,
+    } = createService();
+
+    vi.mocked(profileRepository.findByUserId).mockResolvedValue({
+      heightCm: 170,
+      gender: "male",
+      age: 30,
+      activity: "moderate",
+      goal: "maintain",
+    });
+
+    vi.mocked(weightRepository.findLatestByUserId).mockResolvedValue({
+      id: "weight-1",
+      date: "2026-09-03",
+      weightKg: 60,
+      note: "",
+    });
+
+    vi.mocked(nutritionPlanRepository.findLatestByUserId).mockResolvedValue(null);
+
+    await expect(service.execute("user-1")).resolves.toBeNull();
+  });
+
+  it("requires a user ID", async () => {
+    const { service } = createService();
+
+    await expect(service.execute("")).rejects.toThrow("User ID is required");
+  });
+});

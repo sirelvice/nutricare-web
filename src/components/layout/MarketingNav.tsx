@@ -18,8 +18,8 @@ export function MarketingNav() {
   <Image
     src="/brand/nutricare-logo.png"
     alt="NutriCare"
-    width={100}
-    height={40}
+    width={176}
+    height={100}
     priority
   />
 </Link>

@@ -1,312 +1,217 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { addBmiHistory } from "@/lib/history/bmi";
-import {
-  subscribeProfile,
-  getProfileSnapshot,
-  getProfileServerSnapshot,
-} from "@/lib/profile/storage";
-import { loadWeightEntries } from "@/lib/tracking/weight";
 
-type Goal = "lose" | "maintain" | "gain";
-
-type ApiOk = {
-  bmi: number;
-  category: { label: string; note: string };
-  targetCalories: number;
-  recommendations: {
-    bmiLabel: string;
-    goal: Goal;
-    summary: string;
-    focus: string[];
-    limit: string[];
-    mealIdeas: string[];
-  };
-};
-
-type ApiResponse = ApiOk | { error: string };
-
-function isOk(res: ApiResponse): res is ApiOk {
-  return "bmi" in res && "category" in res && "recommendations" in res;
-}
-
-type CategoryKey =
-  | "underweight"
-  | "normal"
-  | "overweight"
-  | "obese1"
-  | "obese2"
-  | "obese3";
-
-function categoryKeyFromLabel(label: string): CategoryKey {
-  const x = label.toLowerCase();
-  if (x.includes("under")) return "underweight";
-  if (x.includes("normal")) return "normal";
-  if (x.includes("overweight")) return "overweight";
-  if (x.includes("class i")) return "obese1";
-  if (x.includes("class ii")) return "obese2";
-  if (x.includes("class iii")) return "obese3";
-  return "normal";
-}
+import { calcBMIKgM, bmiCategoryWHO } from "@/lib/calc/bmi";
 
 export default function BMIPage() {
-  const profile = useSyncExternalStore(
-    subscribeProfile,
-    getProfileSnapshot,
-    getProfileServerSnapshot
-  );
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [calculated, setCalculated] = useState(false);
 
-  const [heightCm, setHeightCm] = useState<string>(
-    profile?.heightCm ? String(profile.heightCm) : ""
-  );
+  const result = useMemo(() => {
+    if (!calculated) return null;
 
-  const weightEntries = useMemo(() => loadWeightEntries(), []);
-  const latestWeight = weightEntries[0]?.weightKg ?? null;
+    const height = Number(heightCm);
+    const weight = Number(weightKg);
 
-  const [weightKg, setWeightKg] = useState<string>(
-    latestWeight ? String(latestWeight) : ""
-  );
+    if (
+      !Number.isFinite(height) ||
+      !Number.isFinite(weight) ||
+      height < 80 ||
+      height > 250 ||
+      weight < 20 ||
+      weight > 350
+    ) {
+      return null;
+    }
 
-  const [goal, setGoal] = useState<Goal>("maintain");
+    const bmi = calcBMIKgM(weight, height);
 
-  const [loading, setLoading] = useState(false);
-  const [api, setApi] = useState<ApiResponse | null>(null);
+    if (bmi === null) return null;
 
-  useEffect(() => {
-    if (!profile?.heightCm) return;
-
-    setHeightCm((prev) => {
-      if (prev) return prev; // don't override user input
-      return String(profile.heightCm);
-    });
-  }, [profile?.heightCm]);
+    return {
+      bmi,
+      category: bmiCategoryWHO(bmi),
+    };
+  }, [calculated, heightCm, weightKg]);
 
   const valid = useMemo(() => {
-    const h = Number(heightCm);
-    const w = Number(weightKg);
-    if (!h || !w) return false;
-    if (h < 80 || h > 250) return false;
-    if (w < 20 || w > 350) return false;
-    return true;
+    const height = Number(heightCm);
+    const weight = Number(weightKg);
+
+    return (
+      Number.isFinite(height) &&
+      Number.isFinite(weight) &&
+      height >= 80 &&
+      height <= 250 &&
+      weight >= 20 &&
+      weight <= 350
+    );
   }, [heightCm, weightKg]);
 
-  async function fetchRecommendations(nextGoal?: Goal) {
-    const g = nextGoal ?? goal;
-
-    if (!valid) {
-      setApi({ error: "Enter a valid height and weight first." });
-      return;
-    }
-
-    setLoading(true);
-    setApi(null);
-
-    try {
-      const h = Number(heightCm);
-      const w = Number(weightKg);
-
-      const res = await fetch("/api/recommendations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          heightCm: h,
-          weightKg: w,
-          goal: g,
-          age: profile?.age ?? null,
-          gender: profile?.gender ?? null,
-          activity: profile?.activity ?? null,
-        }),
-      });
-
-      const json = (await res.json()) as ApiResponse;
-
-      if (!res.ok) {
-        const err =
-          json && typeof json === "object" && "error" in json
-            ? String(json.error)
-            : "Request failed.";
-        setApi({ error: err });
-      } else {
-        setApi(json);
-
-        if (isOk(json)) {
-          addBmiHistory({
-            heightCm: h,
-            weightKg: w,
-            bmi: Number(json.bmi.toFixed(1)),
-            category: categoryKeyFromLabel(json.category.label),
-          });
-        }
-      }
-    } catch {
-      setApi({ error: "Network error. Please try again." });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function onGoalChange(g: Goal) {
-    setGoal(g);
-
-    if (api && isOk(api) && valid && !loading) {
-      fetchRecommendations(g);
-    }
+  function calculate() {
+    setCalculated(true);
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">BMI Calculator</h1>
-        <p className="text-slate-600">
-          Enter your details to get BMI, category, and nutrition recommendations.
-          Results are saved to History.
+    <div className="space-y-8">
+      <header className="max-w-3xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          Health tool
         </p>
-      </div>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+          BMI Calculator
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
+          Calculate your body mass index from your height and weight, then
+          review its general screening category.
+        </p>
+      </header>
 
-      {/* Inputs */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Your details</CardTitle>
+      <Card className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
+          <CardTitle className="text-lg text-slate-950">
+            Enter your details
+          </CardTitle>
+          <p className="mt-1 text-sm text-slate-500">
+            Use your current height and weight for the calculation.
+          </p>
         </CardHeader>
 
-        <CardContent className="grid gap-4 md:grid-cols-3">
-
-          {/* Height */}
-          <div className="space-y-1">
-            <Label htmlFor="height">Height (cm)</Label>
-            <Input
-              id="height"
-              className="h-10 rounded-xl"
-              value={heightCm}
-              onChange={(e) => setHeightCm(e.target.value)}
-              placeholder="e.g. 172"
-              inputMode="numeric"
-            />
-          </div>
-
-          {/* Weight */}
-          <div className="space-y-1">
-            <Label htmlFor="weight">Weight (kg)</Label>
-            <Input
-              id="weight"
-              className="h-10 rounded-xl"
-              value={weightKg}
-              onChange={(e) => setWeightKg(e.target.value)}
-              placeholder="e.g. 70"
-              inputMode="numeric"
-            />
-          </div>
-
-          {/* Goal */}
-          <div className="space-y-1">
-            <Label>Goal</Label>
-            <select
-              value={goal}
-              onChange={(e) => onGoalChange(e.target.value as Goal)}
-              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
-            >
-              <option value="" disabled>
-                Select goal
-              </option>
-              <option value="lose">Lose weight</option>
-              <option value="maintain">Maintain weight</option>
-              <option value="gain">Gain weight</option>
-            </select>
-          </div>
-
-          {/* CTA */}
-          <div className="md:col-span-3">
-            <Button
-              onClick={() => fetchRecommendations()}
-              disabled={!valid || loading}
-              className="w-full md:w-auto"
-            >
-              {loading ? "Calculating..." : "Calculate & get recommendations"}
-            </Button>
-
-            {!valid && (
-              <p className="mt-2 text-xs text-slate-500">
-                Enter realistic values (Height 80–250cm, Weight 20–350kg).
+        <CardContent className="p-6">
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="height">Height (cm)</Label>
+              <Input
+                id="height"
+                value={heightCm}
+                onChange={(e) => {
+                  setHeightCm(e.target.value);
+                  setCalculated(false);
+                }}
+                placeholder="e.g. 172"
+                inputMode="decimal"
+                className="h-11"
+              />
+              <p className="text-xs text-slate-500">
+                Enter a value between 80 and 250 cm.
               </p>
-            )}
-          </div>
+            </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="weight">Weight (kg)</Label>
+              <Input
+                id="weight"
+                value={weightKg}
+                onChange={(e) => {
+                  setWeightKg(e.target.value);
+                  setCalculated(false);
+                }}
+                placeholder="e.g. 70"
+                inputMode="decimal"
+                className="h-11"
+              />
+              <p className="text-xs text-slate-500">
+                Enter a value between 20 and 350 kg.
+              </p>
+            </div>
+
+            <div className="md:col-span-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-slate-500">
+                  Both values are required before you can calculate BMI.
+                </p>
+                <Button
+                  onClick={calculate}
+                  disabled={!valid}
+                  className="w-full sm:w-auto"
+                >
+                  Calculate BMI
+                </Button>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Result */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-lg">Result</CardTitle>
-          <Button asChild variant="outline" size="sm">
+      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+        <CardHeader className="flex-row items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div>
+            <CardTitle className="text-lg text-slate-950">
+              Your result
+            </CardTitle>
+            <p className="mt-1 text-sm text-slate-500">
+              Your BMI calculation and general screening category.
+            </p>
+          </div>
+
+          <Button asChild variant="outline" size="sm" className="shrink-0">
             <a href="/history">View History</a>
           </Button>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          {!api ? (
-            <p className="text-slate-600">
-              Fill in your details, then click calculate.
-            </p>
-          ) : "error" in api ? (
-            <p className="text-slate-600">{api.error}</p>
+        <CardContent className="p-6">
+          {!calculated ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5">
+              <p className="text-sm font-medium text-slate-700">
+                Your result will appear here.
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Enter your height and weight above, then calculate your BMI.
+              </p>
+            </div>
+          ) : !result ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+              <p className="text-sm font-medium text-amber-900">
+                We could not calculate your BMI yet.
+              </p>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Check that your height and weight are within the accepted
+                ranges and try again.
+              </p>
+            </div>
           ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="text-3xl font-semibold">{api.bmi}</div>
-                <Badge variant="secondary">{api.category.label}</Badge>
+            <div className="space-y-5">
+              <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Body mass index
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-end gap-3">
+                    <span className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+                      {result.bmi.toFixed(1)}
+                    </span>
+                    <span className="pb-1 text-sm font-medium text-slate-500">
+                      BMI
+                    </span>
+                  </div>
+                </div>
+
+                <Badge variant="secondary" className="w-fit text-sm">
+                  {result.category.label}
+                </Badge>
               </div>
 
-              <p className="text-slate-600">{api.category.note}</p>
-
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="text-sm font-semibold">
-                  Nutrition guidance
-                </div>
-                <p className="mt-1 text-sm text-slate-600">
-                  {api.recommendations.summary}
+              <div className="rounded-xl border border-slate-200 bg-white p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  What this means
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  {result.category.note}
                 </p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border p-4">
-                  <div className="text-sm font-semibold">Focus on</div>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    {api.recommendations?.focus?.map((x) => (
-                      <li key={x}>{x}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="rounded-2xl border p-4">
-                  <div className="text-sm font-semibold">Limit</div>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    {api.recommendations?.limit?.map((x) => (
-                      <li key={x}>{x}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="rounded-2xl border p-4">
-                  <div className="text-sm font-semibold">Next steps</div>
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                    {api.recommendations?.mealIdeas?.map((x) => (
-                      <li key={x}>{x}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <p className="text-xs text-slate-500">
-                BMI is a screening tool and doesn’t capture all health factors.
+              <p className="text-xs leading-5 text-slate-500">
+                BMI is a screening tool and does not capture all health
+                factors. It should not be used as a diagnosis.
               </p>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>

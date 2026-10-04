@@ -1,206 +1,291 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
+
 import {
-  useMemo,
-  useState,
-  useEffect,
-  useSyncExternalStore,
-} from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-import {
-  subscribeProfile,
-  getProfileSnapshot,
-  getProfileServerSnapshot,
-} from "@/lib/profile/storage";
-
-import { loadCaloriesHistory } from "@/lib/history/calories";
-
-type Goal = "lose" | "maintain" | "gain";
-
-type ApiOk = {
-  targetCalories: number;
-  goal: Goal;
-  splitPercent: { protein: number; carbs: number; fat: number };
-  grams: { protein: number; carbs: number; fat: number };
-  notes: string[];
-};
-type ApiErr = { error: string };
-type ApiResponse = ApiOk | ApiErr;
+import type { NutritionPlan } from "@/lib/nutrition-plan/domain";
 
 export default function MacrosPage() {
-  const profile = useSyncExternalStore(
-    subscribeProfile,
-    getProfileSnapshot,
-    getProfileServerSnapshot
-  );
+  const [plan, setPlan] = useState<NutritionPlan | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const calHistory = useMemo(() => loadCaloriesHistory(), []);
-  const latestCalories = calHistory[0] ?? null;
-
-  const [targetCalories, setTargetCalories] = useState("");
-  const [goal, setGoal] = useState<Goal>("maintain");
-  const [loading, setLoading] = useState(false);
-  const [api, setApi] = useState<ApiResponse | null>(null);
-
-  // ✅ Prefill calories
   useEffect(() => {
-    if (latestCalories && !targetCalories) {
-      setTargetCalories(String(latestCalories.targetCalories));
-    }
-  }, [latestCalories, targetCalories]);
+    let cancelled = false;
 
-  // ✅ Prefill goal
-  useEffect(() => {
-    if (profile.goal) {
-      setGoal(profile.goal);
-    }
-  }, [profile.goal]);
+    async function loadPlan() {
+      try {
+        const response = await fetch("/api/nutrition-plan");
 
-  const valid = useMemo(() => {
-    const c = Number(targetCalories);
-    return Boolean(c && c >= 800 && c <= 6000);
-  }, [targetCalories]);
+        if (!response.ok) {
+          throw new Error("Unable to load your nutrition plan.");
+        }
 
-  async function calculate() {
-    if (!valid) {
-      setApi({ error: "Enter realistic target calories (800–6000)." });
-      return;
-    }
+        const data = await response.json();
 
-    setLoading(true);
-    setApi(null);
-
-    try {
-      const res = await fetch("/api/macros", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetCalories: Number(targetCalories), goal }),
-      });
-
-      const json = (await res.json()) as ApiResponse;
-
-      if (!res.ok) {
-        setApi({ error: (json as ApiErr).error ?? "Request failed." });
-      } else {
-        setApi(json);
+        if (!cancelled) {
+          setPlan(data.plan);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load nutrition plan:", error);
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load your nutrition plan.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    } catch {
-      setApi({ error: "Network error. Please try again." });
-    } finally {
-      setLoading(false);
     }
+
+    loadPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            Nutrition tool
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+            Macros
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
+            View your daily protein, carbohydrate and fat targets from your
+            current nutrition plan.
+          </p>
+        </section>
+
+        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+          <CardContent className="p-6">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6">
+              <p className="text-sm font-medium text-slate-700">
+                Loading your nutrition plan
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                We&apos;re retrieving your latest macro targets.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-8">
+        <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            Nutrition tool
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+            Macros
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
+            View your daily protein, carbohydrate and fat targets from your
+            current nutrition plan.
+          </p>
+        </section>
+
+        <Card className="rounded-2xl border-red-200 bg-red-50 shadow-sm">
+          <CardContent className="p-6">
+            <p className="text-sm font-semibold text-red-900">
+              We couldn&apos;t load your nutrition plan.
+            </p>
+            <p className="mt-1 text-sm leading-6 text-red-700">{error}</p>
+
+            <Button onClick={() => window.location.reload()} className="mt-5">
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!plan) {
+    return (
+      <div className="space-y-8">
+        <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            Nutrition tool
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+            Macros
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
+            View your daily protein, carbohydrate and fat targets from your
+            current nutrition plan.
+          </p>
+        </section>
+
+        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+          <CardContent className="p-6 sm:p-8">
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6">
+              <p className="text-base font-semibold text-slate-950">
+                No nutrition plan yet
+              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                Generate a nutrition plan from your profile and current weight
+                to see your recommended daily calorie and macro targets.
+              </p>
+
+              <Button asChild className="mt-5">
+                <Link href="/dashboard">Go to dashboard</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Macros</h1>
-        <p className="text-slate-600">
-          Explore macro splits for different calorie targets.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <section className="flex flex-col gap-5 rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            Nutrition tool
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+            Macros
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
+            Your current daily protein, carbohydrate and fat targets from your
+            nutrition plan.
+          </p>
+        </div>
 
-      {/* INPUT */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Inputs</CardTitle>
+        <Button asChild variant="outline" className="shrink-0 bg-white">
+          <Link href="/tools/calories">View calorie target</Link>
+        </Button>
+      </section>
+
+      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="text-xl text-slate-950">
+                Current nutrition plan
+              </CardTitle>
+              <p className="mt-1 text-sm text-slate-500">
+                Your latest personalised daily macro targets.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary" className="bg-white">
+                Goal: {plan.goal}
+              </Badge>
+              <Badge variant="secondary" className="bg-white">
+                {plan.targetCalories} kcal/day
+              </Badge>
+              <Badge variant="secondary" className="bg-white">
+                Plan v{plan.version}
+              </Badge>
+            </div>
+          </div>
         </CardHeader>
 
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          {/* Calories */}
-          <div className="space-y-2">
-            <Label>Target calories (kcal/day)</Label>
-            <Input
-              value={targetCalories}
-              onChange={(e) => setTargetCalories(e.target.value)}
-              placeholder="e.g. 2200"
-              inputMode="numeric"
-            />
-            <p className="text-xs text-slate-500">
-              Auto-filled from your dashboard.
-            </p>
-          </div>
+        <CardContent className="space-y-7 p-6 sm:p-7">
+          <div>
+            <div className="mb-4">
+              <h2 className="text-base font-semibold text-slate-950">
+                Daily macro targets
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Use these amounts as part of your current nutrition plan.
+              </p>
+            </div>
 
-          {/* Goal dropdown ✅ */}
-          <div className="space-y-2">
-            <Label>Goal</Label>
-            <select
-              value={goal}
-              onChange={(e) =>
-                setGoal(e.target.value as "lose" | "maintain" | "gain")
-              }
-              className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-emerald-600"
-            >
-              <option value="lose">Lose weight</option>
-              <option value="maintain">Maintain weight</option>
-              <option value="gain">Gain weight</option>
-            </select>
-          </div>
-
-          {/* Button */}
-          <div className="md:col-span-2">
-            <Button onClick={calculate} disabled={!valid || loading}>
-              {loading ? "Calculating..." : "Calculate macros"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* RESULT */}
-      <Card className="rounded-3xl border shadow-sm bg-gradient-to-br from-white to-green-50">
-        <CardHeader>
-          <CardTitle className="text-lg">Result</CardTitle>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          {!api ? (
-            <p className="text-slate-600">Enter calories and calculate.</p>
-          ) : "error" in api ? (
-            <p className="text-slate-600">{api.error}</p>
-          ) : (
-            <>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Goal: {api.goal}</Badge>
-                <Badge variant="secondary">
-                  {api.targetCalories} kcal/day
-                </Badge>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 transition-shadow hover:shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Protein
+                </p>
+                <div className="mt-3 flex items-end gap-2">
+                  <span className="text-3xl font-semibold tracking-tight text-slate-950">
+                    {plan.proteinG}
+                  </span>
+                  <span className="pb-1 text-sm font-medium text-slate-500">
+                    g/day
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Supports daily protein needs within your plan.
+                </p>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-2xl border p-4">
-                  <div className="text-xs text-slate-500">Protein</div>
-                  <div className="text-2xl font-semibold">
-                    {api.grams.protein} g
-                  </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 transition-shadow hover:shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Carbohydrates
+                </p>
+                <div className="mt-3 flex items-end gap-2">
+                  <span className="text-3xl font-semibold tracking-tight text-slate-950">
+                    {plan.carbsG}
+                  </span>
+                  <span className="pb-1 text-sm font-medium text-slate-500">
+                    g/day
+                  </span>
                 </div>
-
-                <div className="rounded-2xl border p-4">
-                  <div className="text-xs text-slate-500">Carbs</div>
-                  <div className="text-2xl font-semibold">
-                    {api.grams.carbs} g
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border p-4">
-                  <div className="text-xs text-slate-500">Fat</div>
-                  <div className="text-2xl font-semibold">
-                    {api.grams.fat} g
-                  </div>
-                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Your planned daily carbohydrate target.
+                </p>
               </div>
 
-              <ul className="list-disc pl-5 text-sm text-slate-600">
-                {api.notes.map((n) => (
-                  <li key={n}>{n}</li>
-                ))}
-              </ul>
-            </>
-          )}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 transition-shadow hover:shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Fat
+                </p>
+                <div className="mt-3 flex items-end gap-2">
+                  <span className="text-3xl font-semibold tracking-tight text-slate-950">
+                    {plan.fatG}
+                  </span>
+                  <span className="pb-1 text-sm font-medium text-slate-500">
+                    g/day
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Your planned daily fat target.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <h2 className="text-sm font-semibold text-slate-950">
+              About these targets
+            </h2>
+
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+              <li>
+                These targets are estimates based on your current profile and
+                weight.
+              </li>
+              <li>
+                Your plan may be updated as your goals and progress change.
+              </li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
     </div>

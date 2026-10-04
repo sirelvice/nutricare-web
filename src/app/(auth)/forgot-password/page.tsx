@@ -12,18 +12,44 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || busy) return;
 
     setBusy(true);
+    setError("");
 
-    // Simulate API call (we'll implement real logic later)
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
 
-    setSubmitted(true);
-    setBusy(false);
+      const data = (await response.json().catch(() => null)) as
+        | { message?: string; error?: string }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ?? "Unable to process the password reset request.",
+        );
+      }
+
+      setSubmitted(true);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Unable to process the password reset request.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -48,7 +74,7 @@ export default function ForgotPasswordPage() {
               Forgot Password?
             </CardTitle>
             <p className="text-center text-slate-600 text-sm">
-              No worries. We'll help you reset it.
+              No worries. We&apos;ll help you reset it.
             </p>
           </CardHeader>
 
@@ -71,8 +97,9 @@ export default function ForgotPasswordPage() {
                     />
                   </div>
                   <p className="text-xs text-slate-500">
-                    We'll send password reset instructions to this email.
+                    If an account exists for this email, we&apos;ll send password reset instructions.
                   </p>
+                  {error && <p className="text-sm text-red-600">{error}</p>}
                 </div>
 
                 <Button
@@ -100,7 +127,7 @@ export default function ForgotPasswordPage() {
                   If an account exists with <strong>{email}</strong>, you will receive password reset instructions shortly.
                 </p>
                 <p className="text-sm text-slate-500">
-                  Didn't receive the email? Check your spam folder or try again.
+                  Didn&apos;t receive the email? Check your spam folder or try again.
                 </p>
 
                 <Button
@@ -131,7 +158,7 @@ export default function ForgotPasswordPage() {
 
         {/* Trust signals */}
         <p className="text-center text-xs text-slate-500">
-          Your data is secure • End-to-end encrypted
+          Your account is protected with secure authentication
         </p>
       </div>
     </div>

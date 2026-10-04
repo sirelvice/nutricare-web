@@ -2,12 +2,25 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
-import { Role, SubscriptionTier } from "@prisma/client";
+import { Role } from "@prisma/client";
+import { loginSchema } from "@/lib/security/auth-validation";
+import { getAuthSecret } from "@/lib/security/runtime-config";
+import {
+  recordSecurityEvent,
+  SECURITY_EVENT_TYPES,
+  SECURITY_EVENT_OUTCOMES,
+} from "@/lib/security/events";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   debug: false,
 
-  session: { strategy: "jwt" },
+  secret: getAuthSecret(),
+
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60,
+    updateAge: 24 * 60 * 60,
+  },
 
   pages: {
     signIn: "/login",
@@ -22,27 +35,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
 
       async authorize(credentials) {
-        const email = credentials?.email?.toString().trim().toLowerCase();
-        const password = credentials?.password?.toString();
+        const parsed = loginSchema.safeParse({
+          email: credentials?.email?.toString(),
+          password: credentials?.password?.toString(),
+        });
 
-        if (!email || !password) return null;
+        if (!parsed.success) {
+          await recordSecurityEvent({
+            type: SECURITY_EVENT_TYPES.AUTH_LOGIN,
+            outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+          });
+          return null;
+        }
+
+        const { email, password } = parsed.data;
 
         const user = await prisma.user.findUnique({
           where: { email },
         });
 
-        if (!user) return null;
+        if (!user) {
+          await recordSecurityEvent({
+            type: SECURITY_EVENT_TYPES.AUTH_LOGIN,
+            outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+          });
+          return null;
+        }
 
         const isValid = await bcrypt.compare(password, user.passwordHash);
 
-        if (!isValid) return null;
+        if (!isValid) {
+          await recordSecurityEvent({
+            type: SECURITY_EVENT_TYPES.AUTH_LOGIN,
+            outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
+          });
+          return null;
+        }
+
+        await recordSecurityEvent({
+          type: SECURITY_EVENT_TYPES.AUTH_LOGIN,
+          outcome: SECURITY_EVENT_OUTCOMES.SUCCESS,
+          userId: user.id,
+        });
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
           role: user.role,
-          subscriptionTier: user.subscriptionTier,
+          authVersion: user.authVersion,
         };
       },
     }),
@@ -55,24 +96,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email = user.email;
         token.name = user.name;
         token.role = user.role;
-        token.subscriptionTier = user.subscriptionTier;
+        token.authVersion = user.authVersion;
       }
+
+      if (token.sub) {
+        const currentUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { authVersion: true },
+        });
+
+        if (!currentUser || currentUser.authVersion !== token.authVersion) {
+          token.invalidated = true;
+        }
+      }
+
       return token;
     },
 
     async session({ session, token }) {
+      if (token.invalidated) {
+        throw new Error("Session invalidated");
+      }
       if (!session.user) return session;
 
       const userId = token.sub;
       if (!userId) throw new Error("Invalid session: missing user id");
 
       session.user.id = userId;
-      session.user.email = token.email ?? null;
+      if (token.email) {
+        session.user.email = token.email;
+      }
       session.user.name = token.name ?? null;
       session.user.role = token.role ?? Role.USER;
-      session.user.subscriptionTier =
-        token.subscriptionTier ?? SubscriptionTier.FREE;
-
       return session;
     },
   },

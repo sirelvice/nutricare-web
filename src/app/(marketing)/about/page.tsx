@@ -8,51 +8,53 @@ export default function AboutPage() {
   return (
     <div className="space-y-12">
       {/* Header */}
-      <section className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">About</Badge>
-          <Badge variant="secondary">Nutrition</Badge>
-          <Badge variant="secondary">Public health</Badge>
-        </div>
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8 md:p-10">
+        <div className="max-w-4xl space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">About</Badge>
+            <Badge variant="secondary">Nutrition</Badge>
+            <Badge variant="secondary">Public health</Badge>
+          </div>
 
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-          NutriCare is built to make nutrition-driven health simple and measurable.
-        </h1>
+          <h1 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+            NutriCare is built to make nutrition-driven health simple and measurable.
+          </h1>
 
-        <p className="max-w-3xl text-slate-600">
-          Nutrition shapes long-term health outcomes, yet many people and programs lack simple tools to assess risk,
-          guide choices, and track progress. NutriCare is a modern, privacy-first platform that brings clarity through
-          evidence-based assessments and practical guidance.
-        </p>
+          <p className="max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
+            Nutrition shapes long-term health outcomes, yet many people and programs lack simple tools to assess risk,
+            guide choices, and track progress. NutriCare is a modern, privacy-first platform that brings clarity through
+            evidence-based assessments and practical guidance.
+          </p>
 
-        <div className="flex flex-wrap gap-3">
-          <Button asChild>
-            <Link href="/register">Get started</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/partners">For partners</Link>
-          </Button>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <Button asChild>
+              <Link href="/register">Get started</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/partners">For partners</Link>
+            </Button>
+          </div>
         </div>
       </section>
 
       {/* Mission / Vision */}
-      <section className="grid gap-4 md:grid-cols-2">
-        <Card className="rounded-3xl">
+      <section className="grid gap-5 md:grid-cols-2">
+        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
           <CardHeader>
             <CardTitle className="text-lg">Mission</CardTitle>
           </CardHeader>
-          <CardContent className="text-slate-600">
+          <CardContent className="leading-7 text-slate-600">
             Help individuals and health programs improve nutrition outcomes using clear assessments, practical guidance,
             and progress tracking.
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl">
+        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
           <CardHeader>
             <CardTitle className="text-lg">Vision</CardTitle>
           </CardHeader>
-          <CardContent className="text-slate-600">
-            A world where nutrition-driven health decisions are accessible, understandable, and measurable — for everyone.
+          <CardContent className="leading-7 text-slate-600">
+            A world where nutrition-driven health decisions are accessible, understandable, and measurable for everyone.
           </CardContent>
         </Card>
       </section>
@@ -61,41 +63,60 @@ export default function AboutPage() {
 
       {/* Principles */}
       <section className="space-y-5">
-        <h2 className="text-xl font-semibold md:text-2xl">Design principles</h2>
+        <div className="max-w-2xl space-y-2">
+          <p className="text-sm font-semibold uppercase tracking-[0.12em] text-emerald-700">
+            How we build
+          </p>
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
+            Clear enough to understand. Practical enough to use.
+          </h2>
+          <p className="text-base leading-7 text-slate-600">
+            NutriCare is designed around clarity, responsible health information, and progress that people can actually
+            follow over time.
+          </p>
+        </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-3">
           {[
             {
-              t: "Evidence-based",
-              d: "We use transparent formulas and clear interpretation — no mystery outputs.",
+              t: "Clear and evidence-based",
+              d: "Use transparent assessments, understandable results, and practical guidance instead of opaque outputs.",
             },
             {
-              t: "Privacy-first",
-              d: "Collect only what is necessary, and prefer aggregated insights for reporting.",
+              t: "Privacy-conscious",
+              d: "Keep personal information purposeful and use aggregated insights where reporting does not require individual detail.",
             },
             {
-              t: "Built to scale",
-              d: "Start simple, add capabilities cleanly, and keep a stable core architecture.",
+              t: "Built for progress",
+              d: "Connect assessment, goals, plans, tracking, and adjustment so the experience supports an ongoing health journey.",
             },
           ].map((x) => (
-            <Card key={x.t} className="rounded-3xl">
+            <Card
+              key={x.t}
+              className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+            >
               <CardHeader>
                 <CardTitle className="text-lg">{x.t}</CardTitle>
               </CardHeader>
-              <CardContent className="text-slate-600">{x.d}</CardContent>
+              <CardContent className="leading-7 text-slate-600">{x.d}</CardContent>
             </Card>
           ))}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="rounded-3xl border bg-slate-50 p-8">
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
         <div className="grid gap-6 md:grid-cols-2 md:items-center">
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold md:text-2xl">Want to support a pilot?</h2>
-            <p className="text-slate-600">
-              NutriCare is structured for real-world deployments with clear reporting, privacy-first practices,
-              and a scalable product foundation.
+          <div className="max-w-2xl space-y-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-emerald-700">
+              Work with NutriCare
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
+              Building a clearer path from nutrition insight to action.
+            </h2>
+            <p className="leading-7 text-slate-600">
+              NutriCare is designed for practical use by individuals and programmes, with clear reporting,
+              privacy-conscious practices, and a foundation that can grow with real-world needs.
             </p>
           </div>
           <div className="flex flex-wrap gap-3 md:justify-end">
@@ -103,7 +124,7 @@ export default function AboutPage() {
               <Link href="/partners">Partner with us</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/impact">View impact</Link>
+              <Link href="/impact">Explore our impact</Link>
             </Button>
           </div>
         </div>

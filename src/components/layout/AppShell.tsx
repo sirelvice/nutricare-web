@@ -21,13 +21,19 @@ import {
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/profile", label: "Profile", icon: User },
-
   { href: "/tools/bmi", label: "BMI", icon: Ruler },
   { href: "/tools/calories", label: "Calories", icon: Flame },
   { href: "/tools/macros", label: "Macros", icon: PieChart },
-  { href: "/tools/recommendations", label: "Recommendations", icon: Sparkles },
-  { href: "/tools/tracking/weight", label: "Weight Tracking", icon: Scale },
-
+  {
+    href: "/tools/recommendations",
+    label: "Recommendations",
+    icon: Sparkles,
+  },
+  {
+    href: "/tools/tracking/weight",
+    label: "Weight Tracking",
+    icon: Scale,
+  },
   { href: "/history", label: "History", icon: Clock },
   { href: "/report", label: "Export Report", icon: FileDown },
 ];
@@ -36,66 +42,121 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  const currentPage =
+    nav.find(
+      (item) =>
+        pathname === item.href || pathname.startsWith(item.href + "/"),
+    )?.label ?? "Dashboard";
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* 🔥 FIXED WIDTH HERE */}
-      <div className="mx-auto max-w-7xl xl:max-w-[1400px] px-6 py-6">
-        
-        {/* HEADER */}
-        <header className="mb-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 xl:max-w-[1400px]">
+        {/* Header */}
+        <header className="mb-5 flex min-h-12 items-center justify-between rounded-2xl border bg-white px-4 shadow-sm">
+          <Link href="/" className="flex items-center">
             <Image
               src="/brand/nutricare-logo.png"
               alt="NutriCare"
-              width={110}
-              height={44}
+              width={140}
+              height={80}
               priority
+              className="h-auto w-[120px] sm:w-[140px]"
             />
           </Link>
 
-          {/* MOBILE MENU BUTTON */}
-          <button className="md:hidden" onClick={() => setOpen(true)}>
-            <Menu size={24} />
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-2 text-sm text-slate-500 md:flex">
+              <span className="text-slate-300">/</span>
+              <span className="font-medium text-slate-700">{currentPage}</span>
+            </div>
 
-          {/* BREADCRUMB (cleaner than old text) */}
-          <div className="hidden md:flex items-center gap-2 text-sm text-slate-500">
-            <span className="text-slate-400">/</span>
-            <span className="font-medium text-slate-600">
-              {nav.find(
-                (item) =>
-                  pathname === item.href ||
-                  pathname.startsWith(item.href + "/")
-              )?.label ?? "Dashboard"}
-            </span>
+            <button
+              type="button"
+              aria-label="Open navigation menu"
+              aria-expanded={open}
+              className="inline-flex size-9 items-center justify-center rounded-xl border text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
+              onClick={() => setOpen(true)}
+            >
+              <Menu size={20} />
+            </button>
           </div>
         </header>
 
-        {/* MOBILE NAV */}
+        {/* Mobile navigation */}
         <div
           className={`fixed inset-0 z-50 md:hidden ${
             open ? "pointer-events-auto" : "pointer-events-none"
           }`}
+          aria-hidden={!open}
         >
-          {/* BACKDROP */}
           <div
-            className={`absolute inset-0 bg-black/40 transition-opacity ${
+            className={`absolute inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity ${
               open ? "opacity-100" : "opacity-0"
             }`}
             onClick={() => setOpen(false)}
           />
 
-          {/* SIDEBAR */}
           <aside
-            className={`absolute left-0 top-0 h-full w-64 bg-white p-4 shadow-xl transform transition-transform ${
+            className={`absolute left-0 top-0 h-full w-[min(20rem,85vw)] border-r bg-white p-4 shadow-2xl transition-transform duration-200 ${
               open ? "translate-x-0" : "-translate-x-full"
             }`}
           >
-            <div className="mb-4 flex items-center justify-between">
-              <span className="font-semibold">Menu</span>
-              <button onClick={() => setOpen(false)}>
+            <div className="mb-5 flex items-center justify-between border-b pb-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">
+                  NutriCare
+                </p>
+                <p className="text-xs text-slate-500">
+                  Your health workspace
+                </p>
+              </div>
+
+              <button
+                type="button"
+                aria-label="Close navigation menu"
+                className="inline-flex size-9 items-center justify-center rounded-xl border text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                onClick={() => setOpen(false)}
+              >
                 <X size={20} />
               </button>
+            </div>
+
+            <nav className="space-y-1.5">
+              {nav.map((item) => {
+                const active =
+                  pathname === item.href ||
+                  pathname.startsWith(item.href + "/");
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={[
+                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-slate-700 hover:bg-slate-100",
+                    ].join(" ")}
+                  >
+                    <Icon size={18} />
+                    <span className="flex-1">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </aside>
+        </div>
+
+        {/* Desktop layout */}
+        <div className="grid gap-5 md:grid-cols-[240px_minmax(0,1fr)]">
+          {/* Sidebar */}
+          <aside className="hidden h-fit rounded-2xl border bg-white p-2.5 shadow-sm md:block">
+            <div className="px-3 pb-3 pt-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Workspace
+              </p>
             </div>
 
             <nav className="space-y-1">
@@ -109,43 +170,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setOpen(false)}
                     className={[
-                      "flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm",
+                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                       active
-                        ? "bg-slate-900 text-white"
-                        : "text-slate-700 hover:bg-slate-50",
-                    ].join(" ")}
-                  >
-                    <Icon size={18} />
-                    <span className="flex-1">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </aside>
-        </div>
-
-        {/* DESKTOP LAYOUT */}
-        <div className="grid gap-6 md:grid-cols-[260px_1fr]">
-          {/* SIDEBAR */}
-          <aside className="hidden h-fit rounded-3xl border bg-white p-3 md:block">
-            <nav className="space-y-1">
-              {nav.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  pathname.startsWith(item.href + "/");
-                const Icon = item.icon;
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={[
-                      "flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-sm",
-                      active
-                        ? "bg-slate-900 text-white"
-                        : "text-slate-700 hover:bg-slate-50",
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-slate-700 hover:bg-slate-100",
                     ].join(" ")}
                   >
                     <Icon size={18} />
@@ -156,15 +185,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             </nav>
           </aside>
 
-          {/* MAIN */}
-          <main className="rounded-3xl border bg-white p-6">
+          {/* Main content */}
+          <main className="min-w-0 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
             {children}
           </main>
         </div>
 
-        {/* FOOTER */}
-        <footer className="mt-10 border-t bg-slate-50 pt-6 text-center text-xs text-slate-500">
-          © {new Date().getFullYear()} NutriCare. Built for nutrition-first care.
+        {/* Footer */}
+        <footer className="mt-8 border-t pt-5 text-center text-xs text-slate-500">
+          © {new Date().getFullYear()} NutriCare. Built for nutrition-first
+          care.
         </footer>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import "next-auth";
 import "next-auth/jwt";
-import { Role, SubscriptionTier } from "@prisma/client";
+import { Role } from "@prisma/client";
 
 declare module "next-auth" {
   interface Session {
@@ -9,7 +9,6 @@ declare module "next-auth" {
       email: string | null;
       name: string | null;
       role: Role;
-      subscriptionTier: SubscriptionTier;
     };
   }
 
@@ -18,7 +17,7 @@ declare module "next-auth" {
     email: string;
     name: string | null;
     role: Role;
-    subscriptionTier: SubscriptionTier;
+    authVersion: number;
   }
 }
 
@@ -28,6 +27,7 @@ declare module "next-auth/jwt" {
     email?: string | null;
     name?: string | null;
     role?: Role;
-    subscriptionTier?: SubscriptionTier;
+    authVersion?: number;
+    invalidated?: boolean;
   }
 }

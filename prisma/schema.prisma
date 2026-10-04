@@ -4,36 +4,93 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // Do NOT put url = env("DATABASE_URL") here anymore in Prisma 7
 }
 
-// ── Roles & Subscription Tiers ────────────────────────────────
-enum Role {
-  USER
-  CLINICIAN
-  ADMIN
-}
-
-enum SubscriptionTier {
-  FREE
-  PRO
-  CLINIC
-}
-
-// ── User Model ────────────────────────────────────────────────
 model User {
-  id                  String   @id @default(cuid())
-  email               String   @unique
-  name                String?     // ← Ensure this exists
-  passwordHash        String
-  role                Role     @default(USER)
-  stripeCustomerId    String?
-  subscriptionTier    SubscriptionTier @default(FREE)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id               String           @id @default(cuid())
+  email            String           @unique
+  name             String?
+  passwordHash     String
+  authVersion      Int              @default(0)
+  role             Role             @default(USER)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  profile             Profile?
+  weightEntries       WeightEntry[]
+  nutritionPlans      NutritionPlan[]
+  progressEvaluations ProgressEvaluation[]
+  passwordResetTokens PasswordResetToken[]
+  securityEvents      SecurityEvent[]
 }
 
-// ── Contact Messages ─────────────────────────────────────────
+model Profile {
+  id        String        @id @default(cuid())
+  userId    String        @unique
+  heightCm  Float?
+  age       Int?
+  gender    Gender
+  activity  ActivityLevel
+  goal      Goal
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WeightEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime
+  weightKg  Float
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model NutritionPlan {
+  id                  String               @id @default(cuid())
+  userId              String
+  version             Int
+  goal                Goal
+  targetCalories      Int
+  proteinG            Int
+  carbsG              Int
+  fatG                Int
+  createdAt           DateTime             @default(now())
+  progressEvaluations ProgressEvaluation[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, version])
+  @@index([userId, createdAt])
+}
+
+model ProgressEvaluation {
+  id                   String               @id @default(cuid())
+  userId               String
+  planVersionId        String
+  state                ProgressState
+  changeKg             Float?
+  entriesCount         Int
+  evaluationDays       Int?
+  recommendedAction    RecommendedAction
+  recommendationReason RecommendationReason
+  adjustmentDecision   AdjustmentDecision   @default(PENDING)
+  respondedAt          DateTime?
+  evaluatedAt          DateTime             @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nutritionPlan NutritionPlan @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, evaluatedAt])
+  @@index([planVersionId, evaluatedAt])
+}
+
 model ContactMessage {
   id        String   @id @default(cuid())
   name      String
@@ -42,4 +99,122 @@ model ContactMessage {
   message   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model PartnerInquiry {
+  id          String   @id @default(cuid())
+  orgName     String
+  contactName String
+  email       String
+  country     String?
+  interest    PartnerInterest
+  message     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([email])
+}
+
+model RateLimitBucket {
+  id          String   @id @default(cuid())
+  keyHash     String   @unique
+  windowStart DateTime
+  count       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model SecurityEvent {
+  id         String   @id @default(cuid())
+  type       String
+  outcome    String
+  userId     String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  occurredAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([occurredAt])
+  @@index([userId, occurredAt])
+  @@index([type, occurredAt])
+}
+
+enum PartnerInterest {
+  PILOT
+  DONATION
+  RESEARCH
+  INTEGRATION
+  OTHER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum Goal {
+  LOSE
+  MAINTAIN
+  GAIN
+}
+
+enum ProgressState {
+  ON_TRACK
+  BEHIND_OPPOSITE
+  PLATEAU
+  INSUFFICIENT_DATA
+}
+
+enum RecommendedAction {
+  CONTINUE
+  REVIEW_ADHERENCE
+  CONSIDER_ADJUSTMENT
+  SUGGEST_PROFESSIONAL_CONSULT
+}
+
+enum RecommendationReason {
+  INSUFFICIENT_DATA
+  ON_TRACK
+  FIRST_PROBLEM
+  CONSECUTIVE_PROBLEM
+  RECURRENCE_AFTER_ADJUSTMENT
+}
+
+enum AdjustmentDecision {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum Role {
+  USER
+  CLINICIAN
+  ADMIN
 }

@@ -31,7 +31,13 @@ export default function WeightTrackingPage() {
         }
 
         const data = (await response.json()) as WeightEntry[];
-        setEntries(data);
+
+        setEntries(
+          data.filter(
+            (entry, index, current) =>
+              current.findIndex((item) => item.id === entry.id) === index,
+          ),
+        );
       } catch {
         setLoadError("Unable to load your weight history.");
       } finally {
@@ -90,7 +96,12 @@ export default function WeightTrackingPage() {
       const entry = (await response.json()) as WeightEntry;
 
       setEntries((current) =>
-        [entry, ...current].sort((a, b) => b.date.localeCompare(a.date)),
+        [entry, ...current]
+          .filter(
+            (item, index, items) =>
+              items.findIndex((candidate) => candidate.id === item.id) === index,
+          )
+          .sort((a, b) => b.date.localeCompare(a.date)),
       );
       setWeightKg("");
       setNote("");

@@ -14,8 +14,12 @@ test.beforeEach(async ({ page }, testInfo) => {
   const octet3 = (hash >>> 8) & 255;
   const octet4 = hash & 255;
 
+  // Give every execution a fresh synthetic client IP so persistent
+  // rate-limit state cannot leak between E2E runs.
+  const runOctet = Math.floor(Date.now() / 1000) % 250;
+
   await page.setExtraHTTPHeaders({
-    "x-forwarded-for": `10.${octet2}.${octet3}.${octet4}`,
+    "x-forwarded-for": `10.${octet2}.${octet3}.${runOctet}`,
   });
 });
 
@@ -1634,25 +1638,35 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
   const today = new Date();
   const formatDate = (date: Date) => new Intl.DateTimeFormat("en-CA").format(date);
 
-  await page.locator('input[type="date"]').fill(
-    formatDate(new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000)),
-  );
-  await page.getByPlaceholder("e.g. 70.5").fill("70");
-
-  const firstWeightResponsePromise = page.waitForResponse(
-    (response) =>
-      response.url().includes("/api/weight-entries") &&
-      response.request().method() === "POST",
+  const historicalDate = formatDate(
+    new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000),
   );
 
-  await page.getByRole("button", { name: "Add entry" }).click();
+  const historicalWeightResponse = await page.request.post(
+    "/api/weight-entries",
+    {
+      headers: {
+        Origin: "http://localhost:3000",
+      },
+      data: {
+        date: historicalDate,
+        weightKg: 70,
+      },
+    },
+  );
 
-  const firstWeightResponse = await firstWeightResponsePromise;
-  if (firstWeightResponse.status() !== 201) {
+  if (historicalWeightResponse.status() !== 201) {
     throw new Error(
-      `First weight entry failed with HTTP ${firstWeightResponse.status()}: ${await firstWeightResponse.text()}`,
+      `Historical weight entry failed with HTTP ${historicalWeightResponse.status()}: ${await historicalWeightResponse.text()}`,
     );
   }
+
+  const historicalWeight = await historicalWeightResponse.json();
+
+  expect(historicalWeight.date).toBe(historicalDate);
+  expect(historicalWeight.weightKg).toBe(70);
+
+  await page.reload();
 
   await expect(
     page

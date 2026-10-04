@@ -12,8 +12,6 @@ test.beforeEach(async ({ page }, testInfo) => {
 
   const octet2 = (hash >>> 16) & 255;
   const octet3 = (hash >>> 8) & 255;
-  const octet4 = hash & 255;
-
   // Give every execution a fresh synthetic client IP so persistent
   // rate-limit state cannot leak between E2E runs.
   const runOctet = Math.floor(Date.now() / 1000) % 250;

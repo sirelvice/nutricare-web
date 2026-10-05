@@ -55,3 +55,6 @@ prisma/dev.db
 playwright-report/
 
 test-results/
+
+# Allow the Supabase public root CA required for production TLS
+!/certs/prod-ca-2021.crt

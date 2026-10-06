@@ -58,3 +58,21 @@ Prior review confirmed tested authVersion session invalidation and hashed, expir
 ## Delivery boundaries
 
 Commit and push only the slice branch. Open the PR against `refactor/premium-ux`. No direct commits or pushes to `develop` or `main`. Local verification does not mean these changes are deployed.
+
+## Registration feedback and navigation control follow-up
+
+The original Slice 2 implementation merged through PR #21 into
+`refactor/premium-ux` at `1a224d2`.
+
+Local review then identified two bounded corrections:
+- Replace the misleading account-created banner with generic registration
+  guidance, explaining that existing accounts retain their original password.
+  Account-existence disclosure remains intentionally suppressed.
+- Raise the desktop sidebar above the workspace header so the expand control
+  remains unobstructed where it extends across the sidebar boundary.
+
+Verification: five focused registration/workspace E2E tests passed, including
+a hit-test check on both halves of the expand control. Typecheck, lint, and
+diff checks passed. Sidebar scrollbar styling was already present and later
+appeared correctly; no scrollbar CSS change was made, and the earlier rendering
+cause remains unconfirmed.

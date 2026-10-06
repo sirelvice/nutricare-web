@@ -111,7 +111,7 @@ export default function LoginForm() {
       <div className="space-y-6">
         {registered ? (
           <AuthMessage type="success">
-            Account created successfully. You can now sign in.
+            Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it.
           </AuthMessage>
         ) : null}
 

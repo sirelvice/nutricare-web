@@ -28,7 +28,7 @@ async function registerAndSignIn(page: Page) {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -74,6 +74,23 @@ test("desktop workspace can collapse and remembers the preference", async ({
 
   await expect(collapseButton).toBeVisible();
   await collapseButton.click();
+  const expandControl = page.getByRole("button", {
+    name: "Expand NutriCare navigation",
+  });
+
+  await expect.poll(() =>
+    expandControl.evaluate((button) => {
+      const bounds = button.getBoundingClientRect();
+      return [0.25, 0.75].every((fraction) => {
+        const hit = document.elementFromPoint(
+          bounds.left + bounds.width * fraction,
+          bounds.top + bounds.height / 2,
+        );
+        return hit !== null && button.contains(hit);
+      });
+    }),
+  ).toBe(true);
+
 
   await expect(
     page.getByRole("button", { name: "Expand NutriCare navigation" }),

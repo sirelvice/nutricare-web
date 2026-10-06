@@ -1,201 +1,735 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
+  ArrowUpRight,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  CircleUserRound,
+  FileText,
+  History,
   LayoutDashboard,
-  User,
-  Ruler,
-  Flame,
-  Sparkles,
-  Scale,
-  Clock,
-  FileDown,
-  PieChart,
+  LogOut,
   Menu,
+  Ruler,
+  Scale,
+  Sparkles,
   X,
 } from "lucide-react";
 
-const nav = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/profile", label: "Profile", icon: User },
-  { href: "/tools/bmi", label: "BMI", icon: Ruler },
-  { href: "/tools/calories", label: "Calories", icon: Flame },
-  { href: "/tools/macros", label: "Macros", icon: PieChart },
+type NavItem = {
+  href: string;
+  label: string;
+  description?: string;
+  icon: typeof LayoutDashboard;
+  match?: string[];
+};
+
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+const SIDEBAR_STORAGE_KEY = "nutricare-sidebar-collapsed";
+
+const navGroups: NavGroup[] = [
   {
-    href: "/tools/recommendations",
-    label: "Recommendations",
-    icon: Sparkles,
+    label: "Overview",
+    items: [
+      {
+        href: "/dashboard",
+        label: "Dashboard",
+        description: "Your health at a glance",
+        icon: LayoutDashboard,
+      },
+      {
+        href: "/profile",
+        label: "Profile & goal",
+        description: "Personal details and target",
+        icon: CircleUserRound,
+      },
+    ],
   },
   {
-    href: "/tools/tracking/weight",
-    label: "Weight Tracking",
-    icon: Scale,
+    label: "Your journey",
+    items: [
+      {
+        href: "/tools/tracking/weight",
+        label: "Track progress",
+        description: "Weight and progress",
+        icon: Scale,
+      },
+      {
+        href: "/tools/recommendations",
+        label: "Recommendations",
+        description: "Personal guidance",
+        icon: Sparkles,
+      },
+      {
+        href: "/history",
+        label: "History",
+        description: "See how things changed",
+        icon: History,
+      },
+    ],
   },
-  { href: "/history", label: "History", icon: Clock },
-  { href: "/report", label: "Export Report", icon: FileDown },
+  {
+    label: "Assess",
+    items: [
+      {
+        href: "/tools/bmi",
+        label: "Health tools",
+        description: "BMI, calories and macros",
+        icon: Ruler,
+        match: ["/tools/bmi", "/tools/calories", "/tools/macros"],
+      },
+    ],
+  },
+  {
+    label: "Your records",
+    items: [
+      {
+        href: "/report",
+        label: "Personal report",
+        description: "Review and download",
+        icon: FileText,
+      },
+    ],
+  },
 ];
+
+const allNavItems = navGroups.flatMap((group) => group.items);
+
+function isItemActive(pathname: string, item: NavItem) {
+  const paths = item.match ?? [item.href];
+
+  return paths.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
+
+function Navigation({
+  pathname,
+  onNavigate,
+  branded = false,
+  collapsed = false,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+  branded?: boolean;
+  collapsed?: boolean;
+}) {
+  return (
+    <nav
+      aria-label="NutriCare workspace"
+      className={collapsed ? "space-y-4" : "space-y-6"}
+    >
+      {navGroups.map((group) => (
+        <div key={group.label}>
+          {!collapsed && (
+            <p
+              className={[
+                "mb-2 px-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em]",
+                branded
+                  ? "text-primary-foreground/55"
+                  : "text-muted-foreground",
+              ].join(" ")}
+            >
+              {group.label}
+            </p>
+          )}
+
+          <div className="space-y-1">
+            {group.items.map((item) => {
+              const active = isItemActive(pathname, item);
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  aria-label={collapsed ? item.label : undefined}
+                  title={collapsed ? item.label : undefined}
+                  className={[
+                    "group flex min-h-11 items-center rounded-xl transition-all duration-200",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                    collapsed
+                      ? "justify-center px-2 py-2"
+                      : "gap-3 px-3 py-2.5",
+                    branded
+                      ? active
+                        ? "bg-primary-foreground/12 text-primary-foreground shadow-sm focus-visible:ring-accent"
+                        : "text-primary-foreground/75 hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent"
+                      : active
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground focus-visible:ring-ring"
+                        : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground focus-visible:ring-ring",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200",
+                      branded
+                        ? active
+                          ? "bg-accent text-accent-foreground shadow-sm"
+                          : "bg-primary-foreground/10 text-primary-foreground/80 group-hover:bg-accent-foreground/10 group-hover:text-accent-foreground"
+                        : active
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-background text-muted-foreground ring-1 ring-border group-hover:text-primary",
+                    ].join(" ")}
+                  >
+                    <Icon className="size-[1.05rem]" aria-hidden="true" />
+                  </span>
+
+                  {!collapsed && (
+                    <>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">
+                          {item.label}
+                        </span>
+                        <span
+                          className={[
+                            "mt-0.5 block truncate text-[0.72rem]",
+                            branded
+                              ? "text-primary-foreground/55 group-hover:text-accent-foreground/75"
+                              : "text-muted-foreground",
+                          ].join(" ")}
+                        >
+                          {item.description}
+                        </span>
+                      </span>
+
+                      {active && (
+                        <ChevronRight
+                          className={[
+                            "size-4 shrink-0",
+                            branded ? "text-accent" : "text-primary",
+                          ].join(" ")}
+                          aria-hidden="true"
+                        />
+                      )}
+                    </>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
+  );
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const { data: session } = useSession();
+
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarPreferenceReady, setSidebarPreferenceReady] = useState(false);
 
   const currentPage =
-    nav.find(
-      (item) =>
-        pathname === item.href || pathname.startsWith(item.href + "/"),
-    )?.label ?? "Dashboard";
+    allNavItems.find((item) => isItemActive(pathname, item))?.label ??
+    "NutriCare";
+
+  const displayName =
+    session?.user?.name?.trim() ||
+    session?.user?.email?.split("@")[0] ||
+    "NutriCare member";
+
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    try {
+      setSidebarCollapsed(
+        window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true",
+      );
+    } finally {
+      setSidebarPreferenceReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
+
+  function toggleSidebar() {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+
+      try {
+        window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
+      } catch {
+        // The shell still works if storage is unavailable.
+      }
+
+      return next;
+    });
+  }
+
+  async function handleSignOut() {
+    if (signingOut) return;
+
+    setSigningOut(true);
+
+    try {
+      await signOut({ redirect: false });
+      router.replace("/");
+      router.refresh();
+    } finally {
+      setSigningOut(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 xl:max-w-[1400px]">
-        {/* Header */}
-        <header className="mb-5 flex min-h-12 items-center justify-between rounded-2xl border bg-white px-4 shadow-sm">
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/brand/nutricare-logo.png"
-              alt="NutriCare"
-              width={140}
-              height={80}
-              priority
-              className="h-auto w-[120px] sm:w-[140px]"
-            />
-          </Link>
+    <div className="min-h-dvh bg-workspace">
+      {/* Mobile header */}
+      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:hidden">
+        <Link
+          href="/dashboard"
+          aria-label="Go to NutriCare dashboard"
+          className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Image
+            src="/brand/nutricare-design-no-bg-low.png"
+            alt="NutriCare"
+            width={1132}
+            height={368}
+            priority
+            className="h-auto w-[150px]"
+          />
+        </Link>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 text-sm text-slate-500 md:flex">
-              <span className="text-slate-300">/</span>
-              <span className="font-medium text-slate-700">{currentPage}</span>
+        <button
+          type="button"
+          aria-label="Open navigation"
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-workspace-navigation"
+          onClick={() => setMobileOpen(true)}
+          className="inline-flex size-10 items-center justify-center rounded-xl border bg-card text-foreground shadow-xs transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Menu className="size-5" aria-hidden="true" />
+        </button>
+      </header>
+
+      {/* Mobile navigation */}
+      <div
+        className={[
+          "fixed inset-0 z-50 md:hidden",
+          mobileOpen ? "pointer-events-auto" : "pointer-events-none",
+        ].join(" ")}
+        aria-hidden={!mobileOpen}
+      >
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setMobileOpen(false)}
+          className={[
+            "absolute inset-0 bg-foreground/25 backdrop-blur-[2px] transition-opacity",
+            mobileOpen ? "opacity-100" : "opacity-0",
+          ].join(" ")}
+        />
+
+        <aside
+          id="mobile-workspace-navigation"
+          className={[
+            "absolute inset-y-0 left-0 flex w-[min(21rem,88vw)] flex-col border-r bg-sidebar shadow-2xl transition-transform duration-200",
+            mobileOpen ? "translate-x-0" : "-translate-x-full",
+          ].join(" ")}
+        >
+          <div className="flex h-20 items-center justify-between border-b px-4">
+            <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
+              <Image
+                src="/brand/nutricare-design-no-bg-low.png"
+                alt="NutriCare"
+                width={1132}
+                height={368}
+                className="h-auto w-[170px]"
+              />
             </div>
 
             <button
               type="button"
-              aria-label="Open navigation menu"
-              aria-expanded={open}
-              className="inline-flex size-9 items-center justify-center rounded-xl border text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
-              onClick={() => setOpen(true)}
+              aria-label="Close navigation"
+              onClick={() => setMobileOpen(false)}
+              className="inline-flex size-10 items-center justify-center rounded-xl border bg-background text-foreground transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Menu size={20} />
+              <X className="size-5" aria-hidden="true" />
             </button>
           </div>
-        </header>
 
-        {/* Mobile navigation */}
-        <div
-          className={`fixed inset-0 z-50 md:hidden ${
-            open ? "pointer-events-auto" : "pointer-events-none"
-          }`}
-          aria-hidden={!open}
-        >
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
+            <Navigation
+              pathname={pathname}
+              onNavigate={() => setMobileOpen(false)}
+            />
+          </div>
+
+          <div className="border-t p-4">
+            <AccountArea
+              displayName={displayName}
+              initials={initials}
+              signingOut={signingOut}
+              onSignOut={handleSignOut}
+              onNavigate={() => setMobileOpen(false)}
+            />
+          </div>
+        </aside>
+      </div>
+
+      {/* Desktop workspace */}
+      <div
+        className={[
+          "hidden min-h-dvh transition-[grid-template-columns] duration-300 ease-out md:grid",
+          sidebarCollapsed
+            ? "md:grid-cols-[5.5rem_minmax(0,1fr)]"
+            : "md:grid-cols-[17.5rem_minmax(0,1fr)]",
+        ].join(" ")}
+      >
+        <aside className="sticky top-0 flex h-dvh min-w-0 self-start flex-col border-r border-primary-foreground/10 bg-primary text-primary-foreground">
+          {/* Brand and collapse control */}
           <div
-            className={`absolute inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity ${
-              open ? "opacity-100" : "opacity-0"
-            }`}
-            onClick={() => setOpen(false)}
-          />
-
-          <aside
-            className={`absolute left-0 top-0 h-full w-[min(20rem,85vw)] border-r bg-white p-4 shadow-2xl transition-transform duration-200 ${
-              open ? "translate-x-0" : "-translate-x-full"
-            }`}
+            className={[
+              "relative flex h-28 shrink-0 items-center border-b border-primary-foreground/10 transition-all duration-300",
+              sidebarCollapsed ? "justify-center px-2" : "px-4",
+            ].join(" ")}
           >
-            <div className="mb-5 flex items-center justify-between border-b pb-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">
-                  NutriCare
-                </p>
-                <p className="text-xs text-slate-500">
-                  Your health workspace
-                </p>
-              </div>
+            <Link
+              href="/dashboard"
+              aria-label="Go to NutriCare dashboard"
+              title={sidebarCollapsed ? "NutriCare dashboard" : undefined}
+              className={[
+                "flex items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5 transition-all duration-300",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                sidebarCollapsed
+                  ? "size-12 p-1"
+                  : "h-[4.25rem] w-[12.75rem] px-3 py-2",
+              ].join(" ")}
+            >
+              {sidebarCollapsed ? (
+                <span className="flex size-full items-start justify-center overflow-hidden rounded-lg">
+                  <Image
+                    src="/brand/nutricare-mark.png"
+                    alt=""
+                    width={705}
+                    height={501}
+                    priority
+                    className="h-auto w-full object-contain"
+                  />
+                </span>
+              ) : (
+                <Image
+                  src="/brand/nutricare-design-no-bg-low.png"
+                  alt="NutriCare"
+                  width={1132}
+                  height={368}
+                  priority
+                  className="h-auto w-full object-contain"
+                />
+              )}
+            </Link>
 
-              <button
-                type="button"
-                aria-label="Close navigation menu"
-                className="inline-flex size-9 items-center justify-center rounded-xl border text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                onClick={() => setOpen(false)}
-              >
-                <X size={20} />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-label={
+                sidebarCollapsed
+                  ? "Expand NutriCare navigation"
+                  : "Collapse NutriCare navigation"
+              }
+              aria-expanded={!sidebarCollapsed}
+              title={
+                sidebarCollapsed ? "Expand navigation" : "Collapse navigation"
+              }
+              className={[
+                "absolute top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-full",
+                "border border-primary-foreground/15 bg-primary text-primary-foreground shadow-md",
+                "transition-all hover:border-accent hover:bg-accent hover:text-accent-foreground",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                sidebarCollapsed ? "-right-4" : "right-3",
+              ].join(" ")}
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight className="size-4" aria-hidden="true" />
+              ) : (
+                <ChevronLeft className="size-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
 
-            <nav className="space-y-1.5">
-              {nav.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  pathname.startsWith(item.href + "/");
-                const Icon = item.icon;
+          <div
+            className={[
+              "nutricare-sidebar-scroll min-h-0 flex-1 overflow-y-auto pb-5 pt-5",
+              sidebarCollapsed ? "px-2" : "px-3",
+            ].join(" ")}
+          >
+            <Navigation
+              pathname={pathname}
+              branded
+              collapsed={sidebarCollapsed}
+            />
+          </div>
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={[
-                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-slate-700 hover:bg-slate-100",
-                    ].join(" ")}
-                  >
-                    <Icon size={18} />
-                    <span className="flex-1">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </aside>
-        </div>
+          <div
+            className={[
+              "shrink-0 border-t border-primary-foreground/10",
+              sidebarCollapsed ? "p-2" : "p-4",
+            ].join(" ")}
+          >
+            <AccountArea
+              displayName={displayName}
+              initials={initials}
+              signingOut={signingOut}
+              onSignOut={handleSignOut}
+              branded
+              collapsed={sidebarCollapsed}
+            />
+          </div>
+        </aside>
 
-        {/* Desktop layout */}
-        <div className="grid gap-5 md:grid-cols-[240px_minmax(0,1fr)]">
-          {/* Sidebar */}
-          <aside className="hidden h-fit rounded-2xl border bg-white p-2.5 shadow-sm md:block">
-            <div className="px-3 pb-3 pt-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Workspace
+        <div className="min-w-0 bg-workspace">
+          <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b bg-background/95 px-6 backdrop-blur lg:px-8">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">
+                Your NutriCare workspace
               </p>
+              <h1 className="mt-0.5 text-lg font-semibold tracking-tight text-foreground">
+                {currentPage}
+              </h1>
             </div>
 
-            <nav className="space-y-1">
-              {nav.map((item) => {
-                const active =
-                  pathname === item.href ||
-                  pathname.startsWith(item.href + "/");
-                const Icon = item.icon;
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-xl border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-xs transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              NutriCare home
+              <ArrowUpRight className="size-4" aria-hidden="true" />
+            </Link>
+          </header>
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={[
-                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-slate-700 hover:bg-slate-100",
-                    ].join(" ")}
-                  >
-                    <Icon size={18} />
-                    <span className="flex-1">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </aside>
+          <main id="main-content" className="min-w-0">
+            <div className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-6 lg:px-8 lg:py-8">
+              {children}
 
-          {/* Main content */}
-          <main className="min-w-0 rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
-            {children}
+              <footer className="mt-12 border-t pt-5 text-xs text-muted-foreground">
+                © {new Date().getFullYear()} NutriCare. Nutrition guidance that
+                helps you understand what to do next.
+              </footer>
+            </div>
           </main>
         </div>
+      </div>
 
-        {/* Footer */}
-        <footer className="mt-8 border-t pt-5 text-center text-xs text-slate-500">
-          © {new Date().getFullYear()} NutriCare. Built for nutrition-first
-          care.
-        </footer>
+      {/* Mobile content */}
+      <main className="bg-workspace md:hidden">
+        <div className="mx-auto min-h-[calc(100dvh-4rem)] w-full max-w-3xl px-4 py-5 sm:px-6">
+          <div className="mb-5">
+            <p className="text-xs font-medium text-muted-foreground">
+              Your NutriCare workspace
+            </p>
+            <h1 className="mt-0.5 text-lg font-semibold tracking-tight">
+              {currentPage}
+            </h1>
+          </div>
+
+          {children}
+
+          <footer className="mt-10 border-t pt-5 text-xs text-muted-foreground">
+            © {new Date().getFullYear()} NutriCare.
+          </footer>
+        </div>
+      </main>
+
+      {/* Avoid transition flash before local preference has been read. */}
+      <span
+        className="hidden"
+        data-sidebar-preference-ready={sidebarPreferenceReady}
+      />
+    </div>
+  );
+}
+
+function AccountArea({
+  displayName,
+  initials,
+  signingOut,
+  onSignOut,
+  onNavigate,
+  branded = false,
+  collapsed = false,
+}: {
+  displayName: string;
+  initials: string;
+  signingOut: boolean;
+  onSignOut: () => void;
+  onNavigate?: () => void;
+  branded?: boolean;
+  collapsed?: boolean;
+}) {
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <Link
+          href="/profile"
+          onClick={onNavigate}
+          aria-label={`${displayName} account`}
+          title={`${displayName}: Account`}
+          className="flex size-11 items-center justify-center rounded-xl transition-colors hover:bg-primary-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <span className="flex size-9 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground shadow-sm">
+            {initials || "N"}
+          </span>
+        </Link>
+
+        <Link
+          href="/"
+          onClick={onNavigate}
+          aria-label="Go to NutriCare main site"
+          title="Main site"
+          className="flex size-10 items-center justify-center rounded-xl border border-primary-foreground/15 bg-primary-foreground/5 text-primary-foreground transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <BookOpen className="size-4" aria-hidden="true" />
+        </Link>
+
+        <button
+          type="button"
+          onClick={onSignOut}
+          disabled={signingOut}
+          aria-label={signingOut ? "Signing out" : "Sign out"}
+          title={signingOut ? "Signing out" : "Sign out"}
+          className="flex size-10 items-center justify-center rounded-xl border border-primary-foreground/15 bg-primary-foreground/5 text-primary-foreground transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-wait disabled:opacity-60"
+        >
+          {signingOut ? (
+            <span
+              className="size-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
+              aria-hidden="true"
+            />
+          ) : (
+            <LogOut className="size-4" aria-hidden="true" />
+          )}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Link
+        href="/profile"
+        onClick={onNavigate}
+        className={[
+          "flex items-center gap-3 rounded-xl p-2 transition-colors focus-visible:outline-none focus-visible:ring-2",
+          branded
+            ? "text-primary-foreground hover:bg-primary-foreground/10 focus-visible:ring-accent"
+            : "hover:bg-sidebar-accent focus-visible:ring-ring",
+        ].join(" ")}
+      >
+        <span
+          className={[
+            "flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-sm",
+            branded
+              ? "bg-accent text-accent-foreground"
+              : "bg-primary text-primary-foreground",
+          ].join(" ")}
+        >
+          {initials || "N"}
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span
+            className={[
+              "block truncate text-sm font-semibold",
+              branded ? "text-primary-foreground" : "text-foreground",
+            ].join(" ")}
+          >
+            {displayName}
+          </span>
+          <span
+            className={[
+              "block truncate text-xs",
+              branded
+                ? "text-primary-foreground/55"
+                : "text-muted-foreground",
+            ].join(" ")}
+          >
+            Account
+          </span>
+        </span>
+
+        <ChevronRight
+          className={[
+            "size-4 shrink-0",
+            branded ? "text-primary-foreground/50" : "text-muted-foreground",
+          ].join(" ")}
+          aria-hidden="true"
+        />
+      </Link>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          href="/"
+          onClick={onNavigate}
+          className={[
+            "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2",
+            branded
+              ? "border-primary-foreground/15 bg-primary-foreground/5 text-primary-foreground hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent"
+              : "bg-background text-foreground hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring",
+          ].join(" ")}
+        >
+          <BookOpen className="size-4" aria-hidden="true" />
+          Main site
+        </Link>
+
+        <button
+          type="button"
+          onClick={onSignOut}
+          disabled={signingOut}
+          className={[
+            "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-60",
+            branded
+              ? "border-primary-foreground/15 bg-primary-foreground/5 text-primary-foreground hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent"
+              : "bg-background text-foreground hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring",
+          ].join(" ")}
+        >
+          {signingOut ? (
+            <span
+              className={[
+                "size-4 animate-spin rounded-full border-2",
+                branded
+                  ? "border-primary-foreground/30 border-t-primary-foreground"
+                  : "border-muted-foreground/30 border-t-muted-foreground",
+              ].join(" ")}
+              aria-hidden="true"
+            />
+          ) : (
+            <LogOut className="size-4" aria-hidden="true" />
+          )}
+          {signingOut ? "Signing out" : "Sign out"}
+        </button>
       </div>
     </div>
   );

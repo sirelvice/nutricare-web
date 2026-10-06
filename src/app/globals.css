@@ -37,6 +37,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-workspace: var(--workspace);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -49,6 +50,7 @@
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
+  --workspace: oklch(0.982 0.008 145);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
@@ -84,6 +86,7 @@
 
 .dark {
   --background: oklch(0.129 0.042 264.695);
+  --workspace: oklch(0.16 0.025 145);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.984 0.003 247.858);
@@ -210,4 +213,29 @@
 .marquee-container::after {
   right: 0;
   background: linear-gradient(to left, white, transparent);
+}
+
+@layer utilities {
+  .nutricare-sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--accent) 55%, transparent)
+      transparent;
+  }
+
+  .nutricare-sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .nutricare-sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .nutricare-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--accent) 45%, transparent);
+    border-radius: 999px;
+  }
+
+  .nutricare-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+  }
 }

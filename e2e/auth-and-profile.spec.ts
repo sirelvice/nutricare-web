@@ -51,7 +51,7 @@ test("user can register, sign in, and save a profile goal", async ({ page }) => 
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -109,7 +109,7 @@ test("dashboard remains usable when recommendations are unavailable", async ({
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -170,7 +170,7 @@ test("user can add and delete a weight entry", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -302,7 +302,7 @@ test("user can calculate and recalculate BMI", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -389,7 +389,7 @@ test("user can view the health report", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -588,7 +588,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -728,7 +728,7 @@ test("user can edit and persist their profile", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -855,7 +855,7 @@ test("user can view and recalculate nutrition calories", async ({
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -1059,7 +1059,7 @@ test("user can view current nutrition macros", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -1247,7 +1247,7 @@ test("user can view personalized nutrition recommendations", async ({
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -1440,7 +1440,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -1606,7 +1606,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -1782,7 +1782,7 @@ test("user can decline a progress adjustment and keep the current plan", async (
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -2014,7 +2014,7 @@ test("user can accept a progress adjustment and see the new plan version in hist
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);

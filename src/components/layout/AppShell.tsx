@@ -410,7 +410,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             : "md:grid-cols-[17.5rem_minmax(0,1fr)]",
         ].join(" ")}
       >
-        <aside className="sticky top-0 hidden h-dvh min-w-0 self-start flex-col border-r border-primary-foreground/10 bg-primary text-primary-foreground md:flex">
+        <aside className="sticky top-0 z-40 hidden h-dvh min-w-0 self-start flex-col border-r border-primary-foreground/10 bg-primary text-primary-foreground md:flex">
           {/* Brand and collapse control */}
           <div
             className={[

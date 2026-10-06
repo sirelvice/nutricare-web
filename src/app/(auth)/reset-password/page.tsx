@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthMessage } from "@/components/auth/AuthMessage";
+import { PasswordField } from "@/components/auth/PasswordField";
 import { Button } from "@/components/ui/button";
-import { Leaf, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default function ResetPasswordPage() {
   const [token, setToken] = useState("");
@@ -22,6 +22,7 @@ export default function ResetPasswordPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (busy || success) return;
 
     if (!token) {
       setError("This password reset link is invalid.");
@@ -71,99 +72,69 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50 px-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="flex flex-col items-center text-center">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center">
-              <Leaf className="w-7 h-7 text-white" />
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-              NutriCare
-            </h1>
-          </div>
-          <p className="text-slate-600 max-w-xs">
-            Securely reset your password
-          </p>
-        </div>
-
-        <Card className="rounded-3xl shadow-xl border-0 bg-white/95">
-          <CardHeader className="space-y-1 pb-8 pt-8">
-            <CardTitle className="text-2xl font-semibold text-center">
-              Reset Password
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="px-8 pb-8">
-            {success ? (
-              <div className="space-y-5 text-center">
-                <p className="text-slate-600">
-                  Your password has been reset successfully.
-                </p>
-                <Button asChild className="w-full rounded-2xl">
-                  <Link href="/login">Back to sign in</Link>
-                </Button>
-              </div>
-            ) : (
-              <form onSubmit={onSubmit} className="space-y-5">
-                {!token && (
-                  <p className="text-sm text-red-600">
-                    This password reset link is invalid.
-                  </p>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">New password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={busy || !token}
-                    required
-                    minLength={8}
-                    className="h-12 rounded-2xl"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmation">Confirm password</Label>
-                  <Input
-                    id="confirmation"
-                    type="password"
-                    value={confirmation}
-                    onChange={(e) => setConfirmation(e.target.value)}
-                    disabled={busy || !token}
-                    required
-                    minLength={8}
-                    className="h-12 rounded-2xl"
-                  />
-                </div>
-
-                {error && <p className="text-sm text-red-600">{error}</p>}
-
-                <Button
-                  type="submit"
-                  className="w-full h-12 rounded-2xl"
-                  disabled={busy || !token}
-                >
-                  {busy ? "Resetting..." : "Reset password"}
-                </Button>
-              </form>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="text-center">
+    <AuthShell
+      title="Reset Password"
+      description="Choose a new password for your NutriCare account."
+      footer={
+        !success ? (
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
+            className="inline-flex min-h-11 items-center gap-2 font-medium text-primary underline-offset-4 hover:underline"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft className="size-4" aria-hidden="true" />
             Back to sign in
           </Link>
+        ) : null
+      }
+    >
+      {success ? (
+        <div className="space-y-5">
+          <AuthMessage type="success">
+            Your password has been reset successfully.
+          </AuthMessage>
+          <Button asChild className="h-12 w-full">
+            <Link href="/login">Back to sign in</Link>
+          </Button>
         </div>
-      </div>
-    </div>
+      ) : (
+        <form onSubmit={onSubmit} className="space-y-5" aria-busy={busy}>
+          {!token ? (
+            <AuthMessage type="error">
+              This password reset link is invalid.
+            </AuthMessage>
+          ) : null}
+
+          <PasswordField
+            id="password"
+            label="New password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
+            minLength={8}
+            disabled={busy || !token}
+          />
+
+          <PasswordField
+            id="confirmation"
+            label="Confirm password"
+            value={confirmation}
+            onChange={setConfirmation}
+            autoComplete="new-password"
+            minLength={8}
+            disabled={busy || !token}
+          />
+
+          {error ? <AuthMessage type="error">{error}</AuthMessage> : null}
+
+          <Button
+            type="submit"
+            className="h-12 w-full text-base font-medium"
+            disabled={busy || !token}
+          >
+            {busy ? "Resetting..." : "Reset password"}
+          </Button>
+        </form>
+      )}
+    </AuthShell>
   );
 }

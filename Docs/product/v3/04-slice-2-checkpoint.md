@@ -80,6 +80,6 @@ cause remains unconfirmed.
 ### Integration PR verification
 
 PR #22 exposed a CI trigger gap: `fix/*` pushes were excluded, and pull-request
-verification targeted only `main`. The workflow now also verifies PRs targeting
-`refactor/premium-ux`, regardless of their source branch. Existing verification
-steps and permissions are preserved.
+verification targeted only `main`. The workflow now verifies PRs targeting any branch, regardless of their
+source branch. Push verification covers `main`, `develop`, and `refactor/**`.
+Existing verification steps and permissions are preserved.

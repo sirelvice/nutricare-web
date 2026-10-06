@@ -19,6 +19,12 @@ export const runtime = "nodejs";
 
 const schema = forgotPasswordSchema;
 
+const RESET_REQUEST_ACCEPTED_RESPONSE = {
+  ok: true,
+  message:
+    "If an account exists for that email, reset instructions will be sent shortly.",
+};
+
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -123,17 +129,20 @@ export async function POST(req: Request) {
       );
     }
 
+    // Validate shared configuration before any account-dependent work.
+    const baseUrl = getAppUrl();
+
+    if (!baseUrl) {
+      throw new Error("Application URL is not configured.");
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true, email: true },
     });
 
     if (!user) {
-      return NextResponse.json({
-        ok: true,
-        message:
-          "If an account exists for that email, reset instructions will be sent shortly.",
-      });
+      return NextResponse.json(RESET_REQUEST_ACCEPTED_RESPONSE);
     }
 
     const token = randomBytes(32).toString("hex");
@@ -156,33 +165,28 @@ export async function POST(req: Request) {
       }),
     ]);
 
-    let baseUrl: string;
-
-    try {
-      baseUrl = getAppUrl() ?? "";
-    } catch (error) {
-      await prisma.passwordResetToken.deleteMany({
-        where: { tokenHash },
-      });
-      throw error;
-    }
-
-    if (!baseUrl) {
-      await prisma.passwordResetToken.deleteMany({
-        where: { tokenHash },
-      });
-      throw new Error("Application URL is not configured.");
-    }
-
     const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
     try {
       await sendResetEmail(user.email, resetUrl);
-    } catch (error) {
-      await prisma.passwordResetToken.deleteMany({
-        where: { tokenHash },
+    } catch {
+      // Never expose account existence through delivery or cleanup failures.
+      console.error("Password reset email delivery failed.");
+
+      try {
+        await prisma.passwordResetToken.deleteMany({
+          where: { tokenHash },
+        });
+      } catch {
+        console.error("Failed to remove undelivered password reset token.");
+      }
+
+      await recordSecurityEvent({
+        type: SECURITY_EVENT_TYPES.PASSWORD_RESET_REQUEST,
+        outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
       });
-      throw error;
+
+      return NextResponse.json(RESET_REQUEST_ACCEPTED_RESPONSE);
     }
 
     await recordSecurityEvent({
@@ -190,11 +194,7 @@ export async function POST(req: Request) {
       outcome: SECURITY_EVENT_OUTCOMES.SUCCESS,
     });
 
-    return NextResponse.json({
-      ok: true,
-      message:
-        "If an account exists for that email, reset instructions will be sent shortly.",
-    });
+    return NextResponse.json(RESET_REQUEST_ACCEPTED_RESPONSE);
   } catch {
     await recordSecurityEvent({
       type: SECURITY_EVENT_TYPES.PASSWORD_RESET_REQUEST,

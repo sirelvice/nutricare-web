@@ -1,18 +1,18 @@
-# RFC: NutriCare V3 — UX & Presentation-Layer Architecture
+# RFC: NutriCare V3 — Platform Quality and UX Architecture
 
-**Status:** Draft — to be finalized before the first V3 UI implementation commit
-**Depends on:** `01-prd-premium-experience.md` (this folder), V2's `02-rfc-architecture.md` (unchanged — domain/API/data layers are out of scope here)
+**Status:** Active baseline, updated as verified slices establish durable patterns.
+**Depends on:** `01-prd-premium-experience.md` and V2's `02-rfc-architecture.md`. Preserve established layering; document evidence-based changes.
 **Scope:** How V3 is built, not what it builds (see the PRD for that).
 
 ---
 
-## 1. Hard boundary: this RFC does not touch the V2 architecture
+## 1. Preserve layering; make bounded platform improvements
 
 Per V2 RFC §3.1, the layering is:
 ```
 UI → API / Route Handlers → Application Services → Domain Logic → Repositories → PostgreSQL
 ```
-V3 work happens **entirely within the UI layer** and, where strictly necessary, adds small, explicit API surface for data the UI needs but doesn't yet have access to (flagged case-by-case, never assumed). No V3 PR should touch `src/lib/*/domain.ts`, `src/lib/*/service.ts`, or repository code, except to consume an existing, unchanged interface. If a V3 slice seems to require a domain change, that's a signal to stop and raise it explicitly rather than quietly expanding scope.
+V3 is a whole-platform quality pass. Security is paramount. Changes may cross application layers when evidence demonstrates a problem, while preserving established interfaces and domain behavior unless a reviewed change explicitly requires otherwise. Each change records its trigger, scope, risks, and verification. Previously merged slices may be revisited; uncontrolled rewrites remain out of scope.
 
 ---
 
@@ -68,7 +68,7 @@ Per V2 design doc §3.2/§3.3: components consume `progressState` + `recommended
 
 - Login, register, forgot/reset password, and initial profile+goal setup (V2 design doc §3.1, "First plan reveal") get the same component library and token system as the rest of the app.
 - Validation, loading, and error states on these screens are high-value: this is the first impression, and it's also exactly where V2's Playwright work found real issues (missing `<label for>` associations, the login-redirect timing question) — V3's auth screens should be built with accessibility and state-handling as first-class from the start, not retrofitted.
-- No change to the underlying NextAuth/session logic — purely presentational and state-handling work.
+- Preserve existing session invalidation and reset-token guarantees. Review API responses and failure paths for information disclosure, concurrency, and resilience. Security changes require focused regression tests.
 
 ---
 
@@ -120,3 +120,14 @@ V2 left this open (`The width(-1) and height(-1) of chart should be greater than
 1. Confirm actual current location/structure of shared components (`src/components/ui/` or otherwise) during Slice 1 setup, before token/component work begins.
 2. Decide the CI check mechanism for §7 (dedicated lint rule vs. a simple CI grep step) — lean toward the simpler grep-based check first, upgrade later if it proves insufficient.
 3. Confirm whether any V3 screen genuinely needs new API surface (candidate: richer plan-version history detail for the Plan screen's version view, per V2 design doc §3.6) — if so, scope that as a minimal, explicit, reviewed addition before the relevant slice starts.
+
+---
+
+## 12. Slice 2 durable implementation patterns
+
+- Shared auth components live in `src/components/auth/`: `AuthBrand`, `AuthShell`, `AuthMessage`, and `PasswordField`.
+- Authentication pages use the official logo, associated input labels, autocomplete hints, semantic feedback, and recoverable submission states.
+- AppShell mounts page children exactly once across viewport sizes. Responsive styling changes layout without duplicating forms, IDs, or component effects.
+- Workspace location labels are paragraphs; the page owns its primary heading.
+- API hardening tests compare public status, content type, and serialized response bodies where account disclosure is the concern.
+- A tracked checkpoint separates verified changes from outstanding investigations. See `04-slice-2-checkpoint.md`.

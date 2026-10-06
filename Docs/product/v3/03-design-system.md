@@ -158,3 +158,15 @@ This applies to application UI, public marketing pages, emails, user-facing educ
 An em dash must also not be used as a generic missing-data placeholder. Missing values should use contextual language such as `Not recorded`, `Not available`, or `No data yet`, depending on the meaning of the field.
 
 The intent is a calm, natural, human product voice. Punctuation should support clarity rather than create a stylized or synthetic writing pattern.
+
+---
+
+## 13. Shared authentication and responsive content
+
+- Auth screens reuse `AuthBrand`, `AuthShell`, `AuthMessage`, and `PasswordField`.
+- `AuthShell` provides the page heading and a named section. Error feedback uses `role="alert"`; informational and success feedback uses `role="status"`.
+- Password visibility controls use the accessible names `Reveal characters` and `Hide characters`, expose `aria-pressed` and `aria-controls`, and provide a 44px target. Toggling preserves the field value.
+- Use `current-password` for sign-in and `new-password` for registration and password replacement.
+- AppShell renders one main content tree across mobile and desktop. Resizing preserves mounted form state.
+- Shell location labels do not create additional page headings.
+- Automated viewport and keyboard checks provide regression evidence; they do not replace the planned manual screen-reader and contrast review.

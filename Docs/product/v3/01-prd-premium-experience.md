@@ -1,6 +1,6 @@
 # NutriCare V3 — PRD: Premium Product Experience
 
-**Status:** Draft — to be finalized before the first V3 UI implementation commit
+**Status:** Active baseline. Slice 1 merged; Slice 2 implementation reviewed and verified locally; integration pending.
 **Branch:** `refactor/premium-ux`
 **Tracking:** Issue #19
 **Depends on:** `Docs/product/01-product-blueprint.md`, `02-rfc-architecture.md`, `03-design.md` (V2 — unchanged, still authoritative for domain/architecture)
@@ -10,7 +10,7 @@
 
 ## 1. What V3 is, in one sentence
 
-> Take the hardened V2 foundation (persisted domain, security, tested workflows) and turn it into one coherent, premium, trustworthy product experience — from the first public page through authentication, daily tracking, progress interpretation, and the downloadable report.
+> Improve NutriCare across the whole platform: security first, alongside performance, load time, concurrency and scalability, resilience, accessibility, API correctness, data integrity, maintainability, and a coherent product experience.
 
 V2 proved the engineering was real. V3 proves the *product* is real — that someone can open NutriCare, trust it immediately, and understand what to do next without being told "this is a refactored prototype."
 
@@ -43,13 +43,15 @@ These come directly from inspecting the current deployed app, not from abstract 
 
 ---
 
+Security is the highest-priority quality requirement. Each slice reviews relevant performance, load time, concurrency/scalability, resilience, accessibility, API correctness, data integrity, and maintainability risks. Confirmed findings, implemented fixes, and future investigations must be recorded separately.
+
 ## 4. Explicit non-goals (what V3 does *not* do)
 
-- **No domain/architecture changes.** The V2 layered architecture (UI → API → services → domain → repositories → Postgres), the progress-state model, the adjustment workflow, and the security model are unchanged. V3 is a presentation-layer and content project, not a second refactor.
-- **No new backend features.** If a V3 screen needs data the API doesn't currently expose, that's flagged as a dependency for a small, explicit backend addition — not an invitation to redesign the domain.
+- **No uncontrolled architecture rewrites.** Preserve the V2 layering and established domain behavior. Bounded changes across UI, API, services, repositories, and infrastructure are permitted when evidence identifies a platform problem. State the problem, scope, compatibility implications, and verification.
+- **No speculative backend expansion.** Backend changes must serve a demonstrated product need or platform-quality problem and remain small and reviewable.
 - **No framework migration.** No new UI framework, no replacing Tailwind/Radix/CVA/Recharts/Lucide — V3 builds on what already exists (see RFC §2).
-- **No re-opening of V2's deferred items as part of this PRD** (`GOAL_ACHIEVED`, broader security audit completion, dependency remediation) — those remain tracked separately in the V2 docs/`Docs/engineering/`. V3 may surface UI for them *once* they land, but doesn't implement them.
-- **No redesign-for-its-own-sake.** Every change traces back to one of the 8 problems in §2 or a goal in §3. "This could look nicer" is not sufficient justification on its own.
+- **Deferred work remains tracked, not automatically excluded.** Security findings and dependency risks may be revisited when evidence warrants action. Previously merged V3 work may also be corrected. New domain capabilities such as `GOAL_ACHIEVED` require explicit scope. Offline-first and sync architecture remain a later design investigation, not an implied implementation commitment.
+- **No redesign-for-its-own-sake.** Every change must address an observed product or platform problem, or a stated V3 goal.
 
 ---
 

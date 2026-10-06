@@ -188,3 +188,42 @@ test("mobile workspace uses the drawer navigation", async ({ page }) => {
     page.getByRole("button", { name: "Open navigation" }),
   ).toBeVisible();
 });
+
+test("workspace renders one content tree and preserves form state across resizing", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await registerAndSignIn(page);
+  await page.goto("/tools/bmi");
+
+  await expect(page.getByRole("heading", { name: "BMI Calculator", exact: true })).toBeVisible();
+  await expect(page.locator("main")).toHaveCount(1);
+  await expect(page.locator("#height")).toHaveCount(1);
+  await expect(page.locator("#weight")).toHaveCount(1);
+
+  await page.locator("#height").fill("170");
+  await page.locator("#weight").fill("60");
+
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(page.locator("main")).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await expect(page.locator("#height")).toHaveCount(1);
+    await expect(page.locator("#weight")).toHaveCount(1);
+    await expect(page.locator("#height")).toBeVisible();
+    await expect(page.locator("#height")).toHaveValue("170");
+    await expect(page.locator("#weight")).toHaveValue("60");
+    await expect.poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  }
+
+  await page.getByRole("button", { name: "Calculate BMI", exact: true }).click();
+  await expect(page.getByText("20.8", { exact: true })).toBeVisible();
+
+  await page.goto("/tools/tracking/weight");
+  await expect(page.locator("#weight-date")).toHaveCount(1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator("#weight-date")).toHaveCount(1);
+  await expect(page.locator("#weight-date")).toBeVisible();
+});

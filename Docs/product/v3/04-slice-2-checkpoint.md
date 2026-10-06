@@ -76,3 +76,10 @@ a hit-test check on both halves of the expand control. Typecheck, lint, and
 diff checks passed. Sidebar scrollbar styling was already present and later
 appeared correctly; no scrollbar CSS change was made, and the earlier rendering
 cause remains unconfirmed.
+
+### Integration PR verification
+
+PR #22 exposed a CI trigger gap: `fix/*` pushes were excluded, and pull-request
+verification targeted only `main`. The workflow now also verifies PRs targeting
+`refactor/premium-ux`, regardless of their source branch. Existing verification
+steps and permissions are preserved.

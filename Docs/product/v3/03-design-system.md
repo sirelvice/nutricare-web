@@ -146,3 +146,15 @@ Mobile does not mechanically reproduce the desktop sidebar. It uses a navigation
 ## 11. Maintenance
 
 This document is updated whenever a new durable visual pattern is introduced — the same discipline V2 applied to its own docs. If implementation diverges from what's written here during a slice, the document is corrected before that slice is considered complete, so it never silently drifts out of sync with the shipped product.
+
+---
+
+## 12. Product writing and punctuation
+
+NutriCare user-facing copy does not use em dashes (`—`). Prefer direct sentence structure using periods, commas, colons, or parentheses where appropriate.
+
+This applies to application UI, public marketing pages, emails, user-facing educational content, and generated reports/PDFs. Technical documentation, source comments, third-party content, and historical material are not required to follow this restriction.
+
+An em dash must also not be used as a generic missing-data placeholder. Missing values should use contextual language such as `Not recorded`, `Not available`, or `No data yet`, depending on the meaning of the field.
+
+The intent is a calm, natural, human product voice. Punctuation should support clarity rather than create a stylized or synthetic writing pattern.

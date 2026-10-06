@@ -401,16 +401,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
       </div>
 
-      {/* Desktop workspace */}
+      {/* Responsive workspace with one mounted page-content tree. */}
       <div
         className={[
-          "hidden min-h-dvh transition-[grid-template-columns] duration-300 ease-out md:grid",
+          "min-h-[calc(100dvh-4rem)] transition-[grid-template-columns] duration-300 ease-out md:grid md:min-h-dvh",
           sidebarCollapsed
             ? "md:grid-cols-[5.5rem_minmax(0,1fr)]"
             : "md:grid-cols-[17.5rem_minmax(0,1fr)]",
         ].join(" ")}
       >
-        <aside className="sticky top-0 flex h-dvh min-w-0 self-start flex-col border-r border-primary-foreground/10 bg-primary text-primary-foreground">
+        <aside className="sticky top-0 hidden h-dvh min-w-0 self-start flex-col border-r border-primary-foreground/10 bg-primary text-primary-foreground md:flex">
           {/* Brand and collapse control */}
           <div
             className={[
@@ -512,14 +512,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
 
         <div className="min-w-0 bg-workspace">
-          <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b bg-background/95 px-6 backdrop-blur lg:px-8">
+          <header className="sticky top-0 z-30 hidden h-20 items-center justify-between border-b bg-background/95 px-6 backdrop-blur md:flex lg:px-8">
             <div>
               <p className="text-xs font-medium text-muted-foreground">
                 Your NutriCare workspace
               </p>
-              <h1 className="mt-0.5 text-lg font-semibold tracking-tight text-foreground">
+              <p className="mt-0.5 text-lg font-semibold tracking-tight text-foreground">
                 {currentPage}
-              </h1>
+              </p>
             </div>
 
             <Link
@@ -532,7 +532,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </header>
 
           <main id="main-content" className="min-w-0">
-            <div className="mx-auto w-full max-w-[1180px] px-5 py-6 sm:px-6 lg:px-8 lg:py-8">
+            <div className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-6 md:px-5 md:py-6 lg:px-8 lg:py-8">
+              <div className="mb-5 md:hidden">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Your NutriCare workspace
+                </p>
+                <p className="mt-0.5 text-lg font-semibold tracking-tight">
+                  {currentPage}
+                </p>
+              </div>
               {children}
 
               <footer className="mt-12 border-t pt-5 text-xs text-muted-foreground">
@@ -543,26 +551,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
-
-      {/* Mobile content */}
-      <main className="bg-workspace md:hidden">
-        <div className="mx-auto min-h-[calc(100dvh-4rem)] w-full max-w-3xl px-4 py-5 sm:px-6">
-          <div className="mb-5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Your NutriCare workspace
-            </p>
-            <h1 className="mt-0.5 text-lg font-semibold tracking-tight">
-              {currentPage}
-            </h1>
-          </div>
-
-          {children}
-
-          <footer className="mt-10 border-t pt-5 text-xs text-muted-foreground">
-            © {new Date().getFullYear()} NutriCare.
-          </footer>
-        </div>
-      </main>
 
       {/* Avoid transition flash before local preference has been read. */}
       <span

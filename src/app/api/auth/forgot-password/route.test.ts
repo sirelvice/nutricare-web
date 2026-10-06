@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   findUnique,
@@ -54,6 +54,17 @@ vi.mock("@/lib/security/rate-limit", () => ({
 import { POST } from "./route";
 
 describe("POST /api/auth/forgot-password", () => {
+  beforeEach(() => {
+    vi.stubEnv("RESEND_API_KEY", "test-key");
+    vi.stubEnv("CONTACT_FROM_EMAIL", "no-reply@nutricare.app");
+    vi.stubEnv("APP_URL", "https://app.nutricare.app");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
 
   beforeEach(() => {
     consumeRateLimit.mockResolvedValue({
@@ -219,66 +230,126 @@ describe("POST /api/auth/forgot-password", () => {
     });
   });
 
-  it("fails closed when the application URL is not configured", async () => {
-    process.env.RESEND_API_KEY = "test-key";
-    process.env.CONTACT_FROM_EMAIL = "no-reply@nutricare.app";
-    delete process.env.APP_URL;
+  it.each([undefined, "invalid-url", "ftp://app.nutricare.app"])(
+    "rejects invalid APP_URL configuration (%s) before account lookup",
+    async (appUrl) => {
+      vi.stubEnv("APP_URL", appUrl);
+      const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+      findUnique.mockResolvedValue({
+        id: "user-1",
+        email: "user@example.com",
+      });
 
-    findUnique.mockResolvedValue({
-      id: "user-1",
-      email: "user@example.com",
-    });
+      const request = new Request(
+        "https://attacker.example/api/auth/forgot-password",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: "user@example.com" }),
+        },
+      );
 
-    transaction.mockResolvedValue([]);
+      const response = await POST(request);
 
-    const request = new Request("https://attacker.example/api/auth/forgot-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "user@example.com" }),
-    });
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({
+        error: "Unable to process the password reset request right now.",
+      });
+      expect(findUnique).not.toHaveBeenCalled();
+      expect(transaction).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+      expect(deleteMany).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(errorLog).toHaveBeenCalledWith("Forgot-password route failed.");
+      expect(securityEventCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          type: "PASSWORD_RESET_REQUEST",
+          outcome: "FAILURE",
+        }),
+      });
+    },
+  );
 
-    const response = await POST(request);
+  it.each(["network", "provider", "cleanup"] as const)(
+    "keeps the public response identical on %s failure",
+    async (failure) => {
+      const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+      const makeRequest = () =>
+        new Request("https://nutricare.app/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: "user@example.com" }),
+        });
 
-    expect(response.status).toBe(500);
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(deleteMany).toHaveBeenCalledWith({
-      where: { tokenHash: expect.any(String) },
-    });
-  });
+      findUnique.mockResolvedValueOnce(null);
+      const unknownResponse = await POST(makeRequest());
+      const unknownBody = await unknownResponse.text();
 
-  it("removes the token when email delivery fails", async () => {
-    process.env.RESEND_API_KEY = "test-key";
-    process.env.CONTACT_FROM_EMAIL = "no-reply@nutricare.app";
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
 
-    findUnique.mockResolvedValue({
-      id: "user-1",
-      email: "user@example.com",
-    });
+      findUnique.mockResolvedValueOnce({
+        id: "user-1",
+        email: "user@example.com",
+      });
 
-    transaction.mockResolvedValue([]);
-    fetchMock.mockRejectedValue(new Error("Resend failure"));
+      if (failure === "provider") {
+        fetchMock.mockResolvedValueOnce(
+          new Response("Provider unavailable", { status: 503 }),
+        );
+      } else {
+        fetchMock.mockRejectedValueOnce(new Error("Resend failure"));
+      }
 
-    const request = new Request("https://nutricare.app/api/auth/forgot-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "user@example.com" }),
-    });
+      deleteMany.mockResolvedValueOnce({ count: 0 });
+      if (failure === "cleanup") {
+        deleteMany.mockRejectedValueOnce(new Error("Cleanup failed"));
+      } else {
+        deleteMany.mockResolvedValueOnce({ count: 1 });
+      }
 
-    const response = await POST(request);
+      const failedResponse = await POST(makeRequest());
+      const failedBody = await failedResponse.text();
 
-    expect(response.status).toBe(500);
-    expect(deleteMany).toHaveBeenCalledWith({
-      where: { tokenHash: expect.any(String) },
-    });
-    expect(securityEventCreate).toHaveBeenCalledWith({
-      data: {
-        type: "PASSWORD_RESET_REQUEST",
-        outcome: "FAILURE",
-        userId: null,
-        ipAddress: null,
-        userAgent: null,
-        metadata: undefined,
-      },
-    });
-  });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(unknownResponse.status).toBe(200);
+      expect(failedResponse.status).toBe(unknownResponse.status);
+      expect(failedResponse.headers.get("Content-Type")).toBe(
+        unknownResponse.headers.get("Content-Type"),
+      );
+      expect(failedBody).toBe(unknownBody);
+      expect(JSON.parse(failedBody)).toEqual({
+        ok: true,
+        message:
+          "If an account exists for that email, reset instructions will be sent shortly.",
+      });
+
+      const createdTokenHash = create.mock.calls[0][0].data.tokenHash;
+      expect(deleteMany).toHaveBeenLastCalledWith({
+        where: { tokenHash: createdTokenHash },
+      });
+      expect(errorLog).toHaveBeenCalledWith(
+        "Password reset email delivery failed.",
+      );
+      if (failure === "cleanup") {
+        expect(errorLog).toHaveBeenCalledWith(
+          "Failed to remove undelivered password reset token.",
+        );
+      }
+      expect(securityEventCreate).toHaveBeenCalledWith({
+        data: {
+          type: "PASSWORD_RESET_REQUEST",
+          outcome: "FAILURE",
+          userId: null,
+          ipAddress: null,
+          userAgent: null,
+          metadata: undefined,
+        },
+      });
+      expect(securityEventCreate).not.toHaveBeenCalledWith({
+        data: expect.objectContaining({ outcome: "SUCCESS" }),
+      });
+    },
+  );
 });

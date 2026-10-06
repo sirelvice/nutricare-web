@@ -786,9 +786,14 @@ test("user sees password reset service failure", async ({ page }) => {
 
   expect(resetResponse.status()).toBe(503);
 
-  await expect(
-    page.locator("p.text-sm.text-red-600"),
-  ).toBeVisible();
+  const recoveryAlert = page
+    .getByRole("region", { name: "Forgot Password?", exact: true })
+    .getByRole("alert");
+
+  await expect(recoveryAlert).toBeVisible();
+  await expect(recoveryAlert).toHaveText(
+    "Password reset is temporarily unavailable.",
+  );
 
   await expect(
     page.getByRole("heading", { name: "Forgot Password?" }),

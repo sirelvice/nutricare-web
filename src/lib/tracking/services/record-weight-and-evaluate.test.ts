@@ -214,4 +214,45 @@ describe("RecordWeightAndEvaluateService", () => {
       dependencies.evaluateAndRecordProgressService.execute,
     ).not.toHaveBeenCalled();
   });
+  it.each(["plan", "history", "evaluation"] as const)(
+    "returns the saved entry when the secondary %s step fails",
+    async (step) => {
+      const dependencies = createDependencies();
+      const failure = new Error("private progress failure");
+      if (step === "plan") dependencies.nutritionPlanRepository.findLatestByUserId.mockRejectedValueOnce(failure);
+      if (step === "history") dependencies.evaluationRepository.findLatestByPlanVersionId.mockRejectedValueOnce(failure);
+      if (step === "evaluation") dependencies.evaluateAndRecordProgressService.execute.mockRejectedValueOnce(failure);
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const service = new RecordWeightAndEvaluateService(
+          dependencies.recordWeightService,
+          dependencies.nutritionPlanRepository,
+          dependencies.evaluationRepository,
+          dependencies.evaluateAndRecordProgressService,
+        );
+        await expect(service.execute("user-1", entry)).resolves.toEqual({
+          entry: savedEntry, evaluationTriggered: false, evaluationFailed: true,
+        });
+        expect(dependencies.recordWeightService.execute).toHaveBeenCalledTimes(1);
+        expect(log).toHaveBeenCalledWith("Weight saved, but progress evaluation failed.", failure);
+      } finally { log.mockRestore(); }
+    },
+  );
+
+  it("propagates a failed weight save without attempting progress work", async () => {
+    const dependencies = createDependencies();
+    const failure = new Error("storage unavailable");
+    dependencies.recordWeightService.execute.mockRejectedValueOnce(failure);
+    const service = new RecordWeightAndEvaluateService(
+      dependencies.recordWeightService,
+      dependencies.nutritionPlanRepository,
+      dependencies.evaluationRepository,
+      dependencies.evaluateAndRecordProgressService,
+    );
+    await expect(service.execute("user-1", entry)).rejects.toBe(failure);
+    expect(dependencies.nutritionPlanRepository.findLatestByUserId).not.toHaveBeenCalled();
+    expect(dependencies.evaluationRepository.findLatestByPlanVersionId).not.toHaveBeenCalled();
+    expect(dependencies.evaluateAndRecordProgressService.execute).not.toHaveBeenCalled();
+  });
+
 });

@@ -16,6 +16,8 @@ vi.mock("@/lib/reco/service", () => ({
 }));
 
 import { GET } from "./route";
+import { RecommendationContextError } from "@/lib/reco/context-error";
+import { RecommendationEligibilityError, RECOMMENDATION_ELIGIBILITY_MESSAGES } from "@/lib/reco/eligibility";
 
 describe("GET /api/recommendations", () => {
   it("returns 401 when unauthenticated", async () => {
@@ -46,6 +48,7 @@ describe("GET /api/recommendations", () => {
     const response = await GET();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
 
     const body = await response.json();
 
@@ -67,6 +70,8 @@ describe("GET /api/recommendations", () => {
     const response = await GET();
 
     expect(response.status).toBe(422);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(await response.json()).toMatchObject({ code: "RECOMMENDATIONS_SETUP_REQUIRED" });
   });
 
   it("returns 500 when the service fails", async () => {
@@ -79,5 +84,31 @@ describe("GET /api/recommendations", () => {
     const response = await GET();
 
     expect(response.status).toBe(500);
+  });
+});
+
+
+describe("recommendation eligibility responses", () => {
+  it.each([
+    "RECOMMENDATIONS_AGE_REQUIRED", "RECOMMENDATIONS_AGE_UNSUPPORTED",
+  ] as const)("returns a recognised %s response without adult targets", async (code) => {
+    mockAuth.mockResolvedValue({ user: { id: "user-1" } });
+    mockExecute.mockRejectedValueOnce(new RecommendationEligibilityError(code));
+    const response = await GET();
+    expect(response.status).toBe(422);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(await response.json()).toEqual({ error: RECOMMENDATION_ELIGIBILITY_MESSAGES[code], code });
+  });
+});
+
+
+it("returns a recognised plan-review response without targets", async () => {
+  mockAuth.mockResolvedValue({ user: { id: "user-1" } });
+  mockExecute.mockRejectedValueOnce(new RecommendationContextError());
+  const response = await GET();
+  expect(response.status).toBe(409);
+  expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+  expect(await response.json()).toEqual({ code: "RECOMMENDATIONS_PLAN_REVIEW_REQUIRED",
+    error: "Your saved plan does not match your profile goal. Review your profile and nutrition plan before using this guidance.",
   });
 });

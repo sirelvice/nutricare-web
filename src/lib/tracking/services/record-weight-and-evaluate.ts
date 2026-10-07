@@ -12,6 +12,7 @@ export const PROGRESS_EVALUATION_CADENCE_DAYS = 7;
 export type RecordWeightAndEvaluateResult = {
   entry: WeightEntry;
   evaluationTriggered: boolean;
+  evaluationFailed?: boolean;
 };
 
 type RecordWeightService = Pick<RecordWeightEntryService, "execute">;
@@ -42,41 +43,52 @@ export class RecordWeightAndEvaluateService {
   ): Promise<RecordWeightAndEvaluateResult> {
     const savedEntry = await this.recordWeightService.execute(userId, entry);
 
-    const currentPlan =
-      await this.nutritionPlanRepository.findLatestByUserId(userId);
+    // Persistence is the primary operation. A later evaluation failure must
+    // not report a failed weight save or encourage another insert.
+    try {
+      const currentPlan =
+        await this.nutritionPlanRepository.findLatestByUserId(userId);
 
-    if (!currentPlan) {
-      return {
-        entry: savedEntry,
-        evaluationTriggered: false,
-      };
-    }
-
-    const latestEvaluation =
-      await this.evaluationRepository.findLatestByPlanVersionId(
-        userId,
-        currentPlan.id,
-      );
-
-    if (latestEvaluation) {
-      const evaluatedAt = new Date(latestEvaluation.evaluatedAt).getTime();
-      const now = Date.now();
-      const cadenceMs =
-        PROGRESS_EVALUATION_CADENCE_DAYS * 24 * 60 * 60 * 1000;
-
-      if (now - evaluatedAt < cadenceMs) {
+      if (!currentPlan) {
         return {
           entry: savedEntry,
           evaluationTriggered: false,
         };
       }
+
+      const latestEvaluation =
+        await this.evaluationRepository.findLatestByPlanVersionId(
+          userId,
+          currentPlan.id,
+        );
+
+      if (latestEvaluation) {
+        const evaluatedAt = new Date(latestEvaluation.evaluatedAt).getTime();
+        const now = Date.now();
+        const cadenceMs =
+          PROGRESS_EVALUATION_CADENCE_DAYS * 24 * 60 * 60 * 1000;
+
+        if (now - evaluatedAt < cadenceMs) {
+          return {
+            entry: savedEntry,
+            evaluationTriggered: false,
+          };
+        }
+      }
+
+      await this.evaluateAndRecordProgressService.execute(userId);
+
+      return {
+        entry: savedEntry,
+        evaluationTriggered: true,
+      };
+    } catch (error) {
+      console.error("Weight saved, but progress evaluation failed.", error);
+      return {
+        entry: savedEntry,
+        evaluationTriggered: false,
+        evaluationFailed: true,
+      };
     }
-
-    await this.evaluateAndRecordProgressService.execute(userId);
-
-    return {
-      entry: savedEntry,
-      evaluationTriggered: true,
-    };
   }
 }

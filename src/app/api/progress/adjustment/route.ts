@@ -20,42 +20,42 @@ const respondToAdjustmentSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 },
-    );
-  }
-
   try {
-    assertSameOrigin(req);
-  } catch (error) {
-    if (error instanceof InvalidRequestOriginError) {
+    const session = await auth();
+
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: error.message },
-        { status: 403 },
+        { error: "Authentication required." },
+        { status: 401 },
       );
     }
 
-    throw error;
-  }
+    try {
+      assertSameOrigin(req);
+    } catch (error) {
+      if (error instanceof InvalidRequestOriginError) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 403 },
+        );
+      }
 
-  const body = await req.json().catch(() => null);
-  const parsed = respondToAdjustmentSchema.safeParse(body);
+      throw error;
+    }
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid adjustment response." },
-      { status: 400 },
-    );
-  }
+    const body = await req.json().catch(() => null);
+    const parsed = respondToAdjustmentSchema.safeParse(body);
 
-  const userId = session.user.id;
-  const evaluationRepository = new PrismaProgressEvaluationRepository(prisma);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid adjustment response." },
+        { status: 400 },
+      );
+    }
 
-  try {
+    const userId = session.user.id;
+    const evaluationRepository = new PrismaProgressEvaluationRepository(prisma);
+
     if (parsed.data.decision === "DECLINED") {
       const service = new RespondToAdjustmentService(
         evaluationRepository,

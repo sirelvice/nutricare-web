@@ -1,7 +1,10 @@
+import { PlanEligibilityError } from "@/lib/nutrition-plan/eligibility";
 import { NutritionPlanConflictError } from "@/lib/nutrition-plan/errors";
 import { beforeEach, describe, expect, it, vi, type MockedFunction } from "vitest";
 import type { Session } from "next-auth";
 
+const profileFind = vi.hoisted(() => vi.fn());
+const latestExecute = vi.hoisted(() => vi.fn());
 const generateExecute = vi.hoisted(() => vi.fn());
 
 vi.mock("@/auth", () => ({
@@ -11,7 +14,7 @@ vi.mock("@/auth", () => ({
 vi.mock("@/lib/nutrition-plan/service", () => ({
   GetLatestNutritionPlanService: class {
     async execute() {
-      return undefined;
+      return latestExecute();
     }
   },
 }));
@@ -29,7 +32,7 @@ vi.mock("@/lib/nutrition-plan/prisma-repository", () => ({
 }));
 
 vi.mock("@/lib/profile/repositories/prisma-profile-repository", () => ({
-  PrismaProfileRepository: class {},
+  PrismaProfileRepository: class { findByUserId(userId: string) { return profileFind(userId); } },
 }));
 
 vi.mock("@/lib/tracking/repositories/prisma-weight-repository", () => ({
@@ -49,6 +52,8 @@ import { GET, POST } from "@/app/api/nutrition-plan/route";
 describe("/api/nutrition-plan", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    profileFind.mockResolvedValue({ age: 30 });
+    latestExecute.mockResolvedValue(undefined);
   });
 
   it("GET returns 401 when unauthenticated", async () => {
@@ -229,4 +234,28 @@ describe("/api/nutrition-plan", () => {
     }
   });
 
+});
+
+describe("nutrition plan eligibility", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMock.mockResolvedValue({ expires: "2026-12-31T23:59:59.999Z",
+      user: { id: "user-123", email: "user@example.com", name: "Test User", role: "USER" } } satisfies Session);
+  });
+  it.each([10, 19])("does not serve an existing adult plan for age %s", async (age) => {
+    profileFind.mockResolvedValue({ age });
+    const response = await GET();
+    expect(response.status).toBe(422);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(await response.json()).toMatchObject({ code: "NUTRITION_PLAN_AGE_UNSUPPORTED" });
+    expect(latestExecute).not.toHaveBeenCalled();
+  });
+  it("keeps age validation separate from incomplete weight setup", async () => {
+    generateExecute.mockRejectedValue(new PlanEligibilityError("age-required"));
+    const response = await POST(new Request("http://localhost:3000/api/nutrition-plan", {
+      method: "POST", headers: { Origin: "http://localhost:3000" },
+    }));
+    expect(response.status).toBe(422);
+    expect(await response.json()).toMatchObject({ code: "NUTRITION_PLAN_AGE_REQUIRED" });
+  });
 });

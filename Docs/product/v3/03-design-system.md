@@ -170,3 +170,23 @@ The intent is a calm, natural, human product voice. Punctuation should support c
 - AppShell renders one main content tree across mobile and desktop. Resizing preserves mounted form state.
 - Shell location labels do not create additional page headings.
 - Automated viewport and keyboard checks provide regression evidence; they do not replace the planned manual screen-reader and contrast review.
+
+## 14. Dashboard hierarchy and progress presentation
+
+- Mobile reading order: next action and setup, goal progress, weight snapshot, daily targets, personalised guidance, BMI context. Desktop groups related sections without changing that reading order.
+- Incomplete setup follows the existing profile, first-weight, and nutrition-plan sequence. Returning users have a visible path to log weight.
+- Setup completion is labelled as setup, not health progress. Targets are labelled as targets, not food consumed.
+- The dashboard uses existing card, foreground, muted, primary, accent, border, and destructive tokens. Static cards do not elevate on hover. Dashboard actions have 44px minimum heights.
+- `ProgressStatus` pairs a state-specific icon with a textual label. On-track uses primary; review uses an accent tint; plateau and insufficient data use calm muted treatments. Headlines, interpretation, and recommended actions come from the progress API. The UI does not interpret weight deltas as a progress state.
+- Weight history shows the latest seven measurements with actual UTC calendar dates. The separately loaded Recharts component is supplementary to a labelled measurement table and a plain-language caption. The chart itself is hidden from assistive technology to avoid duplicate or incomplete chart narration.
+- Loading animations respect reduced motion. Optional loading, missing setup data, and service failures remain distinct.
+- Viewport screenshots and keyboard/screen-reader/contrast review remain required evidence before calling the dashboard visual pass complete.
+
+- Greeting uses the first word of the authenticated display name when present, with a time-of-day-only fallback. It uses the shared session context, not a separate user lookup.
+- The detailed setup checklist is shown only while setup is incomplete. Returning users see a compact next-action panel and a small setup-complete label.
+
+- After generating or accepting a new plan, optional guidance and progress are refreshed independently of core content. Pending reads for the previous plan are cancelled, and the previous evaluation is cleared while refreshed data loads. Mutation feedback remains visible even when the new plan has no evaluation yet.
+
+- A new account with no profile, weight, or plan sees onboarding and a compact explanation instead of repeated empty metric cards. Optional failures remain visible, and any available data still enables the detailed dashboard.
+- Daily targets use two columns on narrow screens and four on large screens. Values and units can wrap without horizontal overflow.
+- The dashboard chart renders only after its container has positive measured dimensions. A ResizeObserver keeps it sized to its actual container and disconnects on unmount. Viewport tests check resize behavior and reject chart-size console warnings.

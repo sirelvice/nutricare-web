@@ -446,7 +446,7 @@ test("user can view the health report", async ({ page }) => {
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
 
@@ -644,7 +644,7 @@ test("user can export the health report as PDF", async ({ page }) => {
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
 
@@ -913,7 +913,7 @@ test("user can view and recalculate nutrition calories", async ({
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const initialPlanResponse = await initialPlanResponsePromise;
 
@@ -1116,7 +1116,7 @@ test("user can view current nutrition macros", async ({ page }) => {
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
 
@@ -1304,7 +1304,7 @@ test("user can view personalized nutrition recommendations", async ({
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
 
@@ -1504,7 +1504,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
 
@@ -1680,7 +1680,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
   await page.goto("/dashboard");
 
   await expect(
-    page.getByRole("button", { name: "Generate nutrition plan →" }),
+    page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }),
   ).toBeVisible();
 
   const planResponsePromise = page.waitForResponse(
@@ -1689,7 +1689,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
   if (planResponse.status() !== 201) {
@@ -1836,7 +1836,7 @@ test("user can decline a progress adjustment and keep the current plan", async (
   await page.goto("/dashboard");
 
   await expect(
-    page.getByRole("button", { name: "Generate nutrition plan →" }),
+    page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }),
   ).toBeVisible();
 
   const planResponsePromise = page.waitForResponse(
@@ -1845,7 +1845,7 @@ test("user can decline a progress adjustment and keep the current plan", async (
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
   if (planResponse.status() !== 201) {
@@ -2068,7 +2068,7 @@ test("user can accept a progress adjustment and see the new plan version in hist
   await page.goto("/dashboard");
 
   await expect(
-    page.getByRole("button", { name: "Generate nutrition plan →" }),
+    page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }),
   ).toBeVisible();
 
   const planResponsePromise = page.waitForResponse(
@@ -2077,7 +2077,7 @@ test("user can accept a progress adjustment and see the new plan version in hist
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
   if (planResponse.status() !== 201) {

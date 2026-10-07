@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { randomBytes, randomUUID } from "node:crypto";
+import { submitCredentialsAndWait } from "./helpers/sign-in";
 
 async function signIn(page: Page) {
   const octets = randomBytes(3);
@@ -18,8 +19,7 @@ async function signIn(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
+  await submitCredentialsAndWait(page);
 }
 
 async function mockCore(page: Page) {
@@ -152,13 +152,15 @@ for (const width of [375, 1280]) {
     await expect(main.getByText("Setup 100% complete")).toBeVisible();
     await expect(main.getByRole("heading", { level: 1 })).toHaveText(/Good (morning|afternoon|evening), Dashboard/);
     await expect(main.getByRole("progressbar", { name: "Account setup" })).toHaveCount(0);
+    await main.getByRole("button", { name: "Show information about weight snapshot", exact: true }).click();
     const disclosure = main.getByText("View measurement data", { exact: true });
     await disclosure.focus();
     await page.keyboard.press("Enter");
-    const table = main.getByRole("table", { name: "Recent weight measurements" });
+    const table = main.getByRole("table", { name: "Individual weight measurements" });
     await expect(table).toBeVisible();
     await expect(table.getByRole("rowheader", { name: "1 Oct 2026" })).toBeVisible();
     await expect(table.getByRole("rowheader", { name: "7 Oct 2026" })).toBeVisible();
+    await main.getByRole("button", { name: "Back to weight snapshot", exact: true }).click();
     const weightChart = main.getByRole("region", { name: "Weight snapshot" }).locator("svg.recharts-surface");
     await expect(weightChart).toBeVisible();
     await expect(weightChart).not.toHaveAttribute("tabindex", "0");
@@ -340,4 +342,144 @@ test("dashboard clears the old evaluation and preserves feedback after accepting
   await expect(progress.getByRole("heading", { name: "Evaluation for the previous plan" })).toHaveCount(0);
   await expect(progress.getByRole("status").filter({ hasText: "Your new plan is active (version 2)" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Your daily targets" })).toContainText("2200");
+});
+
+
+for (const sameDay of [false, true]) {
+  test(`dashboard weight chart supports 100 ${sameDay ? "same-day" : "dated"} measurements`, async ({ page }) => {
+    const warnings: string[] = [];
+    page.on("console", (message) => { if (message.text().includes("of chart should be greater than 0")) warnings.push(message.text()); });
+    await mockReadyDashboard(page);
+    const entries = Array.from({ length: 100 }, (_, index) => ({
+      id: `large-history-${index}`,
+      date: sameDay ? "2026-10-07" : new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
+      weightKg: 60 + index % 10,
+    }));
+    await page.route((url) => url.pathname === "/api/weight-entries", (route) => route.fulfill({ json: entries }));
+    await signIn(page);
+    const region = page.getByRole("region", { name: "Weight snapshot", exact: true });
+    const chart = region.locator("svg.recharts-surface");
+    await expect(chart).toBeVisible();
+    await expect(region.locator("[data-weight-chart-days]")).toHaveAttribute("data-weight-chart-days", sameDay ? "1" : "100");
+    await expect(region.getByText(/100 measurements/)).toBeVisible();
+    const lines = chart.locator("path.recharts-line-curve");
+    if (!sameDay) {
+      await expect(lines).toHaveCount(2);
+      for (const line of await lines.all()) {
+        expect(await line.getAttribute("d")).not.toMatch(/NaN|Infinity/);
+      }
+      await region.getByRole("combobox", { name: "Weight chart period", exact: true }).selectOption("30");
+      await expect(region.locator("[data-weight-chart-days]")).toHaveAttribute("data-weight-chart-days", "30");
+      await region.getByRole("combobox", { name: "Weight chart period", exact: true }).selectOption("all");
+    }
+    await region.getByRole("button", { name: "Show information about weight snapshot", exact: true }).click();
+    await region.getByText("View measurement data", { exact: true }).click();
+    const table = region.getByRole("table", { name: "Individual weight measurements", exact: true });
+    await expect(table.getByRole("row")).toHaveCount(101);
+    await region.getByRole("button", { name: "Back to weight snapshot", exact: true }).click();
+    for (const width of [375, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect.poll(async () => {
+        const bounds = await chart.boundingBox();
+        return !!bounds && bounds.width > 100 && bounds.height > 100;
+      }).toBe(true);
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
+    expect(warnings).toEqual([]);
+  });
+}
+
+
+test("weight snapshot toggles information without growing or losing its chart period", async ({ page }) => {
+  await mockReadyDashboard(page);
+  await signIn(page);
+  const region = page.getByRole("region", { name: "Weight snapshot", exact: true });
+  await expect(region.locator("svg.recharts-surface")).toBeVisible();
+  await region.getByRole("combobox", { name: "Weight chart period", exact: true }).selectOption("30");
+  const frontBounds = await region.boundingBox();
+  const toggle = region.getByRole("button", { name: "Show information about weight snapshot", exact: true });
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(region.getByRole("heading", { name: "How this chart works", exact: true })).toBeVisible();
+  await expect(region.getByRole("combobox", { name: "Weight chart period", exact: true })).toHaveCount(0);
+  const infoBounds = await region.boundingBox();
+  expect(frontBounds).not.toBeNull();
+  expect(infoBounds).not.toBeNull();
+  expect(Math.abs(infoBounds!.height - frontBounds!.height)).toBeLessThanOrEqual(1);
+  await region.getByRole("region", { name: "About weight snapshot", exact: true }).focus();
+  await page.keyboard.press("Escape");
+  await expect(region.getByRole("button", { name: "Show information about weight snapshot", exact: true })).toBeFocused();
+  await expect(region.getByRole("combobox", { name: "Weight chart period", exact: true })).toHaveValue("30");
+  await expect(region.locator("svg.recharts-surface")).toBeVisible();
+  await expect(region.getByRole("heading", { name: "How this chart works", exact: true })).toHaveCount(0);
+});
+
+
+test("dashboard blocks another adjustment when its save outcome is uncertain", async ({ page }) => {
+  await mockReadyDashboard(page);
+  await page.route((url) => url.pathname === "/api/progress", (route) => route.fulfill({ json: { progress: {
+    planVersionId: "plan-1",
+    evaluation: { id: "evaluation-1", state: "PLATEAU", changeKg: 0, entriesCount: 8,
+      evaluationDays: 14, evaluatedAt: "2026-10-07T00:00:00Z", headline: "Review your plan", summary: "A review is available." },
+    recommendation: { recommendedAction: "CONSIDER_ADJUSTMENT", reason: "consecutive_problem",
+      adjustmentDecision: "PENDING", respondedAt: null, message: "Consider adjusting your plan." },
+  } } }));
+  let writes = 0;
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  await page.route((url) => url.pathname === "/api/progress/adjustment", async (route) => {
+    writes += 1;
+    await gate;
+    await route.fulfill({ json: { unexpected: "This response cannot confirm a saved decision" } });
+  });
+  try {
+    await signIn(page);
+    const accept = page.getByRole("button", { name: "Use adjusted plan", exact: true });
+    await expect(accept).toBeEnabled();
+    await accept.evaluate((button) => {
+      if (button instanceof HTMLButtonElement) { button.click(); button.click(); }
+    });
+    await expect.poll(() => writes).toBe(1);
+    await expect(page.getByRole("button", { name: "Keep current plan", exact: true })).toBeDisabled();
+    release();
+    await expect(page.getByRole("main").getByRole("alert")).toHaveText("We could not confirm whether your decision was saved. Reload current progress before responding again.");
+    await expect(accept).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Reload current progress", exact: true })).toBeEnabled();
+    expect(writes).toBe(1);
+  } finally { release(); }
+});
+
+for (const path of ["/tools/calories", "/tools/macros"]) {
+  test(`${path} explains age restrictions without showing adult targets`, async ({ page }) => {
+    await mockReadyDashboard(page);
+    await page.route((url) => url.pathname === "/api/nutrition-plan", (route) => route.fulfill({ status: 422, json: {
+      code: "NUTRITION_PLAN_AGE_UNSUPPORTED", error: "Untrusted server text",
+    } }));
+    await signIn(page);
+    await page.goto(path);
+    await expect(page.getByRole("status").filter({ hasText: "20 and over" })).toBeVisible();
+    await expect(page.getByText("Untrusted server text", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Generate nutrition plan", exact: true })).toHaveCount(0);
+    await expect(page.getByText("2000", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Review profile", exact: true })).toBeVisible();
+  });
+}
+
+test("dashboard preserves weight history while hiding unsupported personalised targets", async ({ page }) => {
+  await mockReadyDashboard(page);
+  await page.route((url) => url.pathname === "/api/profile", (route) => route.fulfill({ json: {
+    heightCm: 175, age: 19, gender: "male", activity: "moderate", goal: "lose",
+  } }));
+  await page.route((url) => url.pathname === "/api/nutrition-plan", (route) => route.fulfill({ status: 422, json: {
+    code: "NUTRITION_PLAN_AGE_UNSUPPORTED",
+  } }));
+  await page.route((url) => url.pathname === "/api/recommendations", (route) => route.fulfill({ status: 422, json: {
+    code: "RECOMMENDATIONS_AGE_UNSUPPORTED",
+  } }));
+  await signIn(page);
+  await expect(page.getByRole("heading", { name: "Dashboard unavailable" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Weight snapshot", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Goal progress", exact: true }).getByRole("status")).toContainText("20 and over");
+  await expect(page.getByText("2000", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Interpretation from the progress service.", { exact: true })).toHaveCount(0);
 });

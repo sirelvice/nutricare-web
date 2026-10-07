@@ -1,3 +1,4 @@
+import { assertPlanAge, PlanEligibilityError } from "@/lib/nutrition-plan/eligibility";
 import { NextResponse } from "next/server";
 import { NutritionPlanConflictError } from "@/lib/nutrition-plan/errors";
 import { auth } from "@/auth";
@@ -19,6 +20,15 @@ import {
   internalServerError,
 } from "@/lib/api/errors";
 
+const profileRepository = new PrismaProfileRepository(prisma);
+
+function eligibilityResponse(error: PlanEligibilityError) {
+  return NextResponse.json({
+    error: error.message,
+    code: error.kind === "age-required" ? "NUTRITION_PLAN_AGE_REQUIRED" : "NUTRITION_PLAN_AGE_UNSUPPORTED",
+  }, { status: 422, headers: { "Cache-Control": "private, no-store" } });
+}
+
 const latestPlanService = new GetLatestNutritionPlanService(
   prismaNutritionPlanRepository
 );
@@ -37,10 +47,13 @@ export async function GET() {
       return unauthorized();
     }
 
-    const plan = await latestPlanService.execute(session.user.id);
+    const profile = await profileRepository.findByUserId(session.user.id);
+    if (profile) assertPlanAge(profile.age);
+    const plan = profile ? await latestPlanService.execute(session.user.id) : null;
 
-    return NextResponse.json({ plan });
+    return NextResponse.json({ plan }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
+    if (error instanceof PlanEligibilityError) return eligibilityResponse(error);
     console.error("GET /api/nutrition-plan failed", error);
 
     return internalServerError("Unable to load nutrition plan");
@@ -76,8 +89,9 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ plan }, { status: 201 });
+    return NextResponse.json({ plan }, { status: 201, headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
+    if (error instanceof PlanEligibilityError) return eligibilityResponse(error);
     if (error instanceof NutritionPlanConflictError) {
       return NextResponse.json(
         {

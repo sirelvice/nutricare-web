@@ -261,6 +261,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       setSidebarCollapsed(
         window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true",
       );
+    } catch {
+      // Retain the default expanded layout when storage is unavailable.
     } finally {
       setSidebarPreferenceReady(true);
     }
@@ -327,6 +329,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <button
           type="button"
           aria-label="Open navigation"
+          disabled={!sidebarPreferenceReady}
           aria-expanded={mobileOpen}
           aria-controls="mobile-workspace-navigation"
           onClick={() => setMobileOpen(true)}
@@ -394,6 +397,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               displayName={displayName}
               initials={initials}
               signingOut={signingOut}
+              ready={sidebarPreferenceReady}
               onSignOut={handleSignOut}
               onNavigate={() => setMobileOpen(false)}
             />
@@ -456,6 +460,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={toggleSidebar}
+              disabled={!sidebarPreferenceReady}
               aria-label={
                 sidebarCollapsed
                   ? "Expand NutriCare navigation"
@@ -504,6 +509,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               displayName={displayName}
               initials={initials}
               signingOut={signingOut}
+              ready={sidebarPreferenceReady}
               onSignOut={handleSignOut}
               branded
               collapsed={sidebarCollapsed}
@@ -565,6 +571,7 @@ function AccountArea({
   displayName,
   initials,
   signingOut,
+  ready = true,
   onSignOut,
   onNavigate,
   branded = false,
@@ -573,6 +580,7 @@ function AccountArea({
   displayName: string;
   initials: string;
   signingOut: boolean;
+  ready?: boolean;
   onSignOut: () => void;
   onNavigate?: () => void;
   branded?: boolean;
@@ -606,7 +614,7 @@ function AccountArea({
         <button
           type="button"
           onClick={onSignOut}
-          disabled={signingOut}
+          disabled={signingOut || !ready}
           aria-label={signingOut ? "Signing out" : "Sign out"}
           title={signingOut ? "Signing out" : "Sign out"}
           className="flex size-10 items-center justify-center rounded-xl border border-primary-foreground/15 bg-primary-foreground/5 text-primary-foreground transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-wait disabled:opacity-60"
@@ -695,7 +703,7 @@ function AccountArea({
         <button
           type="button"
           onClick={onSignOut}
-          disabled={signingOut}
+          disabled={signingOut || !ready}
           className={[
             "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-60",
             branded

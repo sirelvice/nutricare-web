@@ -12,6 +12,7 @@ import {
 type PlanState =
   | { status: "loading" }
   | { status: "error" }
+  | { status: "restricted"; kind: "age-required" | "age-unsupported" }
   | { status: "ready"; plan: NutritionPlan | null };
 
 export function useNutritionPlan() {
@@ -39,8 +40,11 @@ export function useNutritionPlan() {
       setGenerationBlocked(false);
       setFailure(null);
       setState({ status: "ready", plan });
-    } catch {
-      if (!controller.signal.aborted) setState({ status: "error" });
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setState(error instanceof PlanRequestError && (error.kind === "age-required" || error.kind === "age-unsupported")
+          ? { status: "restricted", kind: error.kind } : { status: "error" });
+      }
     } finally {
       if (readController.current === controller) readController.current = null;
     }
@@ -72,6 +76,10 @@ export function useNutritionPlan() {
     } catch (error) {
       if (controller.signal.aborted) return;
       const kind = error instanceof PlanRequestError ? error.kind : "uncertain";
+      if (kind === "age-required" || kind === "age-unsupported") {
+        setState({ status: "restricted", kind });
+        return;
+      }
       requiresReload.current = kind !== "prerequisites";
       setGenerationBlocked(kind !== "prerequisites");
       setFailure(kind);

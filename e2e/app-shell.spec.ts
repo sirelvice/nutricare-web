@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { submitCredentialsAndWait, waitForWorkspaceReady } from "./helpers/sign-in";
 
 const password = "NutriCareE2E!2026";
 
@@ -33,9 +34,7 @@ async function registerAndSignIn(page: Page) {
 
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-
-  await expect(page).toHaveURL(/\/dashboard/);
+  await submitCredentialsAndWait(page);
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -115,6 +114,7 @@ test("desktop workspace can collapse and remembers the preference", async ({
   ).toBeVisible();
 
   await page.reload();
+  await waitForWorkspaceReady(page);
 
   await expect(
     page.getByRole("button", { name: "Expand NutriCare navigation" }),
@@ -154,9 +154,12 @@ test("desktop workspace exposes the public site and sign out", async ({
     page.getByRole("button", { name: "Sign out" }),
   ).toBeVisible();
 
+  const signOutResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/auth/signout" && response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Sign out" }).click();
-
-  await expect(page).toHaveURL("/");
+  expect((await signOutResponse).ok()).toBe(true);
+  await expect(page).toHaveURL("/", { timeout: 15_000 });
 });
 
 test("mobile workspace uses the drawer navigation", async ({ page }) => {

@@ -4,6 +4,9 @@ import type { WeightRepository } from "@/lib/tracking/repositories/weight-reposi
 import type { NutritionPlanRepository } from "@/lib/nutrition-plan/repository";
 import { buildRecommendations, type BmiCategory } from "@/lib/reco/engine";
 
+import { RecommendationContextError } from "./context-error";
+import { assertRecommendationAge } from "./eligibility";
+
 export class GetRecommendationsService {
   constructor(
     private readonly profileRepository: ProfileRepository,
@@ -17,6 +20,8 @@ export class GetRecommendationsService {
     const profile = await this.profileRepository.findByUserId(userId);
     if (!profile || profile.heightCm === null) return null;
 
+    assertRecommendationAge(profile.age);
+
     const latestWeight =
       await this.weightRepository.findLatestByUserId(userId);
 
@@ -26,6 +31,7 @@ export class GetRecommendationsService {
       await this.nutritionPlanRepository.findLatestByUserId(userId);
 
     if (!nutritionPlan) return null;
+    if (nutritionPlan.goal !== profile.goal) throw new RecommendationContextError();
 
     const bmi = calcBMIKgM(latestWeight.weightKg, profile.heightCm);
 
@@ -50,6 +56,10 @@ export class GetRecommendationsService {
     });
 
     return {
+      context: {
+        plan: { id: nutritionPlan.id, version: nutritionPlan.version, goal: nutritionPlan.goal, createdAt: nutritionPlan.createdAt },
+        measurement: { date: latestWeight.date, weightKg: latestWeight.weightKg },
+      },
       bmi,
       category: categoryInfo,
       targetCalories: nutritionPlan.targetCalories,

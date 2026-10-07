@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useMemo, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { isSafeLoginPath } from "@/lib/security/login-redirect";
 import { PasswordField } from "@/components/auth/PasswordField";
@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function LoginForm() {
-  const router = useRouter();
   const sp = useSearchParams();
 
   const registered = sp.get("registered") === "1";
@@ -39,6 +38,7 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const submissionInFlight = useRef(false);
   const [msg, setMsg] = useState<{
     type: "error" | "success";
     text: string;
@@ -49,19 +49,11 @@ export default function LoginForm() {
     return e.includes("@") && e.length > 5 && password.length >= 6;
   }, [email, password]);
 
-  const handleSuccessfulLogin = () => {
-    setMsg({ type: "success", text: "Welcome back. Redirecting..." });
-
-    const target = nextUrl && isSafePath(nextUrl) ? nextUrl : "/dashboard";
-
-    setTimeout(() => {
-      router.replace(target);
-    }, 800);
-  };
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isValid || busy) return;
+    if (!isValid || submissionInFlight.current) return;
+    submissionInFlight.current = true;
+    let leavingPage = false;
 
     setBusy(true);
     setMsg(null);
@@ -81,14 +73,22 @@ export default function LoginForm() {
         return;
       }
 
-      handleSuccessfulLogin();
+      setMsg({ type: "success", text: "Welcome back. Redirecting..." });
+      const target = nextUrl && isSafePath(nextUrl) ? nextUrl : "/dashboard";
+      // Start a fresh document using the authenticated cookie instead of reusing
+      // a route that may have been prefetched while signed out.
+      window.location.replace(target);
+      leavingPage = true;
     } catch {
       setMsg({
         type: "error",
         text: "Unable to sign in right now. Please try again.",
       });
     } finally {
-      setBusy(false);
+      if (!leavingPage) {
+        submissionInFlight.current = false;
+        setBusy(false);
+      }
     }
   }
 

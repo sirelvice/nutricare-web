@@ -1386,6 +1386,8 @@ test("user can view personalized nutrition recommendations", async ({
     exact: true,
   })).toBeVisible();
 
+  await page.getByText("More about your guidance", { exact: true }).click();
+
   await expect(
     page.getByRole("heading", { name: "Top priorities", exact: true }),
   ).toBeVisible();

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { randomBytes, randomUUID } from "node:crypto";
+import { submitCredentialsAndWait } from "./helpers/sign-in";
 
 const plan = {
   id: "plan-1", version: 1, goal: "maintain", targetCalories: 2200,
@@ -19,18 +20,7 @@ async function signIn(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
-  const callbackPromise = page.waitForResponse((response) =>
-    new URL(response.url()).pathname === "/api/auth/callback/credentials",
-  );
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  const callback = await callbackPromise;
-  const result = await callback.json().catch(() => null) as { url?: string } | null;
-  const destination = result?.url ? new URL(result.url) : null;
-  expect(callback.status(), "Credentials callback HTTP status").toBeLessThan(400);
-  expect(destination?.searchParams.get("error"),
-    `Credentials callback error; code=${destination?.searchParams.get("code") ?? "none"}`,
-  ).toBeNull();
-  await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
+  await submitCredentialsAndWait(page);
 }
 
 const screens = [
@@ -61,9 +51,10 @@ for (const screen of screens) {
     test(`${screen.heading} retries a ${failure} read failure in place without showing an empty plan`, async ({ page }) => {
       await signIn(page);
       let reads = 0;
+      let available = false;
       await page.route((url) => url.pathname === "/api/nutrition-plan", (route) => {
         reads += 1;
-        if (reads === 1) return failure === "http"
+        if (!available) return failure === "http"
           ? route.fulfill({ status: 500, json: { error: "private server detail" } })
           : route.fulfill({ json: { plan: { ...plan, targetCalories: "invalid" } } });
         return route.fulfill({ json: { plan } });
@@ -74,9 +65,12 @@ for (const screen of screens) {
       await expect(main.getByText("No nutrition plan yet", { exact: true })).toHaveCount(0);
       await expect(main.getByRole("button", { name: /Generate nutrition plan|Recalculate plan/ })).toHaveCount(0);
       await page.evaluate(() => { (window as Window & { planningDocument?: string }).planningDocument = "unchanged"; });
+      const readsBeforeRetry = reads;
+      available = true;
       await main.getByRole("button", { name: "Try again", exact: true }).click();
       await expect(main.getByText("Goal: Maintain weight", { exact: true })).toBeVisible();
       await expect(main.getByRole("alert")).toHaveCount(0);
+      expect(reads).toBeGreaterThan(readsBeforeRetry);
       expect(await page.evaluate(() => (window as Window & { planningDocument?: string }).planningDocument)).toBe("unchanged");
     });
   }

@@ -1,437 +1,187 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardExplanation } from "@/components/ui/card-explanation";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
-import { summarize, type WeightEntry } from "@/lib/tracking/domain";
+import type { WeightEntry } from "@/lib/tracking/domain";
+import { readWeightHistory, saveWeightEntry, deleteWeightEntry, WeightSaveError } from "@/lib/tracking/client";
+import { parseWeightDraft } from "./weight-form";
 
 function todayISO() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 export default function WeightTrackingPage() {
   const [entries, setEntries] = useState<WeightEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-
-  useEffect(() => {
-    async function loadEntries() {
-      try {
-        const response = await fetch("/api/weight-entries");
-
-        if (!response.ok) {
-          throw new Error("Unable to load weight entries.");
-        }
-
-        const data = (await response.json()) as WeightEntry[];
-
-        setEntries(
-          data.filter(
-            (entry, index, current) =>
-              current.findIndex((item) => item.id === entry.id) === index,
-          ),
-        );
-      } catch {
-        setLoadError("Unable to load your weight history.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadEntries();
-  }, []);
-
-  const stats = useMemo(() => summarize(entries), [entries]);
-
-  const [date, setDate] = useState(todayISO());
-  const [weightKg, setWeightKg] = useState("");
+  const [revision, setRevision] = useState(0);
+  const [date, setDate] = useState(todayISO);
+  const [weight, setWeight] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [uncertain, setUncertain] = useState(false);
+  const [historyReviewed, setHistoryReviewed] = useState(false);
+  const needsReview = useRef(false);
+  const [pending, setPending] = useState("");
+  const mutation = useRef<AbortController | null>(null);
+  const read = useRef<AbortController | null>(null);
+  const mounted = useRef(false);
 
-  const valid = useMemo(() => {
-    const w = Number(weightKg);
-    return date.length === 10 && Number.isFinite(w) && w >= 20 && w <= 350;
-  }, [date, weightKg]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; mutation.current?.abort(); read.current?.abort(); };
+  }, []);
 
-  async function onAdd() {
-    if (!valid || saving) {
-      if (!valid) {
-        setError("Enter a valid date and weight (20–350kg).");
-      }
+  useEffect(() => {
+    const controller = new AbortController();
+    read.current = controller;
+    setLoading(true);
+    setLoadError("");
+    readWeightHistory(controller.signal).then((history) => {
+      if (controller.signal.aborted) return;
+      setEntries(history);
+      if (needsReview.current) setHistoryReviewed(true);
+    }).catch(() => {
+      if (!controller.signal.aborted) setLoadError("Unable to load your weight history.");
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+      if (read.current === controller) read.current = null;
+    });
+    return () => controller.abort();
+  }, [revision]);
+
+  function refreshHistory() {
+    if (mutation.current || read.current) return;
+    // Block writes synchronously until the new history request finishes.
+    setLoading(true);
+    setRevision((current) => current + 1);
+  }
+
+  async function onAdd(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (mutation.current || read.current || loading || loadError || uncertain) return;
+    const entry = parseWeightDraft(date, weight, note);
+    if (!entry) {
+      setError("Enter a valid date, a weight from 20 to 350 kg, and a note of up to 500 characters.");
+      document.getElementById(!parseWeightDraft(date, "70", "") ? "weight-date"
+        : note.trim().length > 500 ? "weight-note" : "weight-value")?.focus();
       return;
     }
-
-    setError("");
-    setSaving(true);
-
+    const controller = new AbortController();
+    mutation.current = controller;
+    setPending("save"); setError(""); setMessage("");
     try {
-      const response = await fetch("/api/weight-entries", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          date,
-          weightKg: Number(weightKg),
-          note: note.trim() ? note.trim() : undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-
-        throw new Error(data?.error || "Unable to add weight entry.");
-      }
-
-      const entry = (await response.json()) as WeightEntry;
-
-      setEntries((current) =>
-        [entry, ...current]
-          .filter(
-            (item, index, items) =>
-              items.findIndex((candidate) => candidate.id === item.id) === index,
-          )
-          .sort((a, b) => b.date.localeCompare(a.date)),
-      );
-      setWeightKg("");
-      setNote("");
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Unable to add weight entry.",
-      );
+      const result = await saveWeightEntry(entry, controller.signal);
+      if (!mounted.current) return;
+      setEntries((current) => [result.entry, ...current.filter((item) => item.id !== result.entry.id)]
+        .sort((a, b) => b.date.localeCompare(a.date)));
+      setWeight(""); setNote("");
+      setMessage(result.progressUnavailable
+        ? "Weight saved. Progress is temporarily unavailable. You do not need to save this entry again."
+        : "Weight saved.");
+    } catch (failure) {
+      if (!mounted.current) return;
+      const ambiguous = failure instanceof WeightSaveError ? failure.uncertain : true;
+      needsReview.current = ambiguous;
+      setHistoryReviewed(false);
+      setUncertain(ambiguous);
+      setError(failure instanceof WeightSaveError ? failure.message : "We could not confirm the save. Check your history before adding another entry.");
     } finally {
-      setSaving(false);
+      if (mutation.current === controller) mutation.current = null;
+      if (mounted.current) setPending("");
     }
   }
 
   async function onDelete(id: string) {
-    setError("");
-
+    if (mutation.current || read.current || loading || loadError || uncertain) return;
+    const controller = new AbortController();
+    mutation.current = controller;
+    setPending(id); setError(""); setMessage("");
     try {
-      const response = await fetch(`/api/weight-entries/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-
-        throw new Error(data?.error || "Unable to delete weight entry.");
-      }
-
+      await deleteWeightEntry(id, controller.signal);
+      if (!mounted.current) return;
       setEntries((current) => current.filter((entry) => entry.id !== id));
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Unable to delete weight entry.",
-      );
+      setMessage("Weight entry deleted.");
+    } catch {
+      if (mounted.current) setError("We could not confirm the deletion. Refresh your history to check the entry.");
+    } finally {
+      if (mutation.current === controller) mutation.current = null;
+      if (mounted.current) setPending("");
     }
   }
 
-  const latestDelta = useMemo(() => {
-    if (!stats || stats.count < 2) return null;
-
-    const sorted = [...entries].sort((a, b) =>
-      a.date > b.date ? 1 : -1,
-    );
-
-    const last = sorted[sorted.length - 1];
-    const prev = sorted[sorted.length - 2];
-
-    return Number((last.weightKg - prev.weightKg).toFixed(1));
-  }, [entries, stats]);
+  const disabled = loading || !!loadError || !!pending || uncertain;
+  const latest = entries[0];
+  const first = entries[entries.length - 1];
+  const change = latest && first ? Number((latest.weightKg - first.weightKg).toFixed(1)) : 0;
 
   return (
-    <div className="space-y-8">
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
-        <div className="max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">
-            Tracking tool
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-            Weight tracking
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Record your weight over time and use the history to understand how
-            your progress is changing.
-          </p>
-        </div>
-      </section>
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div><p className="text-xs font-medium uppercase tracking-wider text-primary">Your measurements</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Weight tracking</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Record a measurement. Follow the trend over time.</p></div>
+        <Link href="/tools/recommendations" className="text-sm font-medium text-primary underline-offset-4 hover:underline">View recommendations</Link>
+      </header>
 
-      {loading && (
-        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
-          <CardContent className="p-5">
-            <p className="text-sm text-slate-500">
-              Loading your weight history...
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {loadError && (
-        <Card className="rounded-2xl border-red-200 bg-red-50 shadow-sm">
-          <CardContent className="p-5">
-            <p className="text-sm font-medium text-red-700">{loadError}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              Keep your record current
-            </p>
-            <CardTitle className="mt-1 text-xl text-slate-950">
-              Add a weight entry
-            </CardTitle>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-6">
-          <div className="grid gap-5 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="weight-date">Date</Label>
-              <Input
-                id="weight-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="weight-value">Weight (kg)</Label>
-              <Input
-                id="weight-value"
-                value={weightKg}
-                onChange={(e) => setWeightKg(e.target.value)}
-                inputMode="decimal"
-                placeholder="e.g. 70.5"
-              />
-              <p className="text-xs text-slate-500">
-                Enter a value between 20 and 350 kg.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="weight-note">Note (optional)</Label>
-              <Input
-                id="weight-note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="e.g. after workout"
-              />
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center">
-            <Button onClick={onAdd} disabled={!valid || saving}>
-              {saving ? "Adding entry..." : "Add entry"}
-            </Button>
-
-            {error && (
-              <div
-                role="alert"
-                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-              >
-                {error}
-              </div>
-            )}
-          </div>
+      <Card>
+        <CardHeader><CardTitle>Add a weight entry</CardTitle></CardHeader>
+        <CardContent>
+          <form onSubmit={onAdd} noValidate className="space-y-4">
+            <fieldset disabled={disabled} className="grid min-w-0 gap-4 md:grid-cols-3">
+              <legend className="sr-only">Measurement details</legend>
+              <div className="min-w-0 space-y-2"><Label htmlFor="weight-date">Date</Label>
+                <Input id="weight-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} /></div>
+              <div className="space-y-2"><Label htmlFor="weight-value">Weight (kg)</Label>
+                <Input id="weight-value" inputMode="decimal" placeholder="e.g. 70.5" value={weight} onChange={(event) => setWeight(event.target.value)} aria-describedby="weight-hint" />
+                <p id="weight-hint" className="text-xs text-muted-foreground">20 to 350 kg</p></div>
+              <div className="space-y-2"><Label htmlFor="weight-note">Note (optional)</Label>
+                <Input id="weight-note" placeholder="e.g. after workout" maxLength={500} value={note} onChange={(event) => setNote(event.target.value)} /></div>
+            </fieldset>
+            <Button type="submit" disabled={disabled}>{pending === "save" ? "Adding entry..." : "Add entry"}</Button>
+            {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+            {message ? <p role="status" className="text-sm text-primary">{message}</p> : null}
+            {uncertain ? <div className="space-y-3 rounded-xl border p-4 text-sm">
+              <p>Refresh the history and review it. Only start another entry if the measurement is missing.</p>
+              <Button type="button" variant="outline" disabled={loading || !!pending} onClick={refreshHistory}>Check history</Button>
+              {historyReviewed && !loading && !loadError ? <Button type="button" variant="outline" onClick={() => { needsReview.current = false; setHistoryReviewed(false); setUncertain(false); setError(""); setWeight(""); setNote(""); }}>Start another entry</Button> : null}
+            </div> : null}
+          </form>
         </CardContent>
       </Card>
 
-      <section className="space-y-5">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Your progress
-          </p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
-            Weight summary
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            A quick view of your recorded weight and changes over time.
-          </p>
-        </div>
-
-        {stats ? (
-          <div className="grid gap-5 md:grid-cols-4">
-            <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md md:col-span-2">
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-slate-500">
-                  Latest weight
-                </p>
-                <div className="mt-2 text-4xl font-semibold tracking-tight text-slate-950">
-                  {stats.last.weightKg}
-                  <span className="ml-1 text-xl font-medium text-slate-500">
-                    kg
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500">
-                  Recorded on {stats.last.date}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-slate-500">
-                  Starting weight
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">
-                  {stats.first.weightKg}
-                  <span className="ml-1 text-base font-medium text-slate-500">
-                    kg
-                  </span>
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  First recorded entry
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-slate-500">
-                  Overall change
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">
-                  {stats.change > 0 ? "+" : ""}
-                  {stats.change}
-                  <span className="ml-1 text-base font-medium text-slate-500">
-                    kg
-                  </span>
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Since your first entry
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md md:col-span-2">
-              <CardContent className="p-6">
-                <p className="text-sm font-medium text-slate-500">
-                  Latest change
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">
-                  {latestDelta !== null
-                    ? `${latestDelta > 0 ? "+" : ""}${latestDelta} kg`
-                    : "—"}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Change between the two most recent entries
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border-slate-200 bg-slate-50 shadow-sm md:col-span-2">
-              <CardContent className="p-6">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Recorded entries
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">
-                  {stats.count}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  Keep recording consistently to build a clearer picture of
-                  your progress.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <Card className="rounded-2xl border-dashed border-slate-300 bg-slate-50 shadow-none">
-            <CardContent className="p-8 text-center">
-              <p className="text-base font-medium text-slate-800">
-                No weight entries yet
-              </p>
-              <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500">
-                Add your first weight above and your progress summary will
-                appear here.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </section>
-
-      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              Your record
-            </p>
-            <CardTitle className="mt-1 text-xl text-slate-950">
-              Weight history
-            </CardTitle>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-6">
-          {entries.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-              <p className="text-sm font-medium text-slate-700">
-                Your weight history will appear here
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Add an entry above to start building your record.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-xl border border-slate-200">
-              <div className="divide-y divide-slate-100">
-                {entries.map((entry, index) => (
-                  <div
-                    key={entry.id}
-                    className={`flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between ${
-                      index === 0 ? "bg-emerald-50/70" : "bg-white"
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-lg font-semibold text-slate-950">
-                          {entry.weightKg} kg
-                        </span>
-                        {index === 0 && (
-                          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800">
-                            Latest
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1 text-sm text-slate-600">
-                        {entry.date}
-                        {entry.note ? ` • ${entry.note}` : ""}
-                      </p>
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => onDelete(entry.id)}
-                      className="w-full sm:w-auto"
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {loading ? <p role="status" className="text-sm text-muted-foreground">Loading your weight history...</p> : loadError ? (
+        <div className="space-y-3 rounded-xl border border-destructive/20 p-5"><p role="alert" className="text-sm text-destructive">{loadError}</p>
+          <Button variant="outline" onClick={refreshHistory}>Try again</Button></div>
+      ) : <>
+        <section aria-label="Weight summary" className="grid gap-4 sm:grid-cols-3">
+          <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Latest weight</p>
+            <div className="mt-2 text-3xl font-semibold">{latest ? `${latest.weightKg} kg` : "Not recorded"}</div>
+            {latest ? <p className="mt-1 text-xs text-muted-foreground">{latest.date}</p> : <p className="mt-1 text-xs text-muted-foreground">No weight entries yet</p>}</CardContent></Card>
+          <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Overall change</p>
+            <p className="mt-2 text-3xl font-semibold">{entries.length > 1 ? `${change > 0 ? "+" : ""}${change} kg` : "Not enough entries"}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Since your first measurement</p></CardContent></Card>
+          <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Recorded entries</p>
+            <p className="mt-2 text-3xl font-semibold">{entries.length}</p>
+            <CardExplanation label="About your measurements">Day-to-day changes can reflect timing and hydration. Compare measurements taken in similar conditions.</CardExplanation></CardContent></Card>
+        </section>
+        <Card><CardHeader className="flex flex-wrap items-center justify-between gap-3"><CardTitle>Weight history</CardTitle>
+          <Button variant="outline" disabled={!!pending} onClick={refreshHistory}>Refresh history</Button></CardHeader>
+          <CardContent>{entries.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">Your weight history will appear here</p> : (
+            <ul className="divide-y" aria-label="Weight entries">{entries.map((entry, index) => <li key={entry.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+              <div className="min-w-0"><p className="font-semibold">{entry.weightKg} kg {index === 0 ? <span className="ml-2 text-xs font-normal text-muted-foreground">Latest</span> : null}</p>
+                <p className="mt-1 break-words text-sm text-muted-foreground">{entry.date}{entry.note ? ` • ${entry.note}` : ""}</p></div>
+              <Button variant="outline" disabled={disabled} onClick={() => onDelete(entry.id)}>{pending === entry.id ? "Deleting..." : "Delete"}</Button>
+            </li>)}</ul>
+          )}</CardContent></Card>
+      </>}
     </div>
   );
 }

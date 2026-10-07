@@ -1,9 +1,14 @@
 "use client";
 
+import { getPersonalisationAgeStatus } from "@/lib/profile/personalisation-eligibility";
+import { PLAN_ELIGIBILITY_MESSAGES } from "@/lib/nutrition-plan/eligibility";
+import { createNutritionPlan, PlanRequestError } from "@/lib/nutrition-plan/client";
+import { submitAdjustment, AdjustmentRequestError } from "@/lib/progress/adjustment-client";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
-import { ArrowRight, ArrowUpRight, CircleCheck, Scale, Utensils } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CircleCheck, Utensils } from "lucide-react";
+import { CardInfoPanel } from "@/components/ui/card-info-panel";
 import { CardExplanation } from "@/components/ui/card-explanation";
 import { ProgressStatus } from "@/components/progress/ProgressStatus";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -30,7 +35,7 @@ import {
 
 const WeightHistoryChart = dynamic(() => import("./WeightHistoryChart"), {
   ssr: false,
-  loading: () => <div role="status" className="flex h-40 items-center text-sm text-muted-foreground">Loading weight chart...</div>,
+  loading: () => <div role="status" className="flex h-36 items-center text-sm text-muted-foreground">Loading weight chart...</div>,
 });
 
 function getGreeting() {
@@ -116,6 +121,12 @@ export default function DashboardPage() {
     message: string;
   } | null>(null);
 
+  const adjustmentInFlight = useRef(false);
+  const adjustmentRequiresReload = useRef(false);
+  const planInFlight = useRef(false);
+  const planRequiresReload = useRef(false);
+  const [adjustmentBlocked, setAdjustmentBlocked] = useState(false);
+  const [planBlocked, setPlanBlocked] = useState(false);
   const [adjustmentSubmitting, setAdjustmentSubmitting] = useState(false);
   const [adjustmentError, setAdjustmentError] = useState<string | null>(null);
   const [adjustmentSuccess, setAdjustmentSuccess] = useState<string | null>(null);
@@ -221,7 +232,8 @@ export default function DashboardPage() {
     decision: "ACCEPTED" | "DECLINED",
   ) {
     if (
-      adjustmentSubmitting ||
+      adjustmentInFlight.current || adjustmentRequiresReload.current ||
+      !profile || getPersonalisationAgeStatus(profile.age) !== "ready" ||
       !progressEvaluation ||
       !progressRecommendation ||
       progressRecommendation.recommendedAction !== "CONSIDER_ADJUSTMENT" ||
@@ -230,6 +242,7 @@ export default function DashboardPage() {
       return;
     }
 
+    adjustmentInFlight.current = true;
     setAdjustmentSubmitting(true);
     setAdjustmentError(null);
     setAdjustmentSuccess(null);
@@ -239,25 +252,7 @@ export default function DashboardPage() {
         throw new Error("Current progress evaluation is unavailable.");
       }
 
-      const response = await fetch("/api/progress/adjustment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          evaluationId: progressEvaluation.id,
-          decision,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(
-          data?.error || "Unable to record your adjustment decision.",
-        );
-      }
-
-      const result = await response.json();
+      const result = await submitAdjustment(progressEvaluation.id, decision);
 
       setProgressRecommendation((current) =>
         current
@@ -278,12 +273,16 @@ export default function DashboardPage() {
         refreshInsights();
       }
     } catch (error) {
+      const blocked = !(error instanceof AdjustmentRequestError) || error.kind !== "rejected";
+      adjustmentRequiresReload.current = blocked;
+      setAdjustmentBlocked(blocked);
       setAdjustmentError(
         error instanceof Error
           ? error.message
           : "Unable to record your adjustment decision.",
       );
     } finally {
+      adjustmentInFlight.current = false;
       setAdjustmentSubmitting(false);
     }
   }
@@ -296,6 +295,7 @@ export default function DashboardPage() {
     )[0];
   }, [weightEntries]);
 
+  const ageStatus = profile ? getPersonalisationAgeStatus(profile.age) : null;
   const hasProfile = !!(profile?.heightCm && profile?.age);
   const hasWeight = !!latestWeight;
   const hasCalories = !!nutritionPlan;
@@ -309,33 +309,27 @@ export default function DashboardPage() {
   });
 
   async function generateNutritionPlan() {
-    if (generating) return;
+    if (planInFlight.current || planRequiresReload.current) return;
+    planInFlight.current = true;
     setGenerating(true);
     setGenerationError(null);
     setGenerationSuccess(false);
-
     try {
-      const response = await fetch("/api/nutrition-plan", {
-        method: "POST",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Unable to generate nutrition plan.");
-      }
-
-      setNutritionPlan(data.plan);
+      const plan = await createNutritionPlan(new AbortController().signal);
+      setNutritionPlan(plan);
       setGenerationSuccess(true);
       refreshInsights();
     } catch (error) {
-      console.error("Failed to generate nutrition plan:", error);
-      setGenerationError(
-        error instanceof Error
-          ? error.message
-          : "Unable to generate nutrition plan.",
-      );
+      const kind = error instanceof PlanRequestError ? error.kind : "uncertain";
+      const blocked = kind === "conflict" || kind === "uncertain";
+      planRequiresReload.current = blocked;
+      setPlanBlocked(blocked);
+      setGenerationError(kind === "age-required" || kind === "age-unsupported"
+        ? PLAN_ELIGIBILITY_MESSAGES[kind]
+        : kind === "prerequisites" ? "Complete your profile and record your current weight before generating a plan."
+        : "We could not confirm your current plan. Reload your dashboard before generating another plan.");
     } finally {
+      planInFlight.current = false;
       setGenerating(false);
     }
   }
@@ -350,8 +344,7 @@ export default function DashboardPage() {
     label: "Log your weight", href: "/tools/tracking/weight",
   };
   const recentWeights = useMemo(() => [...weightEntries]
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-7), [weightEntries]);
+    .sort((a, b) => a.date.localeCompare(b.date)), [weightEntries]);
 
   const rec = recommendations?.recommendations ?? null;
 
@@ -416,7 +409,7 @@ export default function DashboardPage() {
               <Link href={nextAction.href}>{nextAction.label}<ArrowRight aria-hidden="true" /></Link>
             </Button>
           ) : (
-            <Button size="lg" className="w-full sm:w-auto" onClick={generateNutritionPlan} disabled={generating}>
+            <Button size="lg" className="w-full sm:w-auto" onClick={generateNutritionPlan} disabled={generating || planBlocked || (ageStatus !== null && ageStatus !== "ready")}>
               {generating ? "Generating..." : nextAction.label}
               <ArrowRight aria-hidden="true" />
             </Button>
@@ -456,9 +449,11 @@ export default function DashboardPage() {
             <CardContent>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 id="progress-heading" className="text-lg font-semibold tracking-tight">Goal progress</h2>
-                {!progressLoading && !progressLoadError && progressEvaluation && <ProgressStatus state={progressEvaluation.state} />}
+                {ageStatus === "ready" && !progressLoading && !progressLoadError && progressEvaluation && <ProgressStatus state={progressEvaluation.state} />}
               </div>
-              {progressLoading ? (
+              {ageStatus && ageStatus !== "ready" ? (
+                <p role="status" className="mt-6 text-sm leading-6">{PLAN_ELIGIBILITY_MESSAGES[ageStatus]}</p>
+              ) : progressLoading ? (
                 <p role="status" className="mt-6 text-sm text-muted-foreground">Loading progress...</p>
               ) : progressLoadError ? (
                 <p role="status" className="mt-6 rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm leading-6">{getOptionalLoadMessage("progress")}</p>
@@ -473,12 +468,13 @@ export default function DashboardPage() {
                       {progressRecommendation.recommendedAction === "CONSIDER_ADJUSTMENT" && progressRecommendation.adjustmentDecision === "PENDING" && (
                         <div className="mt-4 space-y-3">
                           <div className="flex flex-col gap-2 sm:flex-row">
-                            <Button size="lg" onClick={() => respondToAdjustment("ACCEPTED")} disabled={adjustmentSubmitting}>
+                            <Button size="lg" onClick={() => respondToAdjustment("ACCEPTED")} disabled={adjustmentSubmitting || adjustmentBlocked}>
                               {adjustmentSubmitting ? "Saving..." : "Use adjusted plan"}
                             </Button>
-                            <Button size="lg" variant="outline" onClick={() => respondToAdjustment("DECLINED")} disabled={adjustmentSubmitting}>Keep current plan</Button>
+                            <Button size="lg" variant="outline" onClick={() => respondToAdjustment("DECLINED")} disabled={adjustmentSubmitting || adjustmentBlocked}>Keep current plan</Button>
                           </div>
                           {adjustmentError && <p role="alert" className="text-sm text-destructive">{adjustmentError}</p>}
+                          {adjustmentBlocked && <Button variant="outline" onClick={() => window.location.reload()}>Reload current progress</Button>}
                         </div>
                       )}
                       {!adjustmentSuccess && progressRecommendation.recommendedAction === "CONSIDER_ADJUSTMENT" && progressRecommendation.adjustmentDecision !== "PENDING" && (
@@ -503,30 +499,33 @@ export default function DashboardPage() {
         <section aria-labelledby="weight-heading" className="min-w-0">
           <Card className="shadow-none">
             <CardContent>
-              <div className="flex items-center justify-between gap-4">
-                <h2 id="weight-heading" className="text-lg font-semibold tracking-tight">Weight snapshot</h2>
-                <Scale className="size-5 text-primary" aria-hidden="true" />
-              </div>
-              {latestWeight ? (
-                <figure className="mt-5">
-                  <p className="text-3xl font-semibold tracking-tight tabular-nums">{latestWeight.weightKg} <span className="text-base font-normal text-muted-foreground">kg</span></p>
-                  <p className="mt-1 text-xs text-muted-foreground">Recorded {formatRecordedDate(latestWeight.date)}</p>
-                  <div className="mt-5"><WeightHistoryChart entries={recentWeights} /></div>
-                  <figcaption className="mt-3 text-xs leading-5 text-muted-foreground">
-                    Your latest {recentWeights.length} {recentWeights.length === 1 ? "measurement" : "measurements"}. Progress is interpreted against your plan, not this chart alone.
-                  </figcaption>
-                  <details className="mt-4 rounded-xl border">
-                    <summary className="min-h-11 cursor-pointer rounded-xl px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">View measurement data</summary>
-                    <div className="px-4 pb-4">
+              <CardInfoPanel
+                title="Weight snapshot" titleId="weight-heading"
+                front={latestWeight ? <div className="space-y-3">
+                  <div>
+                    <p className="text-3xl font-semibold tracking-tight tabular-nums">{latestWeight.weightKg} <span className="text-base font-normal text-muted-foreground">kg</span></p>
+                    <p className="mt-1 text-xs text-muted-foreground">Recorded {formatRecordedDate(latestWeight.date)}</p>
+                  </div>
+                  <WeightHistoryChart entries={recentWeights} />
+                </div> : <p className="mt-6 text-sm leading-6 text-muted-foreground">Your first measurement gives you a starting point. Your weight history will appear here.</p>}
+                information={<>
+                  <h3 className="font-semibold">How this chart works</h3>
+                  <p>Multiple measurements on one date are averaged. Individual values remain in the measurement table.</p>
+                  <p>The seven-day trend averages recorded daily means within each seven-day window. Missing days are not filled in.</p>
+                  <p>The vertical axis follows the displayed values. Chart periods end on your latest recorded date.</p>
+                  <p>Progress is interpreted against your plan, not this chart alone.</p>
+                  {recentWeights.length > 0 ? <details className="rounded-xl border bg-card">
+                    <summary className="min-h-11 cursor-pointer rounded-xl px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">View measurement data</summary>
+                    <div className="max-h-48 overflow-auto px-3 pb-3" tabIndex={0} role="region" aria-label="Individual weight measurements">
                       <table className="w-full text-left text-sm tabular-nums">
-                        <caption className="sr-only">Recent weight measurements</caption>
+                        <caption className="sr-only">Individual weight measurements</caption>
                         <thead><tr className="border-b"><th scope="col" className="py-2 font-medium">Date</th><th scope="col" className="py-2 text-right font-medium">Weight (kg)</th></tr></thead>
                         <tbody>{recentWeights.map((entry) => <tr key={entry.id} className="border-b last:border-0"><th scope="row" className="py-2 font-normal text-muted-foreground">{formatRecordedDate(entry.date)}</th><td className="py-2 text-right">{entry.weightKg}</td></tr>)}</tbody>
                       </table>
                     </div>
-                  </details>
-                </figure>
-              ) : <p className="mt-6 text-sm leading-6 text-muted-foreground">Your first measurement gives you a starting point. Your weight history will appear here.</p>}
+                  </details> : null}
+                </>}
+              />
               <Button asChild variant="ghost" size="lg" className="mt-4"><Link href="/tools/tracking/weight">Weight history <ArrowUpRight aria-hidden="true" /></Link></Button>
             </CardContent>
           </Card>
@@ -561,6 +560,7 @@ export default function DashboardPage() {
         </Card>
       </section>
 
+      {planBlocked && <Button variant="outline" onClick={() => window.location.reload()}>Reload current plan</Button>}
       <div className="grid items-start gap-6 lg:grid-cols-3">
         <section aria-labelledby="guidance-heading" className="lg:col-span-2">
           <Card className="shadow-none">
@@ -568,6 +568,7 @@ export default function DashboardPage() {
               <h2 id="guidance-heading" className="text-lg font-semibold tracking-tight">Personalised guidance</h2>
               {recommendationsLoading ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading recommendations...</p>
                 : recommendationsLoadError ? <p role="status" className="mt-5 rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm leading-6">{getOptionalLoadMessage("recommendations")}</p>
+                : ageStatus && ageStatus !== "ready" ? <p role="status" className="mt-5 text-sm leading-6">{PLAN_ELIGIBILITY_MESSAGES[ageStatus]}</p>
                 : rec ? <p className="mt-5 text-sm leading-7 text-muted-foreground">{rec.summary}</p>
                 : <p className="mt-5 text-sm leading-6 text-muted-foreground">Complete your profile to get personalised recommendations.</p>}
               <Button asChild variant="outline" size="lg" className="mt-5"><Link href="/tools/recommendations">View recommendations <ArrowUpRight aria-hidden="true" /></Link></Button>
@@ -580,6 +581,7 @@ export default function DashboardPage() {
               <h2 id="bmi-heading" className="text-lg font-semibold tracking-tight">BMI context</h2>
               {recommendationsLoading ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading BMI information...</p>
                 : recommendationsLoadError ? <p className="mt-5 text-sm leading-6 text-muted-foreground">BMI information is temporarily unavailable. Your other dashboard information is still available.</p>
+                : ageStatus && ageStatus !== "ready" ? <p className="mt-5 text-sm leading-6">Personalised BMI context is unavailable for this profile. Review your age in your profile.</p>
                 : recommendations ? <div className="mt-5"><p className="text-3xl font-semibold tabular-nums">{recommendations.bmi.toFixed(1)}</p><p className="mt-2 text-sm text-muted-foreground">{recommendations.category.label}</p></div>
                 : <p className="mt-5 text-sm leading-6 text-muted-foreground">Calculate your BMI to see your current reading.</p>}
               <p className="mt-4 text-xs leading-5 text-muted-foreground">BMI is a screening measure, not a diagnosis. It does not capture all health factors.</p>

@@ -1,6 +1,6 @@
+import { readNutritionPlan, PlanRequestError } from "@/lib/nutrition-plan/client";
 import type { UserProfile } from "@/lib/profile/domain";
 import type { WeightEntry } from "@/lib/tracking/domain";
-import type { NutritionPlan } from "@/lib/nutrition-plan/domain";
 import type { GetRecommendationsService } from "@/lib/reco/service";
 import type { CurrentProgressResult } from "@/lib/progress/get-current-progress-service";
 
@@ -29,7 +29,10 @@ export async function loadDashboardCore(signal: AbortSignal) {
   const [profile, weightEntries, planResponse] = await Promise.all([
     readRequired<UserProfile | null>("/api/profile", signal),
     readRequired<WeightEntry[]>("/api/weight-entries", signal),
-    readRequired<{ plan: NutritionPlan | null }>("/api/nutrition-plan", signal),
+    readNutritionPlan(signal).then((plan) => ({ plan })).catch((error: unknown) => {
+      if (error instanceof PlanRequestError && (error.kind === "age-required" || error.kind === "age-unsupported")) return { plan: null };
+      throw error;
+    }),
   ]);
 
   if (

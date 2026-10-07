@@ -1,5 +1,7 @@
 "use client";
 
+import { PLAN_ELIGIBILITY_MESSAGES } from "@/lib/nutrition-plan/eligibility";
+
 import Link from "next/link";
 import { CardExplanation } from "@/components/ui/card-explanation";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,9 @@ export function NutritionPlanView({ view }: { view: "calories" | "macros" }) {
             </div> : state.status === "error" ? <div className="space-y-4 py-2">
               <p role="alert" className="text-sm leading-6 text-destructive">Unable to load your nutrition plan. Try again before making changes.</p>
               <Button onClick={() => void reload()} variant="outline" className="min-h-11">Try again</Button>
+            </div> : state.status === "restricted" ? <div className="space-y-4 py-2">
+              <p role="status" className="text-sm leading-6">{PLAN_ELIGIBILITY_MESSAGES[state.kind]}</p>
+              <Button asChild variant="outline" className="min-h-11"><Link href="/profile">Review profile</Link></Button>
             </div> : <>
               {failure ? <div className="space-y-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4">
                 <p role="alert" className="text-sm leading-6 text-destructive">

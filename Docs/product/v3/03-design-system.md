@@ -178,7 +178,7 @@ The intent is a calm, natural, human product voice. Punctuation should support c
 - Setup completion is labelled as setup, not health progress. Targets are labelled as targets, not food consumed.
 - The dashboard uses existing card, foreground, muted, primary, accent, border, and destructive tokens. Static cards do not elevate on hover. Dashboard actions have 44px minimum heights.
 - `ProgressStatus` pairs a state-specific icon with a textual label. On-track uses primary; review uses an accent tint; plateau and insufficient data use calm muted treatments. Headlines, interpretation, and recommended actions come from the progress API. The UI does not interpret weight deltas as a progress state.
-- Weight history shows the latest seven measurements with actual UTC calendar dates. The separately loaded Recharts component is supplementary to a labelled measurement table and a plain-language caption. The chart itself is hidden from assistive technology to avoid duplicate or incomplete chart narration.
+- Weight history retains all valid measurements and groups repeated dates into daily means. The chart provides all-recorded, latest-30-day and latest-90-day views ending on the latest recorded date. A labelled table retains individual measurements. The chart itself is hidden from assistive technology to avoid duplicate or incomplete narration.
 - Loading animations respect reduced motion. Optional loading, missing setup data, and service failures remain distinct.
 - Viewport screenshots and keyboard/screen-reader/contrast review remain required evidence before calling the dashboard visual pass complete.
 
@@ -200,3 +200,12 @@ The intent is a calm, natural, human product voice. Punctuation should support c
 - Supporting explanations use `CardExplanation`, a native `details`/`summary` disclosure. It works with keyboard and touch, has a visible focus treatment, and respects reduced motion. It does not hide key numbers, primary actions, errors or goal-change consequences.
 - Profile hints and target captions stay short. Dashboard target numbers and units remain visible while optional calculation detail is collapsed. Service-provided progress interpretations are preserved.
 - Personal plan state remains local to the mounted view. No global cache of user data, new dependency or offline persistence is introduced in this slice.
+
+## 16. Tracking, guidance and compact card information
+
+- Weight tracking uses a labelled form, persistent save feedback and separate loading, empty and failed-read states. A saved measurement remains successful when secondary progress evaluation fails. Unconfirmed saves require a history read and an explicit decision to start another entry.
+- Recommendations put next actions first. Optional reasons, meal examples and source detail use disclosures; essential warnings stay visible. Guidance identifies the saved plan version and measurement date. A profile/plan goal mismatch gets a review state instead of conflicting targets.
+- Shared age eligibility defines the current product scope: personalised planning and recommendations support ages 20 and over. Missing or invalid ages get a profile action; younger users retain measurement tracking without adult personalised targets. This is a product boundary, not a declaration that all users above the boundary are clinically suitable.
+- `CardInfoPanel` switches between a compact front and an information view with an Info/Close button, accessible name, expanded state and controlled region. Inactive content uses `hidden`; Escape restores the front and focuses the toggle. The chart stays mounted so its selected period survives switching. No 3D animation is required.
+- Weight-chart daily averages and seven-calendar-day means are distinguished by solid and dashed lines, textual labels and a numeric axis. Missing dates are not zero-filled. Sparse ticks and reduced point markers support longer histories; the raw measurement table remains available in the information view.
+- Calculation detail can move behind a disclosure, but errors, primary actions and material limitations cannot. Chart aggregation does not replace service-derived progress interpretation.

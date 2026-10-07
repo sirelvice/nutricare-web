@@ -131,3 +131,12 @@ V2 left this open (`The width(-1) and height(-1) of chart should be greater than
 - Workspace location labels are paragraphs; the page owns its primary heading.
 - API hardening tests compare public status, content type, and serialized response bodies where account disclosure is the concern.
 - A tracked checkpoint separates verified changes from outstanding investigations. See `04-slice-2-checkpoint.md`.
+
+## 13. Slice 5 durable platform patterns
+
+- Persist the primary weight entry before optional progress evaluation. Secondary failures return the saved entry with an explicit progress-unavailable signal instead of reporting a failed insert.
+- Client contracts validate saved responses and distinguish rejected, conflicting and unconfirmed writes. Synchronous guards prevent duplicate activation; unconfirmed writes require an explicit read or reload, never an automatic mutation retry. This does not supply server idempotency across tabs or devices.
+- Planning and recommendation services share age eligibility. Recommendation responses identify their plan and measurement context; progress context must match the plan ID. Curated rules and versioned content remain the guidance source. No external AI or food-data integration is introduced.
+- Successful login performs an immediate validated internal document replacement and retains its submission lock until navigation. Shell interaction controls wait for preference initialization, including the unavailable-storage fallback.
+- Feature tests distinguish credential callback success, document navigation and workspace readiness. Failure mocks remain unavailable until the test explicitly enables recovery, avoiding incidental background reads consuming a one-request failure.
+- See `07-slice-5-checkpoint.md` for observed verification, data implications and remaining limits.

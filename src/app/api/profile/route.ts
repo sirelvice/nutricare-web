@@ -1,5 +1,6 @@
+import { GoalChangeError, goalChangeFeedback } from "@/lib/profile/goal-change-errors";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { profileSchema } from "@/lib/profile/schema";
 import { auth } from "@/auth";
 import {
   assertSameOrigin,
@@ -9,7 +10,7 @@ import { prisma } from "@/lib/db";
 import { GetProfileService } from "@/lib/profile/services/get-profile";
 import { SaveProfileService } from "@/lib/profile/services/save-profile";
 import { ChangeGoalService } from "@/lib/profile/services/change-goal";
-import { PrismaGoalChangeWorkflowRepository } from "@/lib/profile/repositories/goal-change-workflow-repository";
+import { GoalChangeConflictError, PrismaGoalChangeWorkflowRepository } from "@/lib/profile/repositories/goal-change-workflow-repository";
 import { PrismaWeightRepository } from "@/lib/tracking/repositories/prisma-weight-repository";
 import { prismaNutritionPlanRepository } from "@/lib/nutrition-plan/prisma-repository";
 import { PrismaProfileRepository } from "@/lib/profile/repositories/prisma-profile-repository";
@@ -18,20 +19,6 @@ import {
   badRequest,
   internalServerError,
 } from "@/lib/api/errors";
-
-const profileSchema = z.object({
-  heightCm: z.number().min(80).max(250).nullable(),
-  age: z.number().int().min(10).max(120).nullable(),
-  gender: z.enum(["male", "female", "other"]),
-  activity: z.enum([
-    "sedentary",
-    "light",
-    "moderate",
-    "active",
-    "very_active",
-  ]),
-  goal: z.enum(["lose", "maintain", "gain"]),
-});
 
 export async function GET() {
   const session = await auth();
@@ -100,6 +87,11 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(profile, { status: 200 });
   } catch (error) {
+    if (error instanceof GoalChangeError || error instanceof GoalChangeConflictError) {
+      const code = error instanceof GoalChangeError ? error.code : "GOAL_CHANGE_CONFLICT";
+      const feedback = goalChangeFeedback[code];
+      return NextResponse.json({ error: feedback.message, code }, { status: feedback.status });
+    }
     if (error instanceof Error && error.message === "Invalid profile") {
       return badRequest("Invalid profile data.");
     }

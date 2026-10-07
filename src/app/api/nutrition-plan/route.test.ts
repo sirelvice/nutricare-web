@@ -1,3 +1,4 @@
+import { NutritionPlanConflictError } from "@/lib/nutrition-plan/errors";
 import { beforeEach, describe, expect, it, vi, type MockedFunction } from "vitest";
 import type { Session } from "next-auth";
 
@@ -184,6 +185,48 @@ describe("/api/nutrition-plan", () => {
 
     expect(response.status).toBe(403);
     expect(generateExecute).not.toHaveBeenCalled();
+  });
+
+  it("POST returns a safe conflict response when another request creates the same version", async () => {
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: { id: "user-123", email: "user@example.com", name: "Test User", role: "USER" },
+    } satisfies Session);
+    generateExecute.mockRejectedValueOnce(new NutritionPlanConflictError());
+
+    const response = await POST(new Request("http://localhost:3000/api/nutrition-plan", {
+      method: "POST",
+      headers: { Origin: "http://localhost:3000" },
+    }));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "Your nutrition plan changed while this request was being processed. Reload your current plan before trying again.",
+      code: "NUTRITION_PLAN_CONFLICT",
+    });
+    expect(generateExecute).toHaveBeenCalledWith("user-123");
+  });
+
+  it("POST keeps unexpected storage failures generic", async () => {
+    authMock.mockResolvedValue({
+      expires: "2026-12-31T23:59:59.999Z",
+      user: { id: "user-123", email: "user@example.com", name: "Test User", role: "USER" },
+    } satisfies Session);
+    generateExecute.mockRejectedValueOnce(new Error("private database detail"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const response = await POST(new Request("http://localhost:3000/api/nutrition-plan", {
+        method: "POST",
+        headers: { Origin: "http://localhost:3000" },
+      }));
+
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: "Unable to create nutrition plan" });
+      expect(log).toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+    }
   });
 
 });

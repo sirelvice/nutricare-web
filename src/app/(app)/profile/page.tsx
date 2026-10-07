@@ -1,365 +1,284 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { CardExplanation } from "@/components/ui/card-explanation";
+import Link from "next/link";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { ArrowRight, CheckCircle2, LoaderCircle, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { getGoalChangeFeedback } from "@/lib/profile/goal-change-errors";
+import { profileSchema } from "@/lib/profile/schema";
 import type { ActivityLevel } from "@/lib/calc/metabolism";
 import type { UserProfile } from "@/lib/profile/domain";
+import { emptyProfile, parseProfileDraft, toProfileDraft, type ProfileDraft } from "./profile-form";
 
-const activityOptions: { value: ActivityLevel; label: string; hint: string }[] = [
-  { value: "sedentary", label: "Sedentary", hint: "Little or no activity" },
-  { value: "light", label: "Light", hint: "1–3 days/week" },
-  { value: "moderate", label: "Moderate", hint: "3–5 days/week" },
-  { value: "active", label: "Active", hint: "6–7 days/week" },
-  { value: "very_active", label: "Very active", hint: "Very intense / physical job" },
+const activities: { value: ActivityLevel; label: string }[] = [
+  { value: "sedentary", label: "Sedentary: little or no activity" },
+  { value: "light", label: "Light: 1 to 3 days a week" },
+  { value: "moderate", label: "Moderate: 3 to 5 days a week" },
+  { value: "active", label: "Active: 6 to 7 days a week" },
+  { value: "very_active", label: "Very active: intense activity or physical work" },
 ];
+const goalLabels = { lose: "Lose weight", maintain: "Maintain weight", gain: "Gain weight" };
+class ProfileRequestError extends Error {}
+
+const selectClass = "h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function ProfilePage() {
-  const [draft, setDraft] = useState<UserProfile>({
-    heightCm: null,
-    gender: "other",
-    age: null,
-    activity: "sedentary",
-    goal: "maintain",
-  });
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [draft, setDraft] = useState<ProfileDraft>(() => toProfileDraft(emptyProfile));
+  const [persisted, setPersisted] = useState<UserProfile | null>(null);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
+  const [retry, setRetry] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [saveAction, setSaveAction] = useState<"weight" | "reload" | null>(null);
+  const [edited, setEdited] = useState(false);
+  const [touched, setTouched] = useState<Partial<Record<keyof ProfileDraft, boolean>>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const savingGuard = useRef(false);
+  const mutation = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    async function loadProfile() {
+    const controller = new AbortController();
+    async function load() {
+      setLoadState("loading");
       try {
-        const response = await fetch("/api/profile");
-
-        if (!response.ok) {
-          throw new Error("Unable to load profile.");
-        }
-
-        const data = (await response.json()) as UserProfile | null;
-
-        if (data) {
-          setDraft(data);
-        }
+        const response = await fetch("/api/profile", {
+          signal: controller.signal, cache: "no-store", credentials: "same-origin",
+        });
+        if (!response.ok) throw new Error("Profile read failed");
+        const data: unknown = await response.json();
+        const profile = data === null ? null : profileSchema.parse(data);
+        if (controller.signal.aborted) return;
+        setPersisted(profile);
+        setDraft(toProfileDraft(profile ?? emptyProfile));
+        setEdited(false);
+        setLoadState("ready");
       } catch {
-        setLoadError("Unable to load your profile.");
-      } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoadState("error");
       }
     }
+    void load();
+    return () => controller.abort();
+  }, [retry]);
 
-    loadProfile();
-  }, []);
+  useEffect(() => () => mutation.current?.abort(), []);
 
-  const valid = useMemo(() => {
-    const hOk = draft.heightCm === null || (draft.heightCm >= 80 && draft.heightCm <= 250);
-    const aOk = draft.age === null || (draft.age >= 10 && draft.age <= 120);
-    return hOk && aOk;
-  }, [draft]);
-
-
-
-  function update<K extends keyof UserProfile>(key: K, value: UserProfile[K]) {
+  const parsed = parseProfileDraft(draft);
+  const errors: Partial<Record<keyof ProfileDraft, string>> = {};
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const field = issue.path[0] as keyof ProfileDraft;
+      if (field === "heightCm") errors.heightCm = "Enter a height between 80 and 250 cm, or leave it blank.";
+      else if (field === "age") errors.age = "Enter a whole number between 10 and 120, or leave it blank.";
+      else errors[field] = "Choose one of the available options.";
+    }
+  }
+  function visibleError(field: keyof ProfileDraft) {
+    return (submitted || touched[field]) ? errors[field] : undefined;
+  }
+  function update<K extends keyof ProfileDraft>(key: K, value: ProfileDraft[K]) {
+    setDraft((current) => ({ ...current, [key]: value }));
     setSaved(false);
-    setDraft((p) => ({ ...p, [key]: value }));
+    setSaveError("");
+    setSaveAction(null);
+    setEdited(true);
+  }
+  function blur(field: keyof ProfileDraft) {
+    setTouched((current) => ({ ...current, [field]: true }));
   }
 
-  async function onSave() {
-    if (!valid || saving) return;
-
-    setSaved(false);
+  async function onSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (loadState !== "ready" || savingGuard.current || saveAction === "reload") return;
+    setSubmitted(true);
+    if (!parsed.success) {
+      setSaveError("Check the highlighted fields before saving.");
+      const ids = { heightCm: "height-cm", age: "age-years", gender: "gender", activity: "activity-level", goal: "goal" };
+      const field = parsed.error.issues[0]?.path[0] as keyof typeof ids;
+      document.getElementById(ids[field])?.focus();
+      return;
+    }
+    savingGuard.current = true;
     setSaving(true);
-    setLoadError("");
-
+    setSaved(false);
+    setSaveError("");
+    const controller = new AbortController();
+    mutation.current = controller;
     try {
       const response = await fetch("/api/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(draft),
+        method: "PUT", signal: controller.signal, credentials: "same-origin",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed.data),
       });
-
       if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-
-        throw new Error(data?.error || "Unable to save profile.");
+        const feedback = getGoalChangeFeedback(response.status, await response.json().catch(() => null));
+        if (feedback) {
+          setSaveAction(feedback.code === "GOAL_CHANGE_CONFLICT" ? "reload"
+            : feedback.code === "GOAL_CHANGE_WEIGHT_REQUIRED" ? "weight" : null);
+          throw new ProfileRequestError(feedback.message);
+        }
+        throw new ProfileRequestError(response.status === 401
+          ? "Your session has expired. Sign in again before saving."
+          : "We could not save your profile. Your changes are still here. Please try again.");
       }
-
-      const profile = (await response.json()) as UserProfile;
-      setDraft(profile);
+      const profile = profileSchema.parse(await response.json());
+      if (controller.signal.aborted) return;
+      setPersisted(profile);
+      setDraft(toProfileDraft(profile));
+      setEdited(false);
       setSaved(true);
-
-      window.setTimeout(() => setSaved(false), 1500);
+      setSaveAction(null);
+      setSubmitted(false);
+      setTouched({});
     } catch (error) {
-      setLoadError(
-        error instanceof Error
+      if (!controller.signal.aborted) {
+        setSaveError(error instanceof ProfileRequestError
           ? error.message
-          : "Unable to save profile.",
-      );
+          : "We could not confirm the save. Your changes are still here. Check your saved profile before trying again.");
+      }
     } finally {
-      setSaving(false);
+      savingGuard.current = false;
+      if (!controller.signal.aborted) setSaving(false);
     }
   }
 
+  const goalChanged = persisted !== null && draft.goal !== persisted.goal;
+  const disabled = loadState !== "ready" || saving || saveAction === "reload";
+
   return (
-    <div className="space-y-8">
-      {/* HEADER */}
-      <div className="max-w-3xl">
-        <p className="text-sm font-medium text-primary">Personal settings</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950">
-          Your profile
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
-          Keep your details up to date so NutriCare can calculate your daily
-          needs and personalise your recommendations.
+    <div className="space-y-6">
+      <header className="max-w-2xl">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Personal settings</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">Your profile</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          Set the details used for your nutrition plan.
         </p>
-      </div>
+      </header>
 
-      {loading && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          Loading your profile...
+      {loadState === "loading" && (
+        <div role="status" className="flex items-center gap-2 rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+          <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> Loading your profile...
+        </div>
+      )}
+      {loadState === "error" && (
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+          <p role="alert" className="text-sm text-destructive">Unable to load your profile. Try again before making changes.</p>
+          <Button type="button" variant="outline" className="mt-3 min-h-11" onClick={() => setRetry((value) => value + 1)}>
+            <RotateCcw className="size-4" aria-hidden="true" /> Try again
+          </Button>
         </div>
       )}
 
-      {loadError && (
-        <div
-          role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
-          {loadError}
-        </div>
-      )}
-
-      {/* CURRENT SETUP */}
-      <Card className="overflow-hidden rounded-3xl border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 shadow-sm">
-        <CardHeader className="pb-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Current setup
-            </p>
-            <CardTitle className="mt-1 text-xl text-slate-950">
-              Your profile at a glance
-            </CardTitle>
-          </div>
-        </CardHeader>
-
-        <CardContent className="pt-0">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Height
-              </p>
-              <p className="mt-2 text-xl font-semibold text-slate-950">
-                {draft.heightCm ?? "—"}
-                <span className="ml-1 text-sm font-medium text-slate-500">
-                  cm
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
+        <Card className="min-w-0 shadow-none">
+          <CardHeader className="border-b">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-lg">Your details</CardTitle>
+              {loadState === "ready" && (
+                <span className="text-xs text-muted-foreground">
+                  {edited ? "Unsaved changes" : persisted ? "Saved profile" : "New profile"}
                 </span>
-              </p>
+              )}
             </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form noValidate onSubmit={onSave} aria-label="Profile details" aria-busy={saving}>
+              <fieldset disabled={disabled} className="min-w-0 space-y-5">
+                <legend className="mb-4 text-sm font-semibold">About you</legend>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="height-cm">Height (cm)</Label>
+                    <Input id="height-cm" inputMode="decimal" className="h-11 rounded-xl"
+                      value={draft.heightCm} onChange={(event) => update("heightCm", event.target.value)}
+                      onBlur={() => blur("heightCm")} aria-invalid={!!visibleError("heightCm")}
+                      aria-describedby={`height-hint${visibleError("heightCm") ? " height-error" : ""}`} />
+                    <p id="height-hint" className="text-xs leading-5 text-muted-foreground">Optional. 80 to 250 cm.</p>
+                    {visibleError("heightCm") && <p id="height-error" className="text-xs leading-5 text-destructive">{visibleError("heightCm")}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="age-years">Age (years)</Label>
+                    <Input id="age-years" inputMode="numeric" className="h-11 rounded-xl"
+                      value={draft.age} onChange={(event) => update("age", event.target.value)}
+                      onBlur={() => blur("age")} aria-invalid={!!visibleError("age")}
+                      aria-describedby={`age-hint${visibleError("age") ? " age-error" : ""}`} />
+                    <p id="age-hint" className="text-xs leading-5 text-muted-foreground">Optional. Whole years, 10 to 120.</p>
+                    {visibleError("age") && <p id="age-error" className="text-xs leading-5 text-destructive">{visibleError("age")}</p>}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Gender</Label>
+                  <select id="gender" value={draft.gender} className={selectClass}
+                    onChange={(event) => update("gender", event.target.value as UserProfile["gender"])}
+                    aria-describedby="gender-hint">
+                    <option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
+                  </select>
+                  <p id="gender-hint" className="text-xs leading-5 text-muted-foreground">Other uses an averaged energy estimate.</p>
+                </div>
+              </fieldset>
 
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Age
-              </p>
-              <p className="mt-2 text-xl font-semibold text-slate-950">
-                {draft.age ?? "—"}
-                {draft.age !== null && (
-                  <span className="ml-1 text-sm font-medium text-slate-500">
-                    years
-                  </span>
+              <fieldset disabled={disabled} className="mt-6 min-w-0 space-y-5 border-t pt-6">
+                <legend className="px-0 text-sm font-semibold">Your routine and goal</legend>
+                <div className="space-y-2">
+                  <Label htmlFor="activity-level">Activity level</Label>
+                  <select id="activity-level" className={selectClass} value={draft.activity}
+                    onChange={(event) => update("activity", event.target.value as ActivityLevel)} aria-describedby="activity-hint">
+                    {activities.map((activity) => <option key={activity.value} value={activity.value}>{activity.label}</option>)}
+                  </select>
+                  <p id="activity-hint" className="text-xs leading-5 text-muted-foreground">Match your usual week.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="goal">Your goal</Label>
+                  <select id="goal" value={draft.goal} className={selectClass}
+                    onChange={(event) => update("goal", event.target.value as UserProfile["goal"])}>
+                    {Object.entries(goalLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                {goalChanged && (
+                  <div className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm leading-6">
+                    <p className="font-medium">Changing your saved goal creates a new nutrition plan.</p>
+                    <p className="mt-1 text-muted-foreground">You need height, age and a recorded weight. Earlier plans and progress stay in your history.</p>
+                  </div>
                 )}
-              </p>
-            </div>
+              </fieldset>
 
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Goal
-              </p>
-              <p className="mt-2 text-base font-semibold text-slate-950">
-                {draft.goal === "gain"
-                  ? "Gain weight"
-                  : draft.goal === "lose"
-                    ? "Lose weight"
-                    : draft.goal === "maintain"
-                      ? "Maintain weight"
-                      : "Not set"}
-              </p>
-            </div>
+              <div className="mt-6 space-y-4 border-t pt-5">
+                {saveError && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm leading-6 text-destructive">{saveError}</p>}
+                {saveAction === "weight" && <Link href="/tools/tracking/weight" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Record your weight</Link>}
+                {saveAction === "reload" && <div className="space-y-2">
+                  <p className="text-xs leading-5 text-muted-foreground">Reloading replaces your unsaved edits with the saved profile.</p>
+                  <Button type="button" variant="outline" className="min-h-11" onClick={() => {
+                    setSaveAction(null); setSaveError(""); setSaved(false);
+                    setTouched({}); setSubmitted(false); setLoadState("loading");
+                    setRetry((value) => value + 1);
+                  }}>Reload saved profile</Button>
+                </div>}
+                {saved && <p role="status" className="flex items-center gap-2 text-sm text-primary"><CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />Profile saved.</p>}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <Button type="submit" disabled={disabled} className="min-h-11 sm:min-w-36">
+                    {saving ? "Saving..." : "Save profile"}
+                  </Button>
+                  {saved && <Link href="/dashboard" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    Continue to dashboard <ArrowRight className="size-4" aria-hidden="true" />
+                  </Link>}
+                </div>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
 
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Activity
-              </p>
-              <p className="mt-2 text-base font-semibold text-slate-950">
-                {activityOptions.find((opt) => opt.value === draft.activity)?.label ??
-                  "Not set"}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* FORM */}
-      <Card className="rounded-3xl border-slate-200 bg-white shadow-sm">
-        <CardHeader className="border-b border-slate-100">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Personal information
-          </p>
-          <CardTitle className="mt-1 text-xl text-slate-950">
-            Your details
-          </CardTitle>
-          <p className="text-sm leading-6 text-slate-600">
-            These details are used to support your nutrition and progress
-            calculations.
-          </p>
-        </CardHeader>
-
-        <CardContent className="space-y-6 pt-6">
-          {/* HEIGHT + AGE */}
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="height-cm">Height (cm)</Label>
-              <Input
-                id="height-cm"
-                className="h-11 rounded-xl"
-                value={draft.heightCm ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value.trim();
-                  update("heightCm", v ? Number(v) : null);
-                }}
-              />
-              <p className="text-xs leading-5 text-slate-500">
-                Enter your height in centimetres.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="age-years">Age (years)</Label>
-              <Input
-                id="age-years"
-                className="h-11 rounded-xl"
-                value={draft.age ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value.trim();
-                  update("age", v ? Number(v) : null);
-                }}
-              />
-              <p className="text-xs leading-5 text-slate-500">
-                Your current age in years.
-              </p>
-            </div>
-          </div>
-
-          {/* GENDER + GOAL */}
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="gender">Gender</Label>
-              <select
-                id="gender"
-                value={draft.gender ?? ""}
-                onChange={(e) =>
-                  update(
-                    "gender",
-                    e.target.value as "male" | "female" | "other",
-                  )
-                }
-                className="h-11 w-full rounded-xl border border-slate-200 bg-background px-3 text-sm shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-              <p className="text-xs leading-5 text-slate-500">
-                Used when calculating personalised daily needs.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="goal">Your goal</Label>
-              <select
-                id="goal"
-                value={draft.goal ?? ""}
-                onChange={(e) =>
-                  update(
-                    "goal",
-                    e.target.value as "lose" | "maintain" | "gain",
-                  )
-                }
-                className="h-11 w-full rounded-xl border border-slate-200 bg-background px-3 text-sm shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="" disabled>
-                  Select goal
-                </option>
-                <option value="lose">Lose weight</option>
-                <option value="maintain">Maintain weight</option>
-                <option value="gain">Gain weight</option>
-              </select>
-              <p className="text-xs leading-5 text-slate-500">
-                This shapes your progress tracking and recommendations.
-              </p>
-            </div>
-          </div>
-
-          {/* ACTIVITY */}
-          <div className="space-y-2">
-            <Label htmlFor="activity-level">Activity level</Label>
-            <select
-              id="activity-level"
-              value={draft.activity ?? ""}
-              onChange={(e) =>
-                update("activity", e.target.value as ActivityLevel)
-              }
-              className="h-11 w-full rounded-xl border border-slate-200 bg-background px-3 text-sm shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="">Select activity level</option>
-              {activityOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label} — {opt.hint}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs leading-5 text-slate-500">
-              Choose the level that best reflects your usual weekly activity.
-            </p>
-          </div>
-
-          {/* SAVE */}
-          <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center">
-            <Button
-              onClick={onSave}
-              disabled={!valid || saving}
-              size="lg"
-            >
-              {saving ? "Saving..." : saved ? "Saved ✓" : "Save profile"}
-            </Button>
-
-            <p className="text-xs leading-5 text-slate-500">
-              Your profile is securely saved to your account.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* NEXT STEP */}
-      <Card className="rounded-2xl border-slate-200 bg-slate-50 shadow-none">
-        <CardContent className="p-5 sm:p-6">
-          <p className="text-sm font-semibold text-slate-950">
-            Keep your profile up to date
-          </p>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-            When your details change, update your profile so your dashboard,
-            tracking and recommendations continue to reflect your current
-            information.
-          </p>
-        </CardContent>
-      </Card>
+        <aside className="space-y-4" aria-label="About your profile">
+          <p className="px-1 text-sm leading-6 text-muted-foreground">You can save now and finish setup later.</p>
+          <CardExplanation label="How your profile shapes your plan">
+            <p>Your details inform your energy estimate. Your goal guides the plan.</p>
+            <p>Add height, age and a weight entry before generating your first plan.</p>
+            <p>After changing other details, recalculate your plan to refresh its targets.</p>
+          </CardExplanation>
+          {persisted && <p className="px-1 text-xs leading-5 text-muted-foreground">Saved goal: {goalLabels[persisted.goal]}. Changes apply when you save.</p>}
+        </aside>
+      </div>
     </div>
   );
-
 }

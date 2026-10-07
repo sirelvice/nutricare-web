@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { NutritionPlanConflictError } from "@/lib/nutrition-plan/errors";
 import { auth } from "@/auth";
 import {
   assertSameOrigin,
@@ -77,6 +78,17 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ plan }, { status: 201 });
   } catch (error) {
+    if (error instanceof NutritionPlanConflictError) {
+      return NextResponse.json(
+        {
+          error:
+            "Your nutrition plan changed while this request was being processed. Reload your current plan before trying again.",
+          code: "NUTRITION_PLAN_CONFLICT",
+        },
+        { status: 409 },
+      );
+    }
+
     console.error("POST /api/nutrition-plan failed", error);
 
     return internalServerError("Unable to create nutrition plan");

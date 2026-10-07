@@ -7,6 +7,8 @@ import type { Goal, UserProfile } from "../domain";
 
 export class GoalChangeWorkflowError extends Error {}
 
+export class GoalChangeConflictError extends GoalChangeWorkflowError {}
+
 export interface GoalChangeWorkflowRepository {
   changeGoal(
     userId: string,
@@ -94,13 +96,13 @@ export class PrismaGoalChangeWorkflowRepository
       });
 
       if ((latestPlan?.id ?? null) !== expectedCurrentPlanId) {
-        throw new GoalChangeWorkflowError(
+        throw new GoalChangeConflictError(
           "Nutrition plan has changed since the goal was loaded",
         );
       }
 
       if (latestPlan && latestPlan.goal !== toPrismaGoal(expectedCurrentGoal)) {
-        throw new GoalChangeWorkflowError(
+        throw new GoalChangeConflictError(
           "Nutrition plan goal does not match the current profile goal",
         );
       }
@@ -120,7 +122,7 @@ export class PrismaGoalChangeWorkflowRepository
       });
 
       if (updated.count !== 1) {
-        throw new GoalChangeWorkflowError(
+        throw new GoalChangeConflictError(
           "Goal changed since the profile was loaded",
         );
       }

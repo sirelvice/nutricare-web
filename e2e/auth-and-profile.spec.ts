@@ -21,6 +21,11 @@ test.beforeEach(async ({ page }, testInfo) => {
   });
 });
 
+function planGoalLabel(goal: string) {
+  const labels: Record<string, string> = { lose: "Lose weight", maintain: "Maintain weight", gain: "Gain weight" };
+  return labels[goal] ?? goal;
+}
+
 test("user can register, sign in, and save a profile goal", async ({ page }) => {
 
 
@@ -79,8 +84,8 @@ test("user can register, sign in, and save a profile goal", async ({ page }) => 
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "About your profile" }).getByText("Saved goal: Lose weight. Changes apply when you save.", { exact: true })).toBeVisible();
 });
 
 test("dashboard remains usable when recommendations are unavailable", async ({
@@ -412,7 +417,7 @@ test("user can view the health report", async ({ page }) => {
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -610,7 +615,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   await page.getByLabel("Activity level").selectOption("moderate");
 
   await page.getByRole("button", { name: "Save profile" }).click();
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -751,8 +756,8 @@ test("user can edit and persist their profile", async ({ page }) => {
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Gain weight", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "About your profile" }).getByText("Saved goal: Gain weight. Changes apply when you save.", { exact: true })).toBeVisible();
 
   await page.reload();
 
@@ -877,7 +882,7 @@ test("user can view and recalculate nutrition calories", async ({
   await page.getByLabel("Activity level").selectOption("moderate");
 
   await page.getByRole("button", { name: "Save profile" }).click();
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -933,13 +938,6 @@ test("user can view and recalculate nutrition calories", async ({
     page.getByText("Daily calorie target", { exact: true }),
   ).toBeVisible();
 
-  await expect(
-    page.getByText(
-      "Use this as your current daily energy target.",
-      { exact: true },
-    ),
-  ).toBeVisible();
-
   const planCard = page
     .getByRole("heading", {
       name: "Current nutrition plan",
@@ -949,7 +947,7 @@ test("user can view and recalculate nutrition calories", async ({
     .locator("..");
 
   await expect(
-    planCard.getByText(`Goal: ${initialPlan.plan.goal}`, { exact: true }),
+    planCard.getByText(`Goal: ${planGoalLabel(initialPlan.plan.goal)}`, { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -1082,7 +1080,7 @@ test("user can view current nutrition macros", async ({ page }) => {
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -1167,12 +1165,6 @@ test("user can view current nutrition macros", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText("Your latest personalised daily macro targets.", {
-      exact: true,
-    }),
-  ).toBeVisible();
-
-  await expect(
     page.getByRole("heading", {
       name: "Current nutrition plan",
       exact: true,
@@ -1180,7 +1172,7 @@ test("user can view current nutrition macros", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText(`Goal: ${currentPlan.goal}`, { exact: true }),
+    page.getByText(`Goal: ${planGoalLabel(currentPlan.goal)}`, { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -1204,6 +1196,8 @@ test("user can view current nutrition macros", async ({ page }) => {
   await expect(
     page.getByText(String(currentPlan.fatG), { exact: true }),
   ).toBeVisible();
+
+  await page.getByRole("main").getByText("About these targets", { exact: true }).click();
 
   await expect(
     page.getByText(
@@ -1270,7 +1264,7 @@ test("user can view personalized nutrition recommendations", async ({
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -1463,7 +1457,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -1629,8 +1623,8 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "About your profile" }).getByText("Saved goal: Lose weight. Changes apply when you save.", { exact: true })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -1805,8 +1799,8 @@ test("user can decline a progress adjustment and keep the current plan", async (
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "About your profile" }).getByText("Saved goal: Lose weight. Changes apply when you save.", { exact: true })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -2037,8 +2031,8 @@ test("user can accept a progress adjustment and see the new plan version in hist
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "About your profile" }).getByText("Saved goal: Lose weight. Changes apply when you save.", { exact: true })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 

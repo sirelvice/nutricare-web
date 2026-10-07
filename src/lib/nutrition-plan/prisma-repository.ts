@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+import { NutritionPlanConflictError } from "@/lib/nutrition-plan/errors";
 import { prisma } from "@/lib/db";
 import type {
   NewNutritionPlan,
@@ -33,19 +35,30 @@ function toPrismaGoal(goal: NewNutritionPlan["goal"]) {
 
 export const prismaNutritionPlanRepository: NutritionPlanRepository = {
   async create(userId, plan) {
-    const created = await prisma.nutritionPlan.create({
-      data: {
-        userId,
-        version: plan.version,
-        goal: toPrismaGoal(plan.goal),
-        targetCalories: plan.targetCalories,
-        proteinG: plan.proteinG,
-        carbsG: plan.carbsG,
-        fatG: plan.fatG,
-      },
-    });
+    try {
+      const created = await prisma.nutritionPlan.create({
+        data: {
+          userId,
+          version: plan.version,
+          goal: toPrismaGoal(plan.goal),
+          targetCalories: plan.targetCalories,
+          proteinG: plan.proteinG,
+          carbsG: plan.carbsG,
+          fatG: plan.fatG,
+        },
+      });
 
-    return toDomain(created);
+      return toDomain(created);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new NutritionPlanConflictError();
+      }
+
+      throw error;
+    }
   },
 
   async findLatestByUserId(userId) {

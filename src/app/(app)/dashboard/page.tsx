@@ -4,6 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { ArrowRight, ArrowUpRight, CircleCheck, Scale, Utensils } from "lucide-react";
+import { CardExplanation } from "@/components/ui/card-explanation";
 import { ProgressStatus } from "@/components/progress/ProgressStatus";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -457,7 +458,6 @@ export default function DashboardPage() {
                 <h2 id="progress-heading" className="text-lg font-semibold tracking-tight">Goal progress</h2>
                 {!progressLoading && !progressLoadError && progressEvaluation && <ProgressStatus state={progressEvaluation.state} />}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">How your current plan is tracking</p>
               {progressLoading ? (
                 <p role="status" className="mt-6 text-sm text-muted-foreground">Loading progress...</p>
               ) : progressLoadError ? (
@@ -540,20 +540,23 @@ export default function DashboardPage() {
             {nutritionPlan ? (
               <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
                 {[
-                  { label: "Calories", value: nutritionPlan.targetCalories, unit: "kcal", note: "Your daily energy target" },
-                  { label: "Protein", value: nutritionPlan.proteinG, unit: "g", note: "Part of your daily nutrition plan" },
-                  { label: "Carbs", value: nutritionPlan.carbsG, unit: "g", note: "Part of your daily nutrition plan" },
-                  { label: "Fat", value: nutritionPlan.fatG, unit: "g", note: "Part of your daily nutrition plan" },
+                  { label: "Calories", value: nutritionPlan.targetCalories, unit: "kcal" },
+                  { label: "Protein", value: nutritionPlan.proteinG, unit: "g" },
+                  { label: "Carbs", value: nutritionPlan.carbsG, unit: "g" },
+                  { label: "Fat", value: nutritionPlan.fatG, unit: "g" },
                 ].map((target) => (
                   <div key={target.label} className="min-w-0">
                     <p className="text-sm text-muted-foreground">{target.label}</p>
                     <p className="mt-2 flex flex-wrap items-baseline gap-1 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{target.value}<span className="text-sm font-normal text-muted-foreground">{target.unit}</span></p>
-                    <p className="mt-2 text-xs leading-5 text-muted-foreground">{target.note}</p>
                   </div>
                 ))}
               </div>
             ) : <p className="text-sm leading-6 text-muted-foreground">Your daily calorie and macro targets will appear once your nutrition plan is generated.</p>}
             {nutritionPlan && <p className="mt-5 border-t pt-4 text-xs text-muted-foreground">Current plan: version {nutritionPlan.version}. These are targets, not a record of what you have eaten.</p>}
+            {nutritionPlan && <CardExplanation label="How these targets are calculated" className="mt-4">
+              <p>Your plan uses profile details and recorded weight to estimate daily calorie and macro targets.</p>
+              <Link href="/tools/calories" className="inline-flex min-h-11 items-center font-medium text-primary hover:underline">Review or recalculate your plan</Link>
+            </CardExplanation>}
           </CardContent>
         </Card>
       </section>

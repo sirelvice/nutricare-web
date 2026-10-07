@@ -182,6 +182,16 @@ for (const width of [375, 1280]) {
       return !!bounds && bounds.width > 100 && bounds.height > 100;
     }).toBe(true);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const targets = main.getByRole("region", { name: "Your daily targets", exact: true });
+    const targetSummary = targets.getByText("How these targets are calculated", { exact: true }).locator("..");
+    const targetExplanation = targets.getByText("Your plan uses profile details and recorded weight to estimate daily calorie and macro targets.", { exact: true });
+    await expect(targetExplanation).not.toBeVisible();
+    await targetSummary.focus();
+    await page.keyboard.press("Enter");
+    await expect(targetExplanation).toBeVisible();
+    await expect(targets.getByText("Calories", { exact: true })).toBeVisible();
+    await page.keyboard.press("Space");
+    await expect(targetExplanation).not.toBeVisible();
     expect(chartWarnings).toEqual([]);
   });
 }

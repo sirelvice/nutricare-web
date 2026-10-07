@@ -190,3 +190,13 @@ The intent is a calm, natural, human product voice. Punctuation should support c
 - A new account with no profile, weight, or plan sees onboarding and a compact explanation instead of repeated empty metric cards. Optional failures remain visible, and any available data still enables the detailed dashboard.
 - Daily targets use two columns on narrow screens and four on large screens. Values and units can wrap without horizontal overflow.
 - The dashboard chart renders only after its container has positive measured dimensions. A ResizeObserver keeps it sized to its actual container and disconnects on unmount. Viewport tests check resize behavior and reject chart-size console warnings.
+
+
+## 15. Profile, planning tools and supporting explanations
+
+- Profile uses one editable draft and a separate saved snapshot. Loading failures block edits; save failures retain the draft. Detected goal conflicts require an explicit reload. Goal-change consequences and saved-goal feedback remain visible.
+- Calories and macros share one plan view. Read failures are distinct from an explicitly empty plan. Known write conflicts and unconfirmed writes require a current-plan read before another write; no automatic mutation retries are introduced.
+- BMI uses a labelled form with keyboard submission, associated field errors and a persistent result announcement region. Measurement edits clear the old result. Adult screening context, diagnostic limitations and the distinction between calculation and saved measurements remain visible.
+- Supporting explanations use `CardExplanation`, a native `details`/`summary` disclosure. It works with keyboard and touch, has a visible focus treatment, and respects reduced motion. It does not hide key numbers, primary actions, errors or goal-change consequences.
+- Profile hints and target captions stay short. Dashboard target numbers and units remain visible while optional calculation detail is collapsed. Service-provided progress interpretations are preserved.
+- Personal plan state remains local to the mounted view. No global cache of user data, new dependency or offline persistence is introduced in this slice.

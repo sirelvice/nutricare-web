@@ -371,6 +371,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 alt="NutriCare"
                 width={1132}
                 height={368}
+                loading="eager"
                 className="h-auto w-[170px]"
               />
             </div>

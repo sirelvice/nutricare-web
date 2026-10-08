@@ -3,13 +3,13 @@ import Link from "next/link";
 export function SiteFooter() {
   return (
     <footer className="mt-16 border-t bg-gradient-to-r from-[#0B6B2E] via-[#0B6B2E] to-[#D9901A]">
-      <div className="mx-auto max-w-6xl px-4 py-12 text-sm text-white/90">
+      <div className="mx-auto max-w-[1440px] px-4 py-12 sm:px-6 lg:px-10 text-sm text-white/90">
         <div className="grid gap-10 md:grid-cols-3">
           {/* Brand */}
           <div>
             <div className="text-lg font-semibold text-white">NutriCare</div>
             <p className="mt-2 max-w-sm text-white/80">
-              Nutrition intelligence &amp; health tracking — built for individuals and public-health pilots.
+              Understand your nutrition targets, follow your weight history and bring your journey together.
             </p>
           </div>
 
@@ -55,7 +55,7 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
-                <Link className="hover:text-white underline-offset-4 hover:underline" href="/sitemap">
+                <Link className="hover:text-white underline-offset-4 hover:underline" href="/site-map">
                   Sitemap
                 </Link>
               </li>

@@ -239,3 +239,25 @@
     background: var(--accent);
   }
 }
+
+/* Public marketing motion keeps its character and respects reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .marketing-marquee-track {
+    animation: none !important;
+    width: auto;
+  }
+  .marketing-marquee-track .marquee-content {
+    flex-wrap: wrap;
+    gap: 1rem;
+    white-space: normal;
+  }
+  .marketing-marquee-copy {
+    display: none;
+  }
+}
+
+/* One brief connection flow, then a calm stationary diagram. */
+@keyframes model-flow {
+  from { stroke-dashoffset: 44; }
+  to { stroke-dashoffset: 0; }
+}

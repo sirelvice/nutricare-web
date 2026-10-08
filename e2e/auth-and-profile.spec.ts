@@ -506,7 +506,7 @@ test("user can view the health report", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText("A clear snapshot of your nutrition, weight and health indicators, based on the information currently available in your account.", {
+    page.getByText("Measurements, saved targets and progress.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -528,9 +528,7 @@ test("user can view the health report", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText(String(report.nutritionPlan.targetCalories), {
-      exact: true,
-    }),
+    page.getByRole("region", { name: "Report overview" }).getByText(`${report.nutritionPlan.targetCalories}kcal/day`, { exact: true }),
   ).toBeVisible();
 
   const caloriesCard = page
@@ -539,15 +537,15 @@ test("user can view the health report", async ({ page }) => {
     .locator("..");
 
   await expect(
-    caloriesCard.getByText(report.nutritionPlan.goal, { exact: true }),
+    caloriesCard.getByText(planGoalLabel(report.nutritionPlan.goal), { exact: true }),
   ).toBeVisible();
 
   await expect(
-    page.getByRole("heading", { name: "Recent change", exact: true }),
+    page.getByRole("heading", { name: "Recorded weight change", exact: true }),
   ).toBeVisible();
 
   const weightCard = page
-    .getByRole("heading", { name: "Recent change", exact: true })
+    .getByRole("heading", { name: "Recorded weight change", exact: true })
     .locator("..")
     .locator("..");
 
@@ -556,7 +554,7 @@ test("user can view the health report", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    weightCard.getByText("No progress evaluation available", { exact: true }),
+    page.getByText("No progress evaluation available", { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -675,7 +673,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   expect(pdfBytes.length).toBeGreaterThan(100);
   expect(pdfBytes.subarray(0, 4).toString()).toBe("%PDF");
 
-  // Verify the Report page's client-side PDF export.
+  // Verify the Report page downloads through the server PDF endpoint.
   await page.goto("/report");
 
   await expect(
@@ -691,7 +689,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   const download = await downloadPromise;
   const filename = download.suggestedFilename();
 
-  expect(filename).toMatch(/^nutricare-report-.*\.pdf$/);
+  expect(filename).toBe("nutricare-personal-report.pdf");
 
   const downloadPath = await download.path();
 

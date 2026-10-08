@@ -228,3 +228,14 @@ The intent is a calm, natural, human product voice. Punctuation should support c
 - The green masthead, gold accents, summary blocks and compact paired tables carry the product identity. A representative complete report fits one page; longer copy continues onto branded pages.
 - Saved plan version, goal and UTC timestamps provide context. BMI uses the latest weight and current height, not historical height. Saved targets are not consumed food or confirmation of current suitability.
 - Export reads account data at download time and may differ from an earlier on-screen snapshot. Report JSON and successful PDF responses use private, no-store caching.
+
+
+## 19. Public marketing experience
+
+- Public pages express the brand through spacious layouts, gradients, editorial rows and product illustrations. Compact dashboard conventions do not dictate marketing storytelling.
+- The homepage retains its hero and connected model. A generated lifestyle image is illustrative brand artwork, not a customer testimonial or evidence of a health outcome. Use the optimized local WebP asset with responsive crops and readable text overlays.
+- Brand green (#0B6B2E), amber (#D9901A) and orange decorative accents connect the public site to the existing identity. Feature actions use a transparent resting state and amber hover treatment.
+- The marquee retains its motion with a pause control and a stationary single copy under reduced motion. Model connections animate briefly and settle; the journey illustration has an explicit Info/Close control, Escape handling and a reduced-motion alternative.
+- Contact and partner forms share validation, accessible field feedback and distinct confirmed, rejected and uncertain submission states. Uncertain writes preserve content and do not retry automatically.
+- Impact communicates available product capabilities and unpublished programme outcomes without fabricated totals. Pricing remains free today and uses the public layout. FAQ answers remain collapsed near the final call to action.
+- Privacy and Terms receive presentational changes; this slice does not establish completeness of legal policies. Sitemap links use /site-map, including Pricing.

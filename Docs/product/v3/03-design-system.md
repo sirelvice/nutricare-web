@@ -218,3 +218,13 @@ The intent is a calm, natural, human product voice. Punctuation should support c
 - Saved plans show version, saved date in UTC, goal and calorie targets. Macro details and supporting explanations are disclosed on demand. Essential limitations remain visible.
 - Plan comparisons show newer minus older saved targets regardless of selector order. They do not infer change reasons or health improvement. Newest saved is not a claim that a historical plan is currently suitable.
 - Historical BMI is not reconstructed using today's profile height. Saved records remain available independently of current planning eligibility.
+
+
+## 18. Personal reports and branded PDF exports
+
+- Report presents a concise summary of BMI, saved calories and recorded weight change. Macro targets use a keyboard and touch disclosure; material limitations remain visible.
+- Loading, missing-profile setup and failed reads remain distinct. Refresh and retry cancel obsolete reads. Download feedback is separate from report-read feedback.
+- PDF export uses the authenticated server renderer with selectable text, A4 pages, wrapping and numbered privacy footers. The original NutriCare logo is embedded in a server-only module; no remote asset request or runtime filesystem lookup is required.
+- The green masthead, gold accents, summary blocks and compact paired tables carry the product identity. A representative complete report fits one page; longer copy continues onto branded pages.
+- Saved plan version, goal and UTC timestamps provide context. BMI uses the latest weight and current height, not historical height. Saved targets are not consumed food or confirmation of current suitability.
+- Export reads account data at download time and may differ from an earlier on-screen snapshot. Report JSON and successful PDF responses use private, no-store caching.

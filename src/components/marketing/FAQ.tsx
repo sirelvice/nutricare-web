@@ -1,24 +1,8 @@
 const faqs = [
-  {
-    q: "Is NutriCare a medical diagnosis tool?",
-    a: "No. NutriCare provides screening-style insights (such as BMI) and practical nutrition guidance. It is not a substitute for professional medical diagnosis or clinical assessments. Always consult healthcare professionals for personalized medical advice.",
-  },
-  {
-    q: "How is my data handled and protected?",
-    a: "NutriCare is designed to collect only what is necessary. Partner reporting is intended to be aggregated (no individual health records shared by default) and we follow best practices for data security and privacy. We are transparent about data use and provide controls for users.",
-  },
-  {
-    q: "What are the limitations of BMI?",
-    a: "BMI is a simple screening metric. It doesn’t directly measure body fat, muscle mass, or distribution, and may not fit every individual equally well. NutriCare uses BMI as a starting point for general guidance, but encourages users to focus on overall health and habits rather than just the number.",
-  },
-  {
-    q: "Can I track progress over time?",
-    a: "Yes. You can save weight entries and view trends/history to focus on direction, not single numbers. NutriCare emphasizes sustainable habits and overall well-being rather than just weight changes.",
-  },
-  {
-    q: "Can organizations or partners use NutriCare?",
-    a: "Yes. The product is structured for outcomes and reporting, with safeguards and a partner-friendly narrative built in to ensure responsible use. We welcome partnerships that align with our mission of promoting health and well-being.",
-  },
+  { q: "Is NutriCare free to use?", a: "The core experience is free. There is no payment or subscription requirement today." },
+  { q: "What can I do with NutriCare?", a: "Create a profile, explore calorie and macro estimates, record your weight and review saved plans and history. You can also download a personal PDF report. Some guidance requires an eligible profile and enough recorded information." },
+  { q: "Does NutriCare replace medical advice?", a: "No. NutriCare offers calculations and personal guidance to support understanding. It does not provide medical diagnosis or treatment." },
+  { q: "Where can I ask about privacy or partnerships?", a: "Read the Privacy Policy for information about data use, or use the Contact page to ask a question. Organisations can start a conversation through the For Partners page." },
 ];
 
 export function FAQ() {
@@ -29,7 +13,7 @@ export function FAQ() {
           Frequently asked questions
         </h2>
         <p className="max-w-3xl text-slate-600">
-          Short, clear answers to common questions about NutriCare, its purpose, data handling, and how it can be used. If you have other questions, feel free to reach out!
+          A few things to know before you begin.
         </p>
       </div>
 
@@ -37,9 +21,9 @@ export function FAQ() {
         {faqs.map((f) => (
           <details
             key={f.q}
-            className="group rounded-2xl border bg-slate-50 p-5 transition hover:bg-slate-100"
+            className="group rounded-2xl border border-emerald-100 bg-white p-5 transition-colors hover:bg-emerald-50/60"
           >
-            <summary className="cursor-pointer text-sm font-semibold text-slate-900 flex items-center justify-between">
+            <summary className="cursor-pointer rounded-md text-sm font-semibold text-slate-900 flex items-center justify-between gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <span>{f.q}</span>
               <span className="text-slate-400 transition-transform group-open:rotate-45 pointer-events-none">
                 +

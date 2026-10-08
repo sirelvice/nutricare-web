@@ -1,0 +1,15 @@
+import Link from "next/link";
+import { ArrowUpRight, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export const metadata = { title: "Pricing", description: "The core NutriCare experience is free, with no payment or subscription requirement today." };
+
+export default function PricingPage() {
+  return <div className="space-y-12">
+    <section className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 sm:p-10 lg:p-12"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Simple access</p><h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl">The core NutriCare experience is free.</h1><p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">Create a profile, explore your nutrition targets and follow your weight history. There is no payment or subscription requirement today.</p></section>
+    <section className="grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+      <div className="rounded-3xl border border-emerald-200 bg-white p-6 shadow-sm sm:p-10"><p className="text-sm font-semibold text-emerald-700">Personal nutrition journey</p><p className="mt-4 text-5xl font-semibold tracking-tight">Free</p><p className="mt-3 leading-7 text-slate-600">The tools to understand your starting point and keep your journey connected.</p><ul className="my-8 space-y-4">{["Profile and goal selection", "Calorie and macro estimates for eligible profiles", "Weight tracking and history", "Progress explanations and eligible plan adjustments", "Saved plan versions and personal PDF reports"].map((item) => <li key={item} className="flex gap-3 leading-7"><Check aria-hidden="true" className="mt-1 shrink-0 text-emerald-700" size={20} />{item}</li>)}</ul><Button asChild size="lg"><Link href="/register">Create your account</Link></Button><p className="mt-5 text-sm leading-6 text-slate-500">Personal guidance is subject to profile and data requirements. Estimates do not replace medical advice.</p></div>
+      <div className="flex flex-col justify-center rounded-3xl bg-emerald-950 p-6 text-white sm:p-10"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-200">Looking ahead</p><h2 className="mt-4 text-3xl font-semibold tracking-tight">Built to grow with real needs.</h2><p className="mt-5 leading-8 text-emerald-100">Additional products may be introduced as NutriCare develops and validates new capabilities. Future offerings and prices are not being announced here.</p><p className="mt-4 leading-8 text-emerald-100">For organisations interested in exploring a pilot, start with a conversation about your needs and the scope of the work.</p><Link href="/partners" className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-md font-semibold text-amber-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200">Talk about a partnership<ArrowUpRight aria-hidden="true" size={18} /></Link></div>
+    </section>
+  </div>;
+}

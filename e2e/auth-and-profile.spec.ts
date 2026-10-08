@@ -1536,9 +1536,15 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
     page.getByRole("heading", { name: "Weight history", exact: true }),
   ).toBeVisible();
 
-  await expect(
-    page.getByText(`${entryDate} • History check`, { exact: true }),
-  ).toBeVisible();
+  const measurement = page
+    .getByRole("list", { name: "Recorded measurements" })
+    .getByRole("listitem")
+    .filter({ has: page.getByText(entryDate, { exact: true }) });
+  await expect(measurement).toHaveCount(1);
+  await expect(measurement.getByText("70 kg", { exact: true })).toBeVisible();
+  await expect(measurement.getByText("History check", { exact: true })).toBeHidden();
+  await measurement.getByText("Measurement note", { exact: true }).click();
+  await expect(measurement.getByText("History check", { exact: true })).toBeVisible();
 
   const weightHistoryCard = page
     .getByRole("heading", { name: "Weight history", exact: true })
@@ -1550,9 +1556,8 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
     weightHistoryCard.getByText("70 kg", { exact: true }),
   ).toBeVisible();
 
-  await expect(
-    page.getByText(/BMI 22\.9 • Normal/, { exact: true }),
-  ).toBeVisible();
+  // History shows saved measurements, not BMI reconstructed with today's height.
+  await expect(page.getByText(/BMI 22\.9 • Normal/, { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Nutrition Plans" }).click();
 
@@ -1571,7 +1576,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText(`Goal: ${planBody.plan.goal}`, { exact: true }),
+    page.getByText(`Goal: ${planGoalLabel(planBody.plan.goal)}`, { exact: true }),
   ).toBeVisible();
 
 });

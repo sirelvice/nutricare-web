@@ -1,359 +1,145 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-
-import { calcBMIKgM, bmiCategoryWHO } from "@/lib/calc/bmi";
+import { Card, CardContent } from "@/components/ui/card";
+import { CardExplanation } from "@/components/ui/card-explanation";
+import { readWeightHistory } from "@/lib/tracking/client";
 import type { WeightEntry } from "@/lib/tracking/domain";
 import type { NutritionPlan } from "@/lib/nutrition-plan/domain";
-import type { UserProfile } from "@/lib/profile/domain";
+import { comparePlans, readPlanHistory } from "@/lib/history/client";
 
-type Tab = "weight" | "plans";
+type Section = "weight" | "plans";
+const goalLabel = { lose: "Lose weight", maintain: "Maintain weight", gain: "Gain weight" };
+const signed = (value: number) => `${value > 0 ? "+" : ""}${value}`;
+const savedDate = (value: string) => new Intl.DateTimeFormat("en-GB", {
+  day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+}).format(new Date(value));
 
 export default function HistoryPage() {
-  const [tab, setTab] = useState<Tab>("weight");
+  const [section, setSection] = useState<Section>("weight");
+  const [revision, setRevision] = useState(0);
+  const refresh = () => setRevision((value) => value + 1);
+  return <div className="space-y-6">
+    <header className="flex flex-wrap items-end justify-between gap-3">
+      <div><p className="text-xs font-medium uppercase tracking-wider text-primary">Your records</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">History</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Measurements and saved plan versions.</p></div>
+      <Button variant="outline" onClick={refresh}>Refresh</Button>
+    </header>
+    <div role="group" aria-label="History sections" className="flex flex-wrap gap-2">
+      <Button aria-pressed={section === "weight"} variant={section === "weight" ? "default" : "outline"} onClick={() => setSection("weight")}>Weight</Button>
+      <Button aria-pressed={section === "plans"} variant={section === "plans" ? "default" : "outline"} onClick={() => setSection("plans")}>Nutrition Plans</Button>
+    </div>
+    <HistoryRecords key={`${section}-${revision}`} section={section} onRetry={refresh} />
+  </div>;
+}
 
+function HistoryRecords({ section, onRetry }: { section: Section; onRetry: () => void }) {
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [plans, setPlans] = useState<NutritionPlan[]>([]);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
+  const [failed, setFailed] = useState(false);
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
   useEffect(() => {
-    async function loadHistory() {
+    const controller = new AbortController();
+    const load = async () => {
       try {
-        const [weightsResponse, plansResponse, profileResponse] =
-          await Promise.all([
-            fetch("/api/weight-entries"),
-            fetch("/api/nutrition-plan/history"),
-            fetch("/api/profile"),
-          ]);
-
-        if (!weightsResponse.ok || !plansResponse.ok || !profileResponse.ok) {
-          throw new Error("Unable to load history.");
+        if (section === "weight") {
+          const entries = await readWeightHistory(controller.signal);
+          if (!controller.signal.aborted) setWeights(entries);
+        } else {
+          const records = await readPlanHistory(controller.signal);
+          if (!controller.signal.aborted) setPlans(records);
         }
-
-        const [weightData, planData, profileData] = await Promise.all([
-          weightsResponse.json(),
-          plansResponse.json(),
-          profileResponse.json(),
-        ]);
-
-        setWeights(weightData as WeightEntry[]);
-        setPlans((planData.plans ?? []) as NutritionPlan[]);
-        setProfile(profileData as UserProfile | null);
       } catch {
-        setError("Unable to load your history.");
+        if (!controller.signal.aborted) setFailed(true);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
-    }
-
-    loadHistory();
-  }, []);
-
-  const latestWeight = weights[0] ?? null;
-  const latestPlan = plans[0] ?? null;
-
-  const latestBmi = useMemo(() => {
-    if (!latestWeight || profile?.heightCm === null || !profile?.heightCm) {
-      return null;
-    }
-
-    const bmi = calcBMIKgM(latestWeight.weightKg, profile.heightCm);
-
-    if (bmi === null) return null;
-
-    return {
-      bmi,
-      category: bmiCategoryWHO(bmi),
     };
-  }, [latestWeight, profile]);
-
-  return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="max-w-2xl">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-            Your records
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-            History
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
-            Review your recorded weight and nutrition plan versions over time.
-          </p>
-        </div>
-
-        <Button
-          variant="outline"
-          onClick={() => window.location.reload()}
-          disabled={loading}
-          className="w-full sm:w-auto"
-        >
-          Refresh
-        </Button>
-      </div>
-
-      {loading && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-          Loading your history...
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      <div
-        className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 sm:w-fit sm:flex-row"
-        aria-label="History sections"
-      >
-        <Button
-          variant={tab === "weight" ? "default" : "ghost"}
-          onClick={() => setTab("weight")}
-          className="w-full sm:w-auto"
-        >
-          Weight
-        </Button>
-
-        <Button
-          variant={tab === "plans" ? "default" : "ghost"}
-          onClick={() => setTab("plans")}
-          className="w-full sm:w-auto"
-        >
-          Nutrition Plans
-        </Button>
-      </div>
-
-      <Card className="overflow-hidden rounded-2xl border-slate-200 bg-gradient-to-br from-white via-white to-emerald-50/70 shadow-sm">
-        <CardHeader className="border-b border-slate-100 px-6 py-5">
-          <CardTitle className="text-xl text-slate-950">Current snapshot</CardTitle>
-          <p className="text-sm text-slate-500">
-            Your most recent recorded measurements and plan.
-          </p>
-        </CardHeader>
-
-        <CardContent className="grid gap-5 p-6 md:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Latest weight
-            </p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-              {latestWeight ? `${latestWeight.weightKg} kg` : "—"}
-            </p>
-            {latestWeight ? (
-              <p className="mt-1 text-xs text-slate-500">{latestWeight.date}</p>
-            ) : (
-              <p className="mt-1 text-xs text-slate-400">No weight recorded</p>
-            )}
+    void load();
+    return () => controller.abort();
+  }, [section]);
+  const heading = section === "weight" ? "Weight history" : "Nutrition plan history";
+  const count = section === "weight" ? weights.length : plans.length;
+  return <section aria-label={heading} className="space-y-4">
+    <Card><CardContent className="space-y-4 p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">{heading}</h2>
+        {!loading && !failed ? <p className="text-xs text-muted-foreground">{count} {section === "weight" ? "entries" : "saved versions"}</p> : null}</div>
+      {loading ? <p role="status" className="text-sm text-muted-foreground">Loading your {section === "weight" ? "weight history" : "saved plans"}...</p>
+        : failed ? <div className="space-y-3"><p role="alert" className="text-sm text-destructive">Unable to load your {section === "weight" ? "weight history" : "saved plans"}. Try again.</p>
+          <Button variant="outline" onClick={onRetry}>Try again</Button></div>
+        : count === 0 ? <div className="space-y-3 py-4">
+          <p className="font-medium">{section === "weight" ? "No weight entries yet" : "No nutrition plans yet"}</p>
+          <Button asChild variant="outline"><Link href={section === "weight" ? "/tools/tracking/weight" : "/tools/calories"}>{section === "weight" ? "Record weight" : "Review nutrition plan"}</Link></Button>
+        </div> : <>
+          {section === "weight" ? <ul aria-label="Recorded measurements" className="divide-y">
+            {weights.slice(page * pageSize, (page + 1) * pageSize).map((entry) => <li key={entry.id} className="flex flex-wrap items-baseline justify-between gap-3 py-4">
+              <div className="min-w-0 flex-1"><p className="text-sm text-muted-foreground">{entry.date}</p>
+                {entry.note ? <details className="mt-1">
+                  <summary className="min-h-11 cursor-pointer py-2 text-xs text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Measurement note</summary>
+                  <p className="max-w-prose break-words pb-2 text-sm text-muted-foreground [overflow-wrap:anywhere]">{entry.note}</p>
+                </details> : null}</div>
+              <p className="shrink-0 font-semibold tabular-nums">{entry.weightKg} kg</p>
+            </li>)}
+          </ul> : <>
+            <p className="text-xs leading-5 text-muted-foreground">Saved targets, not food consumed or a recommendation to reuse an old plan.</p>
+            <ul aria-label="Saved nutrition plans" className="divide-y">
+              {plans.slice(page * pageSize, (page + 1) * pageSize).map((plan, index) => <li key={plan.id} className="space-y-2 py-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className="font-semibold tabular-nums">Version {plan.version} • {plan.targetCalories} kcal</h3>
+                  {page === 0 && index === 0 ? <span className="text-xs text-primary">Newest saved</span> : null}</div>
+                <p className="text-sm text-muted-foreground">Goal: {goalLabel[plan.goal]}</p>
+                <p className="text-xs text-muted-foreground">Saved {savedDate(plan.createdAt)} (UTC)</p>
+                <details className="rounded-lg border"><summary className="min-h-11 cursor-pointer px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Version {plan.version} details</summary>
+                  <dl className="grid grid-cols-3 gap-3 px-3 pb-3 text-sm">{[
+                    ["Protein", plan.proteinG], ["Carbs", plan.carbsG], ["Fat", plan.fatG],
+                  ].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value} g</dd></div>)}</dl>
+                </details>
+              </li>)}
+            </ul>
+          </>}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p role="status" className="text-xs text-muted-foreground">Showing {page * pageSize + 1} to {Math.min((page + 1) * pageSize, count)} of {count} records</p>
+            {count > pageSize ? <nav aria-label="History pages" className="flex gap-2">
+              <Button variant="outline" disabled={page === 0} onClick={() => setPage((value) => value - 1)}>Previous</Button>
+              <Button variant="outline" disabled={(page + 1) * pageSize >= count} onClick={() => setPage((value) => value + 1)}>Next</Button>
+            </nav> : null}
           </div>
+        </>}
+    </CardContent></Card>
+    {!loading && !failed && section === "plans" && plans.length >= 2 ? <PlanComparison plans={plans} /> : null}
+    <CardExplanation label="About these records">{section === "weight"
+      ? "Dates belong to individual measurements. Multiple entries on one date remain separate. Historical BMI is not recorded here: applying your current height to old measurements would reconstruct a value rather than show a saved result."
+      : "Version numbers identify saved plans. Comparing versions shows target differences; it does not establish why a plan changed or whether it improved your health. Historical records remain available even when current planning eligibility changes."}</CardExplanation>
+  </section>;
+}
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Current BMI
-            </p>
-            {latestBmi ? (
-              <>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                  {latestBmi.bmi.toFixed(1)}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {latestBmi.category.label}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                  —
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Height and weight needed
-                </p>
-              </>
-            )}
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Current plan
-            </p>
-            {latestPlan ? (
-              <>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                  {latestPlan.targetCalories} kcal
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Version {latestPlan.version} • {latestPlan.goal}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                  —
-                </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  No nutrition plan yet
-                </p>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {tab === "weight" ? (
-        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
-          <CardHeader className="flex-col items-start gap-1 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-xl text-slate-950">Weight history</CardTitle>
-              <p className="mt-1 text-sm text-slate-500">
-                Your recorded weights and calculated BMI.
-              </p>
-            </div>
-            <Badge variant="secondary">{weights.length} entries</Badge>
-          </CardHeader>
-
-          <CardContent className="p-6">
-            {weights.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-                <p className="font-medium text-slate-800">
-                  No weight entries yet
-                </p>
-                <p className="mt-1 text-sm text-slate-500">
-                  Start tracking your weight to build your history.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-slate-200">
-                <div className="divide-y divide-slate-100 bg-white">
-                  {weights.map((entry, index) => {
-                    const bmi =
-                      profile?.heightCm
-                        ? calcBMIKgM(entry.weightKg, profile.heightCm)
-                        : null;
-
-                    const category =
-                      bmi !== null ? bmiCategoryWHO(bmi) : null;
-
-                    return (
-                      <div
-                        key={entry.id}
-                        className={`p-4 sm:p-5 ${
-                          index === 0
-                            ? "border-l-4 border-emerald-500 bg-emerald-50/70"
-                            : ""
-                        }`}
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                              <span className="text-lg font-semibold text-slate-950">
-                                {entry.weightKg} kg
-                              </span>
-                              {index === 0 && (
-                                <span className="text-xs font-medium text-emerald-700">
-                                  Latest
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="mt-1 text-sm text-slate-600">
-                              {entry.date}
-                              {entry.note ? ` • ${entry.note}` : ""}
-                            </div>
-                          </div>
-
-                          {bmi !== null && category && (
-                            <Badge variant="secondary" className="w-fit">
-                              BMI {bmi.toFixed(1)} • {category.label}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
-          <CardHeader className="flex-col items-start gap-1 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-xl text-slate-950">
-                Nutrition plan history
-              </CardTitle>
-              <p className="mt-1 text-sm text-slate-500">
-                Your generated nutrition plans and their targets.
-              </p>
-            </div>
-            <Badge variant="secondary">{plans.length} plans</Badge>
-          </CardHeader>
-
-          <CardContent className="p-6">
-            {plans.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-                <p className="font-medium text-slate-800">
-                  No nutrition plans yet
-                </p>
-                <p className="mt-1 text-sm text-slate-500">
-                  Generate a plan from the Calories tool to start building
-                  your plan history.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-slate-200">
-                <div className="divide-y divide-slate-100 bg-white">
-                  {plans.map((plan, index) => (
-                    <div
-                      key={plan.id}
-                      className={`p-4 sm:p-5 ${
-                        index === 0
-                          ? "border-l-4 border-emerald-500 bg-emerald-50/70"
-                          : ""
-                      }`}
-                    >
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                            <span className="text-lg font-semibold text-slate-950">
-                              Version {plan.version} • {plan.targetCalories} kcal
-                            </span>
-                            {index === 0 && (
-                              <span className="text-xs font-medium text-emerald-700">
-                                Latest
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="mt-1 text-sm text-slate-600">
-                            Goal: {plan.goal}
-                          </div>
-
-                          <div className="mt-1 text-xs text-slate-500">
-                            {new Date(plan.createdAt).toLocaleString()}
-                          </div>
-                        </div>
-
-                        <div className="w-fit rounded-lg bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600">
-                          P {plan.proteinG}g • C {plan.carbsG}g • F {plan.fatG}g
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  )
-
+function PlanComparison({ plans }: { plans: NutritionPlan[] }) {
+  const [firstId, setFirstId] = useState(plans[1].id);
+  const [secondId, setSecondId] = useState(plans[0].id);
+  const first = plans.find((plan) => plan.id === firstId)!;
+  const second = plans.find((plan) => plan.id === secondId)!;
+  const result = comparePlans(first, second);
+  return <Card><CardContent className="space-y-4 p-5 sm:p-6">
+    <h2 className="text-lg font-semibold">Compare saved plans</h2>
+    <div className="grid gap-3 sm:grid-cols-2">{[
+      { label: "First saved version", value: firstId, change: setFirstId },
+      { label: "Second saved version", value: secondId, change: setSecondId },
+    ].map(({ label, value, change }) => <label key={label} className="space-y-2 text-sm">{label}
+      <select aria-label={label} value={value} onChange={(event) => change(event.target.value)} className="block min-h-11 w-full rounded-lg border bg-background px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {plans.map((plan) => <option key={plan.id} value={plan.id}>Version {plan.version}</option>)}
+      </select></label>)}</div>
+    {firstId === secondId ? <p role="status" className="text-sm text-muted-foreground">Choose two different versions to compare.</p> : <>
+      <p className="text-sm">Version {result.older.version} to version {result.newer.version}</p>
+      <dl aria-label="Saved target differences" className="grid grid-cols-2 gap-4 sm:grid-cols-4">{[
+        ["Calories", `${signed(result.calories)} kcal/day`], ["Protein", `${signed(result.protein)} g/day`],
+        ["Carbs", `${signed(result.carbs)} g/day`], ["Fat", `${signed(result.fat)} g/day`],
+      ].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-semibold tabular-nums">{value}</dd></div>)}</dl>
+      <p className="text-sm text-muted-foreground">Goal: {goalLabel[result.older.goal]} to {goalLabel[result.newer.goal]}</p>
+      <p className="text-xs text-muted-foreground">Differences are newer minus older saved targets.</p>
+    </>}
+  </CardContent></Card>;
 }

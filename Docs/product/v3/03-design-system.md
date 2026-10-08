@@ -209,3 +209,12 @@ The intent is a calm, natural, human product voice. Punctuation should support c
 - `CardInfoPanel` switches between a compact front and an information view with an Info/Close button, accessible name, expanded state and controlled region. Inactive content uses `hidden`; Escape restores the front and focuses the toggle. The chart stays mounted so its selected period survives switching. No 3D animation is required.
 - Weight-chart daily averages and seven-calendar-day means are distinguished by solid and dashed lines, textual labels and a numeric axis. Missing dates are not zero-filled. Sparse ticks and reduced point markers support longer histories; the raw measurement table remains available in the information view.
 - Calculation detail can move behind a disclosure, but errors, primary actions and material limitations cannot. Chart aggregation does not replace service-derived progress interpretation.
+
+
+## 17. Saved history and compact records
+
+- History loads only the selected weight or plan section. Loading, failed reads and empty histories remain distinct; retry and refresh cancel obsolete reads.
+- Lists display 10 records per page with Previous/Next controls and an announced visible range. Pagination limits rendered rows; it does not limit fetched history or remove records. Notes use keyboard and touch disclosures so long text does not dominate each row.
+- Saved plans show version, saved date in UTC, goal and calorie targets. Macro details and supporting explanations are disclosed on demand. Essential limitations remain visible.
+- Plan comparisons show newer minus older saved targets regardless of selector order. They do not infer change reasons or health improvement. Newest saved is not a claim that a historical plan is currently suitable.
+- Historical BMI is not reconstructed using today's profile height. Saved records remain available independently of current planning eligibility.

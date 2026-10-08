@@ -35,7 +35,10 @@ export async function GET() {
       return notFound("Profile not found");
     }
 
-    return NextResponse.json(report, { status: 200 });
+    return NextResponse.json(report, {
+      status: 200,
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch (error) {
     console.error("GET /api/report failed", error);
 

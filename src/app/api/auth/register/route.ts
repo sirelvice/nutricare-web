@@ -1,3 +1,4 @@
+import { readJsonRequest } from "@/lib/api/read-json-request";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
@@ -42,7 +43,9 @@ export async function POST(request: NextRequest) {
         rateLimitHeaders(limit),
       );
     }
-    const parsed = registerSchema.safeParse(await request.json());
+    const requestBody = await readJsonRequest(request);
+    if (!requestBody.ok) return requestBody.response;
+    const parsed = registerSchema.safeParse(requestBody.data);
 
     if (!parsed.success) {
       return badRequest(

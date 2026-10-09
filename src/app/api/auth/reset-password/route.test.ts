@@ -57,6 +57,7 @@ vi.mock("@/lib/security/rate-limit", () => ({
 }));
 
 import { POST } from "./route";
+import { PASSWORD_BYTE_LIMIT_MESSAGE } from "@/lib/security/auth-validation";
 
 describe("POST /api/auth/reset-password", () => {
 
@@ -124,6 +125,19 @@ describe("POST /api/auth/reset-password", () => {
       }),
     );
   });
+
+  it.each(["a".repeat(73), "é".repeat(37), "😀".repeat(19)])(
+    "rejects an overlong UTF-8 password before account or token lookup", async (password) => {
+      const response = await POST(new Request("http://localhost/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "user@example.com", token: "a".repeat(64), password }),
+      }));
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: PASSWORD_BYTE_LIMIT_MESSAGE });
+      expect(findUnique).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects invalid input", async () => {
     const request = new Request("http://localhost/api/auth/reset-password", {

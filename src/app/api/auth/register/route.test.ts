@@ -38,6 +38,7 @@ vi.mock("@/lib/security/rate-limit", () => ({
 }));
 
 import { POST } from "./route";
+import { PASSWORD_BYTE_LIMIT_MESSAGE } from "@/lib/security/auth-validation";
 
 describe("POST /api/auth/register", () => {
   beforeEach(() => {
@@ -50,6 +51,19 @@ describe("POST /api/auth/register", () => {
     userCreate.mockReset();
     securityEventCreate.mockReset();
   });
+
+  it.each(["a".repeat(73), "é".repeat(37), "😀".repeat(19)])(
+    "rejects an overlong UTF-8 password before account or token lookup", async (password) => {
+      const response = await POST(new NextRequest("http://localhost/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "user@example.com", token: "a".repeat(64), password }),
+      }));
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: PASSWORD_BYTE_LIMIT_MESSAGE });
+      expect(userFindUnique).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects registration when the IP rate limit is exceeded", async () => {
     rateLimit.mockResolvedValue({

@@ -240,10 +240,43 @@ describe("/api/auth/[...nextauth]", () => {
       }),
     });
     await POST(request as never);
-    expect(authPost).toHaveBeenCalledWith(request);
-    const delegated = new URLSearchParams(await request.text());
+    expect(authPost).toHaveBeenCalledOnce();
+    const delegatedRequest = authPost.mock.calls[0][0] as Request;
+    expect(delegatedRequest.url).toBe(request.url);
+    expect(delegatedRequest.headers.get("Content-Type")).toBe(request.headers.get("Content-Type"));
+    const delegated = new URLSearchParams(await delegatedRequest.text());
     expect(delegated.get("csrfToken")).toBe("test-token");
     expect(delegated.get("password")).toBe("password-123");
+  });
+
+  it.each([undefined, "1", "999999"])("rejects oversized credentials with declared length %s before Auth.js or database limits", async (declaredLength) => {
+    const requestHeaders: Record<string, string> = { "Content-Type": "application/x-www-form-urlencoded" };
+    if (declaredLength) requestHeaders["Content-Length"] = declaredLength;
+    const response = await POST(new Request("http://localhost/api/auth/callback/credentials", {
+      method: "POST", headers: requestHeaders,
+      body: new URLSearchParams({ email: "user@example.com", password: "x".repeat(17 * 1024) }),
+    }) as never);
+    expect(response.status).toBe(413);
+    expect(authPost).not.toHaveBeenCalled();
+    expect(consumeRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("preserves cookie and CSRF bytes for Auth.js validation", async () => {
+    const raw = "email=user%40example.com&password=p%2Bword&csrfToken=body-token";
+    const request = new Request("http://localhost/api/auth/callback/credentials", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: "authjs.csrf-token=cookie-token%7Chash",
+        "X-Auth-Return-Redirect": "1",
+      },
+      body: raw,
+    });
+    await POST(request as never);
+    const delegated = authPost.mock.calls[0][0] as Request;
+    expect(delegated.headers.get("Cookie")).toBe(request.headers.get("Cookie"));
+    expect(delegated.headers.get("X-Auth-Return-Redirect")).toBe("1");
+    expect(await delegated.text()).toBe(raw);
   });
 
 });

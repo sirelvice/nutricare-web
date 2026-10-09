@@ -1,3 +1,4 @@
+import { readJsonRequest } from "@/lib/api/read-json-request";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
@@ -43,7 +44,9 @@ export async function POST(req: Request) {
       throw error;
     }
 
-    const body = await req.json().catch(() => null);
+    const requestBody = await readJsonRequest(req);
+    if (!requestBody.ok) return requestBody.response;
+    const body = requestBody.data;
     const parsed = respondToAdjustmentSchema.safeParse(body);
 
     if (!parsed.success) {

@@ -1,3 +1,4 @@
+import { readJsonRequest } from "@/lib/api/read-json-request";
 import { GoalChangeError, goalChangeFeedback } from "@/lib/profile/goal-change-errors";
 import { NextResponse } from "next/server";
 import { profileSchema } from "@/lib/profile/schema";
@@ -34,7 +35,7 @@ export async function GET() {
 
     const profile = await service.execute(session.user.id);
 
-    return NextResponse.json(profile, { status: 200 });
+    return NextResponse.json(profile, { status: 200, headers: { "Cache-Control": "private, no-store" } });
   } catch {
     return internalServerError("Unable to load profile.");
   }
@@ -60,7 +61,9 @@ export async function PUT(request: Request) {
     throw error;
   }
 
-  const body = await request.json().catch(() => null);
+  const requestBody = await readJsonRequest(request);
+  if (!requestBody.ok) return requestBody.response;
+  const body = requestBody.data;
   const parsed = profileSchema.safeParse(body);
 
   if (!parsed.success) {
@@ -85,7 +88,7 @@ export async function PUT(request: Request) {
 
     const profile = await service.execute(session.user.id, parsed.data);
 
-    return NextResponse.json(profile, { status: 200 });
+    return NextResponse.json(profile, { status: 200, headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     if (error instanceof GoalChangeError || error instanceof GoalChangeConflictError) {
       const code = error instanceof GoalChangeError ? error.code : "GOAL_CHANGE_CONFLICT";

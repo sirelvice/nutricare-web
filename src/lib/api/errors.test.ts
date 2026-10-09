@@ -10,6 +10,14 @@ import {
 } from "./errors";
 
 describe("API error helpers", () => {
+  it("prevents error caching while preserving rate-limit headers", () => {
+    const supplied = new Headers({ "Retry-After": "60", "Cache-Control": "public" });
+    const response = apiError("Too many requests.", 429, supplied);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(response.headers.get("Retry-After")).toBe("60");
+    expect(supplied.get("Cache-Control")).toBe("public");
+  });
+
   it("returns the requested error payload and status", async () => {
     const response = apiError("Something went wrong.", 418);
 

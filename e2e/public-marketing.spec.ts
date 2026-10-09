@@ -96,3 +96,23 @@ for (const width of [375, 1280]) {
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }
+
+for (const width of [375, 1280]) {
+  test(`pricing is reachable from public navigation at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/");
+    if (width < 768) {
+      await page.getByLabel("Open navigation", { exact: true }).click();
+    }
+    const navigation = page.getByRole("navigation", {
+      name: width < 768 ? "Mobile navigation" : "Main navigation", exact: true,
+    });
+    await navigation.getByRole("link", { name: "Pricing", exact: true }).click();
+    await expect(page).toHaveURL(/\/pricing(?:\?.*)?$/);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: "Pricing", exact: true })).toHaveAttribute("href", "/pricing");
+    await expect.poll(() => page.evaluate(() =>
+      document.documentElement.scrollWidth <= window.innerWidth,
+    )).toBe(true);
+  });
+}

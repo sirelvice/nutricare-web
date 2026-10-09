@@ -18,6 +18,11 @@ export function SiteFooter() {
             <div className="text-sm font-semibold text-white">Company</div>
             <ul className="mt-3 space-y-2">
               <li>
+                <Link className="rounded-sm hover:text-white underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" href="/pricing">
+                  Pricing
+                </Link>
+              </li>
+              <li>
                 <Link className="hover:text-white underline-offset-4 hover:underline" href="/about">
                   About
                 </Link>

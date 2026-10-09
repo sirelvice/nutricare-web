@@ -247,3 +247,70 @@ test("workspace renders one content tree and preserves form state across resizin
   await expect(page.locator("#weight-date")).toHaveCount(1);
   await expect(page.locator("#weight-date")).toBeVisible();
 });
+
+test("mobile navigation contains keyboard focus and restores it on close", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await registerAndSignIn(page);
+  const trigger = page.getByRole("button", { name: "Open navigation", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Workspace navigation" });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("aside").getByRole("button", { name: "Close navigation" })).toBeFocused();
+  for (const key of ["Tab", "Shift+Tab"]) {
+    for (let step = 0; step < 16; step += 1) {
+      await page.keyboard.press(key);
+      await expect.poll(() => dialog.evaluate((element) =>
+        element.contains(document.activeElement),
+      )).toBe(true);
+    }
+  }
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.locator("dialog").evaluate((element) =>
+    element.contains(document.activeElement),
+  )).toBe(false);
+  await trigger.click();
+  await dialog.locator("aside").getByRole("button", { name: "Close navigation" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
+});
+
+test("resizing an open mobile drawer restores the desktop workspace", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await registerAndSignIn(page);
+  await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Workspace navigation" })).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.locator("dialog")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Collapse NutriCare navigation" })).toBeFocused();
+  await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe("hidden");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("button", { name: "Open navigation", exact: true })).toHaveAttribute("aria-expanded", "false");
+});
+
+test("mobile workspace signs out through the navigation drawer", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await registerAndSignIn(page);
+  await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Workspace navigation" });
+  const response = page.waitForResponse((result) =>
+    new URL(result.url()).pathname === "/api/auth/signout" && result.request().method() === "POST",
+  );
+  await dialog.getByRole("button", { name: "Sign out", exact: true }).click();
+  expect((await response).ok()).toBe(true);
+  await expect(page).toHaveURL("/", { timeout: 15_000 });
+});
+
+test("workspace skip navigation bypasses sidebar controls", async ({ page }) => {
+  await registerAndSignIn(page);
+  await page.goto("/dashboard");
+  await waitForWorkspaceReady(page);
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Skip to main content", exact: true })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("main#main-content")).toBeFocused();
+});

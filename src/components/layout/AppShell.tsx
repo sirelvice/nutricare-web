@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowUpRight,
   BookOpen,
@@ -232,6 +232,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: session } = useSession();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileDialog = useRef<HTMLDialogElement>(null);
+  const mobileClose = useRef<HTMLButtonElement>(null);
+  const mobileTrigger = useRef<HTMLButtonElement>(null);
+  const desktopToggle = useRef<HTMLButtonElement>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarPreferenceReady, setSidebarPreferenceReady] = useState(false);
@@ -271,11 +275,31 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!mobileOpen) return;
 
+    const dialog = mobileDialog.current;
+    if (!dialog) return;
+
+    // A modal dialog removes the background from keyboard navigation and
+    // contains focus. A closed dialog also hides all of its controls.
+    dialog.showModal();
+    mobileClose.current?.focus();
+    const mobileButton = mobileTrigger.current;
+    const desktopButton = desktopToggle.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
+    const desktop = window.matchMedia("(min-width: 768px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) setMobileOpen(false);
+    };
+    desktop.addEventListener("change", closeOnDesktop);
+    closeOnDesktop();
+
     return () => {
+      desktop.removeEventListener("change", closeOnDesktop);
+      dialog.close();
       document.body.style.overflow = previousOverflow;
+      const trigger = desktop.matches ? desktopButton : mobileButton;
+      trigger?.focus();
     };
   }, [mobileOpen]);
 
@@ -309,6 +333,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-workspace">
+      <a href="#main-content" className="fixed left-4 top-4 z-[60] -translate-y-24 rounded-lg bg-background px-4 py-3 font-semibold text-foreground shadow-lg ring-2 ring-ring focus:translate-y-0 focus:outline-none">
+        Skip to main content
+      </a>
       {/* Mobile header */}
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:hidden">
         <Link
@@ -328,7 +355,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <button
           type="button"
+          ref={mobileTrigger}
           aria-label="Open navigation"
+          aria-haspopup="dialog"
           disabled={!sidebarPreferenceReady}
           aria-expanded={mobileOpen}
           aria-controls="mobile-workspace-navigation"
@@ -340,12 +369,31 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       {/* Mobile navigation */}
-      <div
-        className={[
-          "fixed inset-0 z-50 md:hidden",
-          mobileOpen ? "pointer-events-auto" : "pointer-events-none",
-        ].join(" ")}
-        aria-hidden={!mobileOpen}
+      <dialog
+        ref={mobileDialog}
+        aria-label="Workspace navigation"
+        onKeyDown={(event) => {
+          if (event.key !== "Tab") return;
+          const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+            'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]',
+          )).filter((element) => element.getClientRects().length > 0 &&
+            getComputedStyle(element).visibility !== "hidden");
+          const first = controls[0];
+          const last = controls[controls.length - 1];
+          if (!first || !last) return;
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }}
+        onCancel={(event) => {
+          event.preventDefault();
+          setMobileOpen(false);
+        }}
+        className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 text-foreground backdrop:bg-transparent"
       >
         <button
           type="button"
@@ -360,7 +408,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <aside
           id="mobile-workspace-navigation"
           className={[
-            "absolute inset-y-0 left-0 flex w-[min(21rem,88vw)] flex-col border-r bg-sidebar shadow-2xl transition-transform duration-200",
+            "absolute inset-y-0 left-0 flex w-[min(21rem,88vw)] flex-col border-r bg-sidebar shadow-2xl transition-transform duration-200 motion-reduce:transition-none",
             mobileOpen ? "translate-x-0" : "-translate-x-full",
           ].join(" ")}
         >
@@ -378,6 +426,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <button
               type="button"
+              ref={mobileClose}
               aria-label="Close navigation"
               onClick={() => setMobileOpen(false)}
               className="inline-flex size-10 items-center justify-center rounded-xl border bg-background text-foreground transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -404,12 +453,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             />
           </div>
         </aside>
-      </div>
+      </dialog>
 
       {/* Responsive workspace with one mounted page-content tree. */}
       <div
         className={[
-          "min-h-[calc(100dvh-4rem)] transition-[grid-template-columns] duration-300 ease-out md:grid md:min-h-dvh",
+          "min-h-[calc(100dvh-4rem)] transition-[grid-template-columns] duration-300 ease-out motion-reduce:transition-none md:grid md:min-h-dvh",
           sidebarCollapsed
             ? "md:grid-cols-[5.5rem_minmax(0,1fr)]"
             : "md:grid-cols-[17.5rem_minmax(0,1fr)]",
@@ -460,6 +509,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <button
               type="button"
+              ref={desktopToggle}
               onClick={toggleSidebar}
               disabled={!sidebarPreferenceReady}
               aria-label={
@@ -538,7 +588,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           </header>
 
-          <main id="main-content" className="min-w-0">
+          <main id="main-content" tabIndex={-1} className="min-w-0 focus:outline-none">
             <div className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-6 md:px-5 md:py-6 lg:px-8 lg:py-8">
               <div className="mb-5 md:hidden">
                 <p className="text-xs font-medium text-muted-foreground">

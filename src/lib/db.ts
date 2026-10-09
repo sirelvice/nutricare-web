@@ -24,7 +24,11 @@ const ssl =
     ? false
     : sslRootCert
       ? {
-          ca: readFileSync(resolve(process.cwd(), sslRootCert), "utf8"),
+          // next.config.ts explicitly traces the required CA certificate.
+          ca: readFileSync(
+            resolve(/* turbopackIgnore: true */ process.cwd(), sslRootCert),
+            "utf8",
+          ),
           rejectUnauthorized: true,
         }
       : {

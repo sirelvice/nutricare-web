@@ -1,6 +1,6 @@
 # NutriCare V3 — PRD: Premium Product Experience
 
-**Status:** Active baseline. Slices 1 to 7 merged into `refactor/premium-ux`. Slice 8 verified locally; integration PR pending.
+**Status:** Active baseline. Slices 1 to 8 merged into `refactor/premium-ux`. Slice 9 automated verification complete; integration PR pending. Slice 10 manual accessibility, mobile and final regression acceptance remain pending.
 **Branch:** `refactor/premium-ux`
 **Tracking:** Issue #19
 **Depends on:** `Docs/product/01-product-blueprint.md`, `02-rfc-architecture.md`, `03-design.md` (V2 — unchanged, still authoritative for domain/architecture)

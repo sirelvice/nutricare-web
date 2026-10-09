@@ -17,22 +17,22 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://nutricare.app"),
   title: {
-    default: "NutriCare — Intelligent Nutrition Platform",
+    default: "NutriCare | Nutrition Planning and Tracking",
     template: "%s | NutriCare",
   },
   description:
-    "AI-powered nutrition intelligence platform for individuals, clinics, and partners.",
+    "Personal nutrition planning, weight tracking and practical guidance built around your goals.",
   keywords: [
     "nutrition platform",
-    "AI health",
+    "nutrition planning",
     "BMI tracking",
     "diet analytics",
     "health dashboard",
   ],
   openGraph: {
-    title: "NutriCare — Intelligent Nutrition Platform",
+    title: "NutriCare | Nutrition Planning and Tracking",
     description:
-      "Unified nutrition intelligence powered by AI and clinical data.",
+      "Bring your nutrition targets, weight history and progress together with clear explanations.",
     url: "https://nutricare.app",
     siteName: "NutriCare",
     images: [
@@ -47,9 +47,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "NutriCare — Intelligent Nutrition Platform",
+    title: "NutriCare | Nutrition Planning and Tracking",
     description:
-      "AI-powered nutrition analytics and health intelligence.",
+      "Nutrition planning, weight tracking and clear guidance for your everyday routine.",
     images: ["/og-image.png"],
   },
   robots: {

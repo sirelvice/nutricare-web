@@ -16,7 +16,10 @@ export function AuthShell({
   footer,
 }: AuthShellProps) {
   return (
-    <main className="min-h-screen bg-workspace px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+    <main id="main-content" tabIndex={-1} className="focus:outline-none min-h-screen bg-workspace px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <a href="#main-content" className="fixed left-4 top-4 z-[60] -translate-y-24 rounded-lg bg-background px-4 py-3 font-semibold text-foreground shadow-lg ring-2 ring-ring focus:translate-y-0 focus:outline-none">
+        Skip to main content
+      </a>
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-lg flex-col justify-center sm:min-h-[calc(100vh-6rem)]">
         <AuthBrand />
 

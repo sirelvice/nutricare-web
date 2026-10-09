@@ -11,6 +11,7 @@ export function EverydayNutrition() {
           src="/marketing/nutricare-everyday-nutrition.webp"
           alt="A woman preparing a meal with leafy greens, beans, avocado and tomatoes in a sunlit kitchen."
           fill
+          loading="eager"
           sizes="(min-width: 1440px) 1360px, (min-width: 1024px) calc(100vw - 80px), (min-width: 640px) calc(100vw - 48px), calc(100vw - 32px)"
           className="object-cover object-[70%_center] motion-safe:transition-transform motion-safe:duration-700 motion-safe:ease-out motion-safe:group-hover:scale-[1.025] lg:object-center"
         />

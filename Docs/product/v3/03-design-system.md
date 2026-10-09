@@ -239,3 +239,11 @@ The intent is a calm, natural, human product voice. Punctuation should support c
 - Contact and partner forms share validation, accessible field feedback and distinct confirmed, rejected and uncertain submission states. Uncertain writes preserve content and do not retry automatically.
 - Impact communicates available product capabilities and unpublished programme outcomes without fabricated totals. Pricing remains free today and uses the public layout. FAQ answers remain collapsed near the final call to action.
 - Privacy and Terms receive presentational changes; this slice does not establish completeness of legal policies. Sitemap links use /site-map, including Pricing.
+
+## 20. Navigation and accessibility review
+
+- Authenticated mobile navigation uses a modal dialog with an accessible name, initial focus, keyboard focus containment and Escape dismissal. Closing restores focus; switching to desktop closes the mobile dialog and restores scrolling.
+- Public, authentication and workspace layouts expose a first-focusable skip link to a focusable main-content target. Automated keyboard tests supplement, rather than replace, manual screen-reader checks.
+- Pricing is discoverable from public navigation and the footer. Existing approved marketing composition and motion remain in place, including reduced-motion alternatives.
+- Above-the-fold lifestyle imagery loads eagerly without altering its responsive crop or decoration. Metadata describes delivered planning and tracking capabilities without unsupported AI or clinical claims.
+- Accessibility acceptance still requires documented manual keyboard, screen-reader, contrast and mobile checks. Passing Chromium tests alone does not establish those results.

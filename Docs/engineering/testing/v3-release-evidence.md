@@ -55,3 +55,16 @@ These full-suite results apply to the uncommitted release-review working tree wi
 - Release decision / reviewer / date: NOT RECORDED.
 
 Do not turn NOT RUN into PASS based on automated tests. Document explicit reasons and follow-up for blocked checks. Preserve existing QA baselines from PR #18; this file is execution evidence, not a replacement checklist.
+
+## Preview certificate fix verification
+
+- Date: 9 October 2026, Africa/Nairobi.
+- Runtime candidate: `97a4424`.
+- Deployment: https://vercel.com/sirelvices-projects/nutricare-web/qgcxuSmhz7vVQ3ifeQbH9wYQDJsB
+- Initial preview failed because the middleware bundle lacked the database CA certificate.
+- Fixed standard CA tracing while retaining `rejectUnauthorized: true`.
+- Production build passed; certificate confirmed in `.next/server/middleware.js.nft.json`.
+- Six focused API-isolation and login-transition tests passed.
+- Both CI verification checks and Vercel checks passed.
+- Elvis reported successful sign-in on the rebuilt preview.
+- This verifies preview sign-in recovery; remaining manual accessibility, deployment and security findings retain their existing status.

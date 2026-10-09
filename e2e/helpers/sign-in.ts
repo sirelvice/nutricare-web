@@ -10,12 +10,9 @@ export async function submitCredentialsAndWait(page: Page) {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   const callback = await callbackResponse;
   expect(callback.ok(), "Credentials callback should succeed").toBe(true);
-  const callbackData: unknown = await callback.json();
-  const callbackUrl = callbackData && typeof callbackData === "object" &&
-    "url" in callbackData && typeof callbackData.url === "string"
-    ? new URL(callbackData.url, page.url()) : null;
-  expect(callbackUrl, "Credentials callback should return a destination").not.toBeNull();
-  expect(callbackUrl?.searchParams.get("error"), "Credentials callback should not report an authentication error").toBeNull();
+  // A fresh document can invalidate Chrome's old response-body handle.
+  // Successful navigation through the protected route and workspace readiness
+  // verify login without attempting to read that discarded body.
   await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/, { timeout: 15_000 });
   await waitForWorkspaceReady(page);
   // Wait for the dashboard's core read to finish before another page installs

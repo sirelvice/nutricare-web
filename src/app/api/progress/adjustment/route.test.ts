@@ -303,3 +303,14 @@ describe("POST /api/progress/adjustment", () => {
   });
 
 });
+
+it("contains authentication failures and keeps internal details private", async () => {
+  authMock.mockRejectedValueOnce(new Error("private auth detail"));
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const response = await POST(new Request("http://localhost:3000/api/progress/adjustment", { method: "POST" }));
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "Unable to process adjustment response." });
+    expect(log).toHaveBeenCalled();
+  } finally { log.mockRestore(); }
+});

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { create, fetchMock } = vi.hoisted(() => ({
+const { create, fetchMock, consume } = vi.hoisted(() => ({
   create: vi.fn(),
+  consume: vi.fn(),
   fetchMock: vi.fn(),
 }));
 
@@ -15,11 +16,19 @@ vi.mock("@/lib/db", () => ({
 
 vi.stubGlobal("fetch", fetchMock);
 
+vi.mock("@/lib/security/runtime-config", () => ({ getAppUrl: () => "http://localhost" }));
+vi.mock("@/lib/security/rate-limit", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/security/rate-limit")>(),
+  consumeRateLimit: consume,
+}));
+
 import { POST } from "./route";
 
 describe("POST /api/contact", () => {
   beforeEach(() => {
     create.mockReset();
+    consume.mockReset();
+    consume.mockResolvedValue({ allowed: true, remaining: 4, retryAfterSeconds: 900 });
     fetchMock.mockReset();
 
     delete process.env.RESEND_API_KEY;
@@ -30,7 +39,7 @@ describe("POST /api/contact", () => {
   it("returns 400 when required fields are missing", async () => {
     const request = new Request("http://localhost/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Origin: "http://localhost" },
       body: JSON.stringify({
         name: "",
         email: "",
@@ -43,7 +52,7 @@ describe("POST /api/contact", () => {
 
     expect(response.status).toBe(400);
     expect(body).toEqual({
-      error: "Name, email and message are required.",
+      error: "Please provide valid contact details.",
     });
     expect(create).not.toHaveBeenCalled();
   });
@@ -51,7 +60,7 @@ describe("POST /api/contact", () => {
   it("returns 400 for an invalid email", async () => {
     const request = new Request("http://localhost/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Origin: "http://localhost" },
       body: JSON.stringify({
         name: "Jane Doe",
         email: "not-an-email",
@@ -64,7 +73,7 @@ describe("POST /api/contact", () => {
 
     expect(response.status).toBe(400);
     expect(body).toEqual({
-      error: "Enter a valid email.",
+      error: "Please provide valid contact details.",
     });
     expect(create).not.toHaveBeenCalled();
   });
@@ -74,7 +83,7 @@ describe("POST /api/contact", () => {
 
     const request = new Request("http://localhost/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Origin: "http://localhost" },
       body: JSON.stringify({
         name: " Jane Doe ",
         email: "jane@example.com",
@@ -114,7 +123,7 @@ describe("POST /api/contact", () => {
 
     const request = new Request("http://localhost/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Origin: "http://localhost" },
       body: JSON.stringify({
         name: "Jane Doe",
         email: "jane@example.com",
@@ -141,7 +150,7 @@ describe("POST /api/contact", () => {
 
     const request = new Request("http://localhost/api/contact", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Origin: "http://localhost" },
       body: JSON.stringify({
         name: "Jane Doe",
         email: "jane@example.com",
@@ -156,5 +165,53 @@ describe("POST /api/contact", () => {
     expect(body).toEqual({
       error: "Server error.",
     });
+  });
+
+  const validDetails = { name: "Jane Doe", email: "jane@example.com", message: "Please contact me about the product." };
+  function submission(body: string, headers: Record<string, string> = {}) {
+    return new Request("http://localhost/api/contact", {
+      method: "POST", headers: { "Content-Type": "application/json", Origin: "http://localhost", ...headers }, body,
+    });
+  }
+  it("rejects cross-origin and missing-origin writes before consuming a bucket", async () => {
+    for (const origin of ["https://untrusted.example", ""]) {
+      expect((await POST(submission(JSON.stringify(validDetails), { Origin: origin }))).status).toBe(403);
+    }
+    expect(consume).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+  it("rejects non-JSON requests", async () => {
+    expect((await POST(submission(JSON.stringify(validDetails), { "Content-Type": "text/plain" }))).status).toBe(415);
+    expect(create).not.toHaveBeenCalled();
+  });
+  it("returns 429 with retry headers without saving", async () => {
+    consume.mockResolvedValue({ allowed: false, remaining: 0, retryAfterSeconds: 42 });
+    const response = await POST(submission(JSON.stringify(validDetails)));
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("42");
+    expect(consume).toHaveBeenCalledWith(expect.objectContaining({ namespace: "public-contact", limit: 5, windowSeconds: 900 }));
+    expect(create).not.toHaveBeenCalled();
+  });
+  it("returns 400 for malformed JSON without saving", async () => {
+    expect((await POST(submission("{broken"))).status).toBe(400);
+    expect(create).not.toHaveBeenCalled();
+  });
+  it.each([null, [], { name: 42, email: "jane@example.com", message: "Hello" }, { name: "Jane", email: "jane@example.com", message: "x".repeat(5001) }, { name: "Jane", email: "jane@example.com", message: "Hello", phone: {} }].map((value) => ({ value })))("rejects invalid runtime values: %j", async ({ value }) => {
+    expect((await POST(submission(JSON.stringify(value)))).status).toBe(400);
+    expect(create).not.toHaveBeenCalled();
+  });
+  it("bounds actual body bytes even when content-length understates the body", async () => {
+    const response = await POST(submission(JSON.stringify({ ...validDetails, message: "界".repeat(12000) }), { "Content-Length": "1" }));
+    expect(response.status).toBe(413);
+    expect(create).not.toHaveBeenCalled();
+  });
+  it("rejects an oversized declared body before parsing", async () => {
+    expect((await POST(submission(JSON.stringify(validDetails), { "Content-Length": "40000" }))).status).toBe(413);
+    expect(create).not.toHaveBeenCalled();
+  });
+  it("does not save when the rate-limit store fails", async () => {
+    consume.mockRejectedValue(new Error("Rate-limit store unavailable"));
+    expect((await POST(submission(JSON.stringify(validDetails)))).status).toBe(500);
+    expect(create).not.toHaveBeenCalled();
   });
 });

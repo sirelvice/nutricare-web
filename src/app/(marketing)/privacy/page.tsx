@@ -4,32 +4,31 @@ import { Badge } from "@/components/ui/badge";
 
 export default function PrivacyPage() {
   return (
-    <div className="mx-auto max-w-4xl space-y-8 py-10">
+    <div className="space-y-10">
       {/* Header */}
-      <div className="space-y-3">
+      <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 sm:p-10 lg:p-12">
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">Privacy-first</Badge>
           <Badge variant="secondary">Minimal data</Badge>
-          <Badge variant="secondary">Partner-ready</Badge>
         </div>
 
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+        <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
           Privacy Policy
         </h1>
 
-        <p className="text-slate-600">
+        <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">
           NutriCare is designed to collect the minimum needed to deliver useful nutrition insights.
           This page explains what we collect, how we use it, and your choices.
         </p>
       </div>
 
       {/* Content */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="rounded-3xl">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="rounded-2xl border-slate-200 shadow-none">
           <CardHeader>
             <CardTitle className="text-lg">What we collect</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-600 space-y-2">
+          <CardContent className="text-base leading-8 text-slate-600 space-y-3">
             <p>
               Profile fields you enter (e.g. height, age, goal, activity), plus any entries you add
               for tracking (e.g. weight history).
@@ -40,11 +39,11 @@ export default function PrivacyPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl">
+        <Card className="rounded-2xl border-slate-200 shadow-none">
           <CardHeader>
             <CardTitle className="text-lg">How we use it</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-600 space-y-2">
+          <CardContent className="text-base leading-8 text-slate-600 space-y-3">
             <p>
               To calculate metrics (BMI, BMR/TDEE), personalize guidance, and show your progress over time.
             </p>
@@ -54,11 +53,11 @@ export default function PrivacyPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl">
+        <Card className="rounded-2xl border-slate-200 shadow-none">
           <CardHeader>
             <CardTitle className="text-lg">Sharing & reporting</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-600 space-y-2">
+          <CardContent className="text-base leading-8 text-slate-600 space-y-3">
             <p>
               Partner reporting (when enabled) should be aggregated and privacy-preserving.
               Individual-level details should not be shared without explicit consent.
@@ -66,11 +65,11 @@ export default function PrivacyPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl">
+        <Card className="rounded-2xl border-slate-200 shadow-none">
           <CardHeader>
             <CardTitle className="text-lg">Your choices</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-slate-600 space-y-2">
+          <CardContent className="text-base leading-8 text-slate-600 space-y-3">
             <p>
               You control what you enter. You can update your profile any time.
             </p>

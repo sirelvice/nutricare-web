@@ -1,3 +1,4 @@
+import { assertPlanAge } from "@/lib/nutrition-plan/eligibility";
 import type { ProfileRepository } from "@/lib/profile/repositories/profile-repository";
 import type { WeightRepository } from "@/lib/tracking/repositories/weight-repository";
 import type { NutritionPlanRepository } from "@/lib/nutrition-plan/repository";
@@ -26,6 +27,8 @@ export class GenerateNutritionPlanService {
     if (!profile) {
       return null;
     }
+
+    assertPlanAge(profile.age);
 
     const latestWeight =
       await this.weightRepository.findLatestByUserId(userId);

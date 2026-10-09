@@ -19,12 +19,29 @@ if (!connectionString) {
 const sslRootCert = process.env.PGSSLROOTCERT;
 const sslMode = process.env.PGSSLMODE;
 
+function readDatabaseCertificate(path: string): string {
+  if (path === "certs/prod-ca-2021.crt" || path === "./certs/prod-ca-2021.crt") {
+    // Proxy has a separate deployment bundle. Keep the standard CA path
+    // statically traceable there, as well as in API route bundles.
+    return readFileSync(
+      resolve(process.cwd(), "certs", "prod-ca-2021.crt"),
+      "utf8",
+    );
+  }
+
+  // Custom CA paths must be explicitly packaged and verified separately.
+  return readFileSync(
+    resolve(/* turbopackIgnore: true */ process.cwd(), path),
+    "utf8",
+  );
+}
+
 const ssl =
   sslMode === "disable"
     ? false
     : sslRootCert
       ? {
-          ca: readFileSync(resolve(process.cwd(), sslRootCert), "utf8"),
+          ca: readDatabaseCertificate(sslRootCert),
           rejectUnauthorized: true,
         }
       : {

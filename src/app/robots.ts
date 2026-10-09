@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/dashboard"],
     },
-    sitemap: "https://nutricare.app/sitemap.xml",
+    sitemap: "https://nutricare-web-zeta.vercel.app/sitemap.xml",
   };
 }

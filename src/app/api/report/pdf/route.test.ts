@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PDFPage } from "pdf-lib";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockAuth, mockExecute } = vi.hoisted(() => ({
   mockAuth: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock("@/lib/nutrition-plan/prisma-repository", () => ({
 import { GET } from "@/app/api/report/pdf/route";
 
 describe("GET /api/report/pdf", () => {
+  afterEach(() => { vi.restoreAllMocks(); });
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -51,6 +53,7 @@ describe("GET /api/report/pdf", () => {
   });
 
   it("returns a personal PDF for an authenticated user", async () => {
+    const drawText = vi.spyOn(PDFPage.prototype, "drawText");
     mockAuth.mockResolvedValue({
       user: {
         id: "user-1",
@@ -99,8 +102,12 @@ describe("GET /api/report/pdf", () => {
     expect(response.headers.get("Content-Disposition")).toContain(
       "nutricare-personal-report.pdf",
     );
-    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(mockExecute).toHaveBeenCalledWith("user-1");
+    const text = drawText.mock.calls.map(([value]) => value).join("\n");
+    expect(text).toContain("BMI: 20.0 (Normal)");
+    expect(text).not.toContain("[object Object]");
+    expect(text).toContain("Generated 2026-09-06 00:00:00 UTC");
 
     const bytes = await response.arrayBuffer();
 

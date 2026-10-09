@@ -1,3 +1,4 @@
+import { readCredentialsRequest } from "@/lib/security/read-credentials-request";
 import { NextRequest, NextResponse } from "next/server";
 import { handlers } from "@/auth";
 import {
@@ -6,9 +7,31 @@ import {
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
 
-const { GET, POST: authPost } = handlers;
+const { GET: authGet, POST: authPost } = handlers;
 
-export { GET };
+export async function GET(request: NextRequest) {
+  const response = await authGet(request);
+  if (new URL(request.url).pathname !== "/api/auth/session") return response;
+
+  // Auth.js can mint a CSRF cookie during a session read. Concurrent initial
+  // session reads can overwrite the cookie used by an in-flight /csrf request.
+  // Only /csrf should issue that cookie here; session refresh cookies and every
+  // other header remain intact. POST validation still runs inside Auth.js.
+  const cookies = response.headers.getSetCookie();
+  const remaining = cookies.filter((cookie) =>
+    !/^(?:__Host-)?authjs\.csrf-token=/.test(cookie),
+  );
+  if (remaining.length === cookies.length) return response;
+
+  const headers = new Headers(response.headers);
+  headers.delete("set-cookie");
+  for (const cookie of remaining) headers.append("set-cookie", cookie);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 
 export async function POST(request: NextRequest) {
   const pathname = new URL(request.url).pathname;
@@ -17,14 +40,9 @@ export async function POST(request: NextRequest) {
     return authPost(request);
   }
 
-  let email = "";
-
-  try {
-    const body = await request.clone().formData();
-    email = body.get("email")?.toString().trim().toLowerCase() ?? "";
-  } catch {
-    // Auth.js will handle malformed credentials requests.
-  }
+  const bounded = await readCredentialsRequest(request);
+  if (!bounded.ok) return bounded.response;
+  const { email } = bounded;
 
   const ip = getClientIp(request);
 
@@ -58,5 +76,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return authPost(request);
+  return authPost(bounded.request);
 }

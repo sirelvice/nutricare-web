@@ -1,22 +1,16 @@
 import { NextResponse } from "next/server";
 import { PartnerInterest } from "@prisma/client";
-import { z } from "zod";
+import type { z } from "zod";
+import { partnerInquirySchema } from "@/lib/public/inquiry-schema";
 import { prisma } from "@/lib/db";
-import { badRequest, internalServerError } from "@/lib/api/errors";
+import { apiError, badRequest, internalServerError } from "@/lib/api/errors";
+
+import { PublicSubmissionError, readPublicSubmission } from "@/lib/public/submission";
 
 export const runtime = "nodejs";
 
-const inquirySchema = z.object({
-  orgName: z.string().trim().min(2).max(160),
-  contactName: z.string().trim().min(2).max(160),
-  email: z.string().trim().email().max(320),
-  country: z.string().trim().max(120).optional(),
-  interest: z.enum(["pilot", "donation", "research", "integration", "other"]),
-  message: z.string().trim().min(10).max(5000),
-});
-
 const interestMap: Record<
-  z.infer<typeof inquirySchema>["interest"],
+  z.infer<typeof partnerInquirySchema>["interest"],
   PartnerInterest
 > = {
   pilot: PartnerInterest.PILOT,
@@ -28,8 +22,8 @@ const interestMap: Record<
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const parsed = inquirySchema.safeParse(body);
+    const body = await readPublicSubmission(req, "public-partner-inquiry");
+    const parsed = partnerInquirySchema.safeParse(body);
 
     if (!parsed.success) {
       return badRequest("Please provide valid partner inquiry details.");
@@ -53,6 +47,7 @@ export async function POST(req: Request) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof PublicSubmissionError) return apiError(error.message, error.status, error.headers);
     console.error("Partner inquiry route error:", error);
 
     return internalServerError("Unable to submit your inquiry right now.");

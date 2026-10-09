@@ -22,6 +22,11 @@ describe("GET /api/impact-snapshot", () => {
       }),
     );
 
+    expect(body.metrics).toEqual([]);
+    expect(body.narrative.body).toContain(
+      "Programme results have not been published. Product activity alone does not demonstrate better health outcomes.",
+    );
+    expect(JSON.stringify(body)).not.toContain("local storage");
     expect(body).not.toHaveProperty("usageSnapshot");
     expect(body).not.toHaveProperty("profile");
     expect(body).not.toHaveProperty("weightEntries");

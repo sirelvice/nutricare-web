@@ -77,6 +77,7 @@ describe("/api/nutrition-plan/history", () => {
     const response = await GET();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await response.json()).toEqual({ plans });
     expect(historyExecute).toHaveBeenCalledWith("user-123");
   });

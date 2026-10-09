@@ -24,8 +24,18 @@ const securityHeaders = [
   },
 ];
 
+// Explicitly include CA files instead of tracing an arbitrary runtime path.
+// A custom PGSSLROOTCERT must also be available when building the deployment.
+const databaseCertificates = Array.from(new Set([
+  "./certs/prod-ca-2021.crt",
+  ...(process.env.PGSSLROOTCERT ? [process.env.PGSSLROOTCERT] : []),
+]));
+
 const nextConfig: NextConfig = {
   pageExtensions: ["ts", "tsx", "md", "mdx"],
+  outputFileTracingIncludes: {
+    "/*": databaseCertificates,
+  },
 
   async headers() {
     return [

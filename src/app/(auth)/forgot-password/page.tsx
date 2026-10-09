@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthMessage } from "@/components/auth/AuthMessage";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Leaf, ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -53,114 +54,77 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50 px-4">
-      <div className="w-full max-w-md space-y-8">
-        {/* Brand Header */}
-        <div className="flex flex-col items-center text-center">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center">
-              <Leaf className="w-7 h-7 text-white" />
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-900">NutriCare</h1>
-          </div>
-          <p className="text-slate-600 max-w-xs">
-            Personalized nutrition guidance for better health
-          </p>
-        </div>
-
-        <Card className="rounded-3xl shadow-xl border-0 bg-white/95 backdrop-blur">
-          <CardHeader className="space-y-1 pb-8 pt-8">
-            <CardTitle className="text-2xl font-semibold text-center text-slate-900">
-              Forgot Password?
-            </CardTitle>
-            <p className="text-center text-slate-600 text-sm">
-              No worries. We&apos;ll help you reset it.
+    <AuthShell
+      title="Forgot Password?"
+      description="Request a link to reset your NutriCare password."
+      footer={
+        <Link
+          href="/login"
+          className="inline-flex min-h-11 items-center gap-2 font-medium text-primary underline-offset-4 hover:underline"
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Back to sign in
+        </Link>
+      }
+    >
+      {!submitted ? (
+        <form onSubmit={onSubmit} className="space-y-5" aria-busy={busy}>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email address</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              aria-describedby="recovery-help"
+              className="h-12"
+              disabled={busy}
+              required
+            />
+            <p id="recovery-help" className="text-xs leading-5 text-muted-foreground">
+              If an account exists for this email, we&apos;ll send password reset instructions.
             </p>
-          </CardHeader>
+          </div>
 
-          <CardContent className="px-8 pb-8">
-            {!submitted ? (
-              <form onSubmit={onSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-slate-700">Email address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      className="h-12 rounded-2xl pl-11"
-                      disabled={busy}
-                      required
-                    />
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    If an account exists for this email, we&apos;ll send password reset instructions.
-                  </p>
-                  {error && <p className="text-sm text-red-600">{error}</p>}
-                </div>
+          {error ? <AuthMessage type="error">{error}</AuthMessage> : null}
 
-                <Button
-                  type="submit"
-                  className="w-full h-12 text-base font-medium rounded-2xl bg-emerald-600 hover:bg-emerald-700 transition-all active:scale-[0.985]"
-                  disabled={busy || !email.trim()}
-                >
-                  {busy ? (
-                    <span className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Sending instructions...
-                    </span>
-                  ) : (
-                    "Send reset instructions"
-                  )}
-                </Button>
-              </form>
-            ) : (
-              <div className="text-center py-8 space-y-4">
-                <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <Mail className="w-8 h-8 text-emerald-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900">Check your email</h3>
-                <p className="text-slate-600">
-                  If an account exists with <strong>{email}</strong>, you will receive password reset instructions shortly.
-                </p>
-                <p className="text-sm text-slate-500">
-                  Didn&apos;t receive the email? Check your spam folder or try again.
-                </p>
-
-                <Button
-                  onClick={() => {
-                    setSubmitted(false);
-                    setEmail("");
-                  }}
-                  variant="outline"
-                  className="mt-6 rounded-2xl"
-                >
-                  Try another email
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Back to Login */}
-        <div className="text-center">
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
+          <Button
+            type="submit"
+            className="h-12 w-full text-base font-medium"
+            disabled={busy || !email.trim()}
           >
-            <ArrowLeft size={16} />
-            Back to sign in
-          </Link>
+            {busy ? "Sending instructions..." : "Send reset instructions"}
+          </Button>
+        </form>
+      ) : (
+        <div className="space-y-5">
+          <AuthMessage type="success">
+            <h2 className="font-semibold">Check your email</h2>
+            <p className="mt-1">
+              If an account exists with{" "}
+              <strong className="break-all">{email.trim()}</strong>, you will
+              receive password reset instructions shortly.
+            </p>
+          </AuthMessage>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Didn&apos;t receive the email? Check your spam folder or try again.
+          </p>
+          <Button
+            type="button"
+            onClick={() => {
+              setSubmitted(false);
+              setEmail("");
+              setError("");
+            }}
+            variant="outline"
+            className="min-h-11 w-full"
+          >
+            Try another email
+          </Button>
         </div>
-
-        {/* Trust signals */}
-        <p className="text-center text-xs text-slate-500">
-          Your account is protected with secure authentication
-        </p>
-      </div>
-    </div>
+      )}
+    </AuthShell>
   );
 }

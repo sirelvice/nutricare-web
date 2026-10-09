@@ -11,7 +11,20 @@ describe("calcBMIKgM", () => {
   });
 
   it("returns null when height is negative", () => {
-    expect(calcBMIKgM(60, -170)).toBe(20.8);
+    expect(calcBMIKgM(60, -170)).toBeNull();
+  });
+});
+
+describe("invalid BMI measurements", () => {
+  it.each([
+    { weight: 0, height: 170 },
+    { weight: -60, height: 170 },
+    { weight: NaN, height: 170 },
+    { weight: Infinity, height: 170 },
+    { weight: 60, height: NaN },
+    { weight: 60, height: Infinity },
+  ])("rejects nonpositive or nonfinite measurements: %j", ({ weight, height }) => {
+    expect(calcBMIKgM(weight, height)).toBeNull();
   });
 });
 

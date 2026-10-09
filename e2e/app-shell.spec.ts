@@ -1,0 +1,316 @@
+import { expect, test, type Page } from "@playwright/test";
+import { submitCredentialsAndWait, waitForWorkspaceReady } from "./helpers/sign-in";
+
+const password = "NutriCareE2E!2026";
+
+async function registerAndSignIn(page: Page) {
+  const email = `e2e-shell-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}@example.com`;
+
+  await page.goto("/register");
+
+  await page.getByLabel("Full name").fill("NutriCare Shell User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+
+  const registerResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/auth/register"),
+  );
+
+  await page.getByRole("button", { name: "Create free account" }).click();
+
+  const registerResponse = await registerResponsePromise;
+
+  if (registerResponse.status() !== 201) {
+    throw new Error(
+      `Registration failed with HTTP ${registerResponse.status()}: ${await registerResponse.text()}`,
+    );
+  }
+
+  await expect(
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
+  ).toBeVisible();
+
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await submitCredentialsAndWait(page);
+}
+
+test.beforeEach(async ({ page }, testInfo) => {
+  let hash = 0;
+
+  for (const character of testInfo.testId) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }
+
+  const octet2 = (hash >>> 16) & 255;
+  const octet3 = (hash >>> 8) & 255;
+  const runOctet = Math.floor(Date.now() / 1000) % 250;
+
+  await page.setExtraHTTPHeaders({
+    "x-forwarded-for": `10.${octet2}.${octet3}.${runOctet}`,
+  });
+});
+
+test("desktop workspace can collapse and remembers the preference", async ({
+  page,
+}) => {
+  await registerAndSignIn(page);
+
+  const workspaceNavigation = page.getByRole("navigation", {
+    name: "NutriCare workspace",
+  });
+
+  await expect(workspaceNavigation).toBeVisible();
+  await expect(
+    workspaceNavigation.getByRole("link", { name: "Dashboard" }),
+  ).toHaveAttribute("aria-current", "page");
+
+  const collapseButton = page.getByRole("button", {
+    name: "Collapse NutriCare navigation",
+  });
+
+  await expect(collapseButton).toBeVisible();
+  await collapseButton.click();
+  const expandControl = page.getByRole("button", {
+    name: "Expand NutriCare navigation",
+  });
+
+  await expect.poll(() =>
+    expandControl.evaluate((button) => {
+      const bounds = button.getBoundingClientRect();
+      return [0.25, 0.75].every((fraction) => {
+        const hit = document.elementFromPoint(
+          bounds.left + bounds.width * fraction,
+          bounds.top + bounds.height / 2,
+        );
+        return hit !== null && button.contains(hit);
+      });
+    }),
+  ).toBe(true);
+
+
+  await expect(
+    page.getByRole("button", { name: "Expand NutriCare navigation" }),
+  ).toBeVisible();
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.localStorage.getItem("nutricare-sidebar-collapsed"),
+      ),
+    )
+    .toBe("true");
+
+  await workspaceNavigation
+    .getByRole("link", { name: "Profile & goal" })
+    .click();
+
+  await expect(page).toHaveURL(/\/profile/);
+
+  await expect(
+    page.getByRole("button", { name: "Expand NutriCare navigation" }),
+  ).toBeVisible();
+
+  await page.reload();
+  await waitForWorkspaceReady(page);
+
+  await expect(
+    page.getByRole("button", { name: "Expand NutriCare navigation" }),
+  ).toBeVisible();
+
+  await page
+    .getByRole("button", { name: "Expand NutriCare navigation" })
+    .click();
+
+  await expect(
+    page.getByRole("button", { name: "Collapse NutriCare navigation" }),
+  ).toBeVisible();
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.localStorage.getItem("nutricare-sidebar-collapsed"),
+      ),
+    )
+    .toBe("false");
+});
+
+test("desktop workspace exposes the public site and sign out", async ({
+  page,
+}) => {
+  await registerAndSignIn(page);
+
+  await expect(
+    page.getByRole("link", { name: "NutriCare home" }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("link", { name: "Main site", exact: true }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("button", { name: "Sign out" }),
+  ).toBeVisible();
+
+  const signOutResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/auth/signout" && response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Sign out" }).click();
+  expect((await signOutResponse).ok()).toBe(true);
+  await expect(page).toHaveURL("/", { timeout: 15_000 });
+});
+
+test("mobile workspace uses the drawer navigation", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await registerAndSignIn(page);
+
+  await expect(
+    page.getByRole("button", { name: "Open navigation" }),
+  ).toBeVisible();
+
+  await expect(
+    page.getByRole("button", { name: "Collapse NutriCare navigation" }),
+  ).toBeHidden();
+
+  await page.getByRole("button", { name: "Open navigation" }).click();
+
+  const drawer = page.locator("#mobile-workspace-navigation");
+
+  await expect(drawer).toBeVisible();
+
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true);
+
+  await expect(
+    drawer.getByRole("link", { name: /NutriCare Shell User.*Account/ }),
+  ).toBeVisible();
+
+  await expect(
+    drawer.getByRole("link", { name: "Dashboard" }),
+  ).toBeVisible();
+
+  await expect(
+    drawer.getByRole("button", { name: "Sign out" }),
+  ).toBeVisible();
+
+  await drawer.getByRole("link", { name: "Profile & goal" }).click();
+
+  await expect(page).toHaveURL(/\/profile/);
+
+  await expect(
+    page.getByRole("button", { name: "Open navigation" }),
+  ).toBeVisible();
+});
+
+test("workspace renders one content tree and preserves form state across resizing", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await registerAndSignIn(page);
+  await page.goto("/tools/bmi");
+
+  await expect(page.getByRole("heading", { name: "BMI Calculator", exact: true })).toBeVisible();
+  await expect(page.locator("main")).toHaveCount(1);
+  await expect(page.locator("#height")).toHaveCount(1);
+  await expect(page.locator("#weight")).toHaveCount(1);
+
+  await page.locator("#height").fill("170");
+  await page.locator("#weight").fill("60");
+
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(page.locator("main")).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await expect(page.locator("#height")).toHaveCount(1);
+    await expect(page.locator("#weight")).toHaveCount(1);
+    await expect(page.locator("#height")).toBeVisible();
+    await expect(page.locator("#height")).toHaveValue("170");
+    await expect(page.locator("#weight")).toHaveValue("60");
+    await expect.poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  }
+
+  await page.getByRole("button", { name: "Calculate BMI", exact: true }).click();
+  await expect(page.getByText("20.8", { exact: true })).toBeVisible();
+
+  await page.goto("/tools/tracking/weight");
+  await expect(page.locator("#weight-date")).toHaveCount(1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator("#weight-date")).toHaveCount(1);
+  await expect(page.locator("#weight-date")).toBeVisible();
+});
+
+test("mobile navigation contains keyboard focus and restores it on close", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await registerAndSignIn(page);
+  const trigger = page.getByRole("button", { name: "Open navigation", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Workspace navigation" });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("aside").getByRole("button", { name: "Close navigation" })).toBeFocused();
+  for (const key of ["Tab", "Shift+Tab"]) {
+    for (let step = 0; step < 16; step += 1) {
+      await page.keyboard.press(key);
+      await expect.poll(() => dialog.evaluate((element) =>
+        element.contains(document.activeElement),
+      )).toBe(true);
+    }
+  }
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.locator("dialog").evaluate((element) =>
+    element.contains(document.activeElement),
+  )).toBe(false);
+  await trigger.click();
+  await dialog.locator("aside").getByRole("button", { name: "Close navigation" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
+});
+
+test("resizing an open mobile drawer restores the desktop workspace", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await registerAndSignIn(page);
+  await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Workspace navigation" })).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.locator("dialog")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Collapse NutriCare navigation" })).toBeFocused();
+  await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe("hidden");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("button", { name: "Open navigation", exact: true })).toHaveAttribute("aria-expanded", "false");
+});
+
+test("mobile workspace signs out through the navigation drawer", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await registerAndSignIn(page);
+  await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Workspace navigation" });
+  const response = page.waitForResponse((result) =>
+    new URL(result.url()).pathname === "/api/auth/signout" && result.request().method() === "POST",
+  );
+  await dialog.getByRole("button", { name: "Sign out", exact: true }).click();
+  expect((await response).ok()).toBe(true);
+  await expect(page).toHaveURL("/", { timeout: 15_000 });
+});
+
+test("workspace skip navigation bypasses sidebar controls", async ({ page }) => {
+  await registerAndSignIn(page);
+  await page.goto("/dashboard");
+  await waitForWorkspaceReady(page);
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Skip to main content", exact: true })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("main#main-content")).toBeFocused();
+});

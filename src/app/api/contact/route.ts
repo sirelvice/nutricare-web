@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { badRequest, internalServerError } from "@/lib/api/errors";
+import { apiError, badRequest, internalServerError } from "@/lib/api/errors";
+
+import { contactSchema } from "@/lib/public/inquiry-schema";
+import { PublicSubmissionError, readPublicSubmission } from "@/lib/public/submission";
 
 export const runtime = "nodejs";
 
@@ -10,10 +13,6 @@ type Payload = {
   phone?: string | null;
   message: string;
 };
-
-function isEmail(x: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x);
-}
 
 async function sendViaResend(data: Payload) {
   const apiKey = process.env.RESEND_API_KEY;
@@ -34,6 +33,7 @@ async function sendViaResend(data: Payload) {
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
+    signal: AbortSignal.timeout(8000),
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
@@ -48,8 +48,7 @@ async function sendViaResend(data: Payload) {
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Resend failed: ${res.status} ${text}`);
+    throw new Error(`Contact notification failed with status ${res.status}.`);
   }
 
   return { sent: true as const };
@@ -66,20 +65,12 @@ function escapeHtml(s: string) {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as Partial<Payload>;
-
-    const name = (body.name ?? "").trim();
-    const email = (body.email ?? "").trim();
-    const phone = (body.phone ?? "").trim();
-    const message = (body.message ?? "").trim();
-
-    if (!name || !email || !message) {
-      return badRequest("Name, email and message are required.");
-    }
-
-    if (!isEmail(email)) {
-      return badRequest("Enter a valid email.");
-    }
+    const body = await readPublicSubmission(req, "public-contact");
+    const parsed = contactSchema.safeParse(body);
+    if (!parsed.success) return badRequest("Please provide valid contact details.");
+    const { name, message } = parsed.data;
+    const email = parsed.data.email.toLowerCase();
+    const phone = parsed.data.phone || null;
 
     // 1) Save to DB
     const saved = await prisma.contactMessage.create({
@@ -101,6 +92,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, id: saved.id }, { status: 200 });
   } catch (e) {
+    if (e instanceof PublicSubmissionError) return apiError(e.message, e.status, e.headers);
     console.error("Contact route error:", e);
     return internalServerError("Server error.");
   }

@@ -1,3 +1,4 @@
+import { getPersonalisationAgeStatus } from "@/lib/profile/personalisation-eligibility";
 import {
   calcBMR,
   calcTDEE,
@@ -25,6 +26,7 @@ export function calculateNutritionPlan(params: {
   if (
     profile.heightCm === null ||
     profile.age === null ||
+    getPersonalisationAgeStatus(profile.age) !== "ready" ||
     !Number.isFinite(weightKg)
   ) {
     return null;

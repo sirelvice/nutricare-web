@@ -114,3 +114,28 @@ describe("DELETE /api/weight-entries/:id", () => {
   });
 
 });
+
+
+describe("weight deletion failure boundaries", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it.each(["authentication", "storage"])("returns generic JSON on %s failure", async (failure) => {
+    const privateError = new Error("private failure detail");
+    if (failure === "authentication") mockAuth.mockRejectedValueOnce(privateError);
+    else {
+      mockAuth.mockResolvedValue({ user: { id: "user-1" } });
+      mockDeleteExecute.mockRejectedValueOnce(privateError);
+    }
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await DELETE(new Request("http://localhost:3000/api/weight-entries/entry-1", {
+        method: "DELETE", headers: { Origin: "http://localhost:3000" },
+      }), { params: Promise.resolve({ id: "entry-1" }) });
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: "Unable to delete weight entry." });
+      if (failure === "authentication") expect(mockDeleteExecute).not.toHaveBeenCalled();
+      else expect(mockDeleteExecute).toHaveBeenCalledWith("user-1", "entry-1");
+      expect(log).toHaveBeenCalled();
+    } finally { log.mockRestore(); }
+  });
+});

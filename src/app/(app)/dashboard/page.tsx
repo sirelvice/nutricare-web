@@ -1,10 +1,26 @@
 "use client";
 
+import { getPersonalisationAgeStatus } from "@/lib/profile/personalisation-eligibility";
+import { PLAN_ELIGIBILITY_MESSAGES } from "@/lib/nutrition-plan/eligibility";
+import { createNutritionPlan, PlanRequestError } from "@/lib/nutrition-plan/client";
+import { submitAdjustment, AdjustmentRequestError } from "@/lib/progress/adjustment-client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
+import { ArrowRight, ArrowUpRight, CircleCheck, Utensils } from "lucide-react";
+import { CardInfoPanel } from "@/components/ui/card-info-panel";
+import { CardExplanation } from "@/components/ui/card-explanation";
+import { ProgressStatus } from "@/components/progress/ProgressStatus";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+
+import {
+  loadDashboardCore,
+  loadDashboardProgress,
+  loadDashboardRecommendations,
+} from "./dashboard-loader";
 
 import type { UserProfile } from "@/lib/profile/domain";
 import type { WeightEntry } from "@/lib/tracking/domain";
@@ -17,12 +33,10 @@ import {
 } from "./dashboard-state";
 
 
-import {
-  LineChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
+const WeightHistoryChart = dynamic(() => import("./WeightHistoryChart"), {
+  ssr: false,
+  loading: () => <div role="status" className="flex h-36 items-center text-sm text-muted-foreground">Loading weight chart...</div>,
+});
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -35,7 +49,7 @@ function formatGoal(goal?: string) {
   if (!goal) return "";
   if (goal === "gain") return "gain weight";
   if (goal === "lose") return "lose weight";
-  return goal;
+  return goal === "maintain" ? "maintain your weight" : goal;
 }
 
 function formatRecordedDate(date: string) {
@@ -52,6 +66,8 @@ function formatRecordedDate(date: string) {
 }
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
+  const displayName = session?.user?.name?.trim().split(/\s+/)[0];
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
   const [nutritionPlan, setNutritionPlan] =
@@ -105,93 +121,119 @@ export default function DashboardPage() {
     message: string;
   } | null>(null);
 
+  const adjustmentInFlight = useRef(false);
+  const adjustmentRequiresReload = useRef(false);
+  const planInFlight = useRef(false);
+  const planRequiresReload = useRef(false);
+  const [adjustmentBlocked, setAdjustmentBlocked] = useState(false);
+  const [planBlocked, setPlanBlocked] = useState(false);
   const [adjustmentSubmitting, setAdjustmentSubmitting] = useState(false);
   const [adjustmentError, setAdjustmentError] = useState<string | null>(null);
+  const [adjustmentSuccess, setAdjustmentSuccess] = useState<string | null>(null);
+  const insightsController = useRef<AbortController | null>(null);
+  const [insightsRevision, setInsightsRevision] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [progressLoadError, setProgressLoadError] = useState(false);
   const [recommendationsLoadError, setRecommendationsLoadError] = useState(false);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(true);
+  const [progressLoading, setProgressLoading] = useState(true);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [generationSuccess, setGenerationSuccess] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    const { signal } = controller;
+    setLoading(true);
+    setLoadError(null);
 
-    async function loadDashboard() {
+    async function loadCore() {
       try {
-        const [
-          profileRes,
-          weightRes,
-          planRes,
-          recommendationsRes,
-          progressRes,
-        ] = await Promise.all([
-          fetch("/api/profile"),
-          fetch("/api/weight-entries"),
-          fetch("/api/nutrition-plan"),
-          fetch("/api/recommendations"),
-          fetch("/api/progress"),
-        ]);
-
-        if (cancelled) return;
-
-        if (!profileRes.ok || !weightRes.ok || !planRes.ok) {
-          throw new Error("Unable to load your dashboard data.");
-        }
-
-        setProfile(await profileRes.json());
-        setWeightEntries(await weightRes.json());
-
-        const data = await planRes.json();
-        setNutritionPlan(data.plan);
-
-        if (recommendationsRes.ok) {
-          setRecommendations(await recommendationsRes.json());
-          setRecommendationsLoadError(false);
-        } else {
-          setRecommendations(null);
-          setRecommendationsLoadError(true);
-        }
-
-        if (progressRes.ok) {
-          const data = await progressRes.json();
-          setProgressEvaluation(data.progress.evaluation);
-          setProgressRecommendation(data.progress.recommendation);
-          setProgressLoadError(false);
-        } else {
-          setProgressEvaluation(null);
-          setProgressRecommendation(null);
-          setProgressLoadError(true);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Failed to load dashboard:", error);
-          setLoadError(
-            error instanceof Error
-              ? error.message
-              : "Unable to load your dashboard.",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        const data = await loadDashboardCore(signal);
+        if (signal.aborted) return;
+        setProfile(data.profile);
+        setWeightEntries(data.weightEntries);
+        setNutritionPlan(data.nutritionPlan);
+        setLoading(false);
+      } catch {
+        if (signal.aborted) return;
+        setLoadError("Unable to load your dashboard data.");
+        setLoading(false);
+        controller.abort();
+        insightsController.current?.abort();
       }
     }
 
-    loadDashboard();
+    void loadCore();
+    return () => controller.abort();
+  }, [retryAttempt]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    insightsController.current = controller;
+    setRecommendationsLoading(true);
+    setProgressLoading(true);
+    setRecommendations(null);
+    setProgressEvaluation(null);
+    setProgressRecommendation(null);
+    setRecommendationsLoadError(false);
+    setProgressLoadError(false);
+
+    async function loadRecommendations() {
+      try {
+        const result = await loadDashboardRecommendations(signal);
+        if (signal.aborted) return;
+        setRecommendations(result.status === "ready" ? result.data : null);
+        setRecommendationsLoadError(result.status === "error");
+        setRecommendationsLoading(false);
+      } catch {
+        if (signal.aborted) return;
+        setRecommendationsLoadError(true);
+        setRecommendationsLoading(false);
+      }
+    }
+
+    async function loadProgress() {
+      try {
+        const result = await loadDashboardProgress(signal);
+        if (signal.aborted) return;
+        setProgressEvaluation(result.status === "ready" ? result.data.evaluation : null);
+        setProgressRecommendation(result.status === "ready" ? result.data.recommendation : null);
+        setProgressLoadError(result.status === "error");
+        setProgressLoading(false);
+      } catch {
+        if (signal.aborted) return;
+        setProgressLoadError(true);
+        setProgressLoading(false);
+      }
+    }
+
+    void loadRecommendations();
+    void loadProgress();
+    return () => controller.abort();
+  }, [retryAttempt, insightsRevision]);
+
+  function refreshInsights() {
+    // Stop older responses before scheduling the refreshed reads.
+    insightsController.current?.abort();
+    setRecommendations(null);
+    setProgressEvaluation(null);
+    setProgressRecommendation(null);
+    setRecommendationsLoading(true);
+    setProgressLoading(true);
+    setInsightsRevision((revision) => revision + 1);
+  }
 
   async function respondToAdjustment(
     decision: "ACCEPTED" | "DECLINED",
   ) {
     if (
+      adjustmentInFlight.current || adjustmentRequiresReload.current ||
+      !profile || getPersonalisationAgeStatus(profile.age) !== "ready" ||
       !progressEvaluation ||
       !progressRecommendation ||
       progressRecommendation.recommendedAction !== "CONSIDER_ADJUSTMENT" ||
@@ -200,33 +242,17 @@ export default function DashboardPage() {
       return;
     }
 
+    adjustmentInFlight.current = true;
     setAdjustmentSubmitting(true);
     setAdjustmentError(null);
+    setAdjustmentSuccess(null);
 
     try {
       if (!progressEvaluation.id) {
         throw new Error("Current progress evaluation is unavailable.");
       }
 
-      const response = await fetch("/api/progress/adjustment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          evaluationId: progressEvaluation.id,
-          decision,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(
-          data?.error || "Unable to record your adjustment decision.",
-        );
-      }
-
-      const result = await response.json();
+      const result = await submitAdjustment(progressEvaluation.id, decision);
 
       setProgressRecommendation((current) =>
         current
@@ -238,16 +264,25 @@ export default function DashboardPage() {
           : current,
       );
 
+      setAdjustmentSuccess(getAdjustmentResultMessage({
+        decision,
+        nutritionPlan: result.plan ?? nutritionPlan,
+      }));
       if (decision === "ACCEPTED" && result.plan) {
         setNutritionPlan(result.plan);
+        refreshInsights();
       }
     } catch (error) {
+      const blocked = !(error instanceof AdjustmentRequestError) || error.kind !== "rejected";
+      adjustmentRequiresReload.current = blocked;
+      setAdjustmentBlocked(blocked);
       setAdjustmentError(
         error instanceof Error
           ? error.message
           : "Unable to record your adjustment decision.",
       );
     } finally {
+      adjustmentInFlight.current = false;
       setAdjustmentSubmitting(false);
     }
   }
@@ -260,9 +295,12 @@ export default function DashboardPage() {
     )[0];
   }, [weightEntries]);
 
+  const ageStatus = profile ? getPersonalisationAgeStatus(profile.age) : null;
   const hasProfile = !!(profile?.heightCm && profile?.age);
   const hasWeight = !!latestWeight;
   const hasCalories = !!nutritionPlan;
+  const showDetailedDashboard = hasProfile || hasWeight || hasCalories ||
+    !!recommendations || !!progressEvaluation || recommendationsLoadError || progressLoadError;
 
   const progressPercent = getSetupProgress({
     hasProfile,
@@ -271,31 +309,27 @@ export default function DashboardPage() {
   });
 
   async function generateNutritionPlan() {
+    if (planInFlight.current || planRequiresReload.current) return;
+    planInFlight.current = true;
     setGenerating(true);
     setGenerationError(null);
     setGenerationSuccess(false);
-
     try {
-      const response = await fetch("/api/nutrition-plan", {
-        method: "POST",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Unable to generate nutrition plan.");
-      }
-
-      setNutritionPlan(data.plan);
+      const plan = await createNutritionPlan(new AbortController().signal);
+      setNutritionPlan(plan);
       setGenerationSuccess(true);
+      refreshInsights();
     } catch (error) {
-      console.error("Failed to generate nutrition plan:", error);
-      setGenerationError(
-        error instanceof Error
-          ? error.message
-          : "Unable to generate nutrition plan.",
-      );
+      const kind = error instanceof PlanRequestError ? error.kind : "uncertain";
+      const blocked = kind === "conflict" || kind === "uncertain";
+      planRequiresReload.current = blocked;
+      setPlanBlocked(blocked);
+      setGenerationError(kind === "age-required" || kind === "age-unsupported"
+        ? PLAN_ELIGIBILITY_MESSAGES[kind]
+        : kind === "prerequisites" ? "Complete your profile and record your current weight before generating a plan."
+        : "We could not confirm your current plan. Reload your dashboard before generating another plan.");
     } finally {
+      planInFlight.current = false;
       setGenerating(false);
     }
   }
@@ -306,31 +340,24 @@ export default function DashboardPage() {
     hasCalories,
   });
 
-  const chartData = [...weightEntries]
-    .sort((a, b) => (a.date > b.date ? 1 : -1))
-    .slice(-7)
-    .map((w, i) => ({
-      name: `${i + 1}`,
-      weight: w.weightKg,
-    }));
+  const nextAction = primaryAction ?? {
+    label: "Log your weight", href: "/tools/tracking/weight",
+  };
+  const recentWeights = useMemo(() => [...weightEntries]
+    .sort((a, b) => a.date.localeCompare(b.date)), [weightEntries]);
 
   const rec = recommendations?.recommendations ?? null;
 
   if (loading) {
     return (
-      <div
-        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-      >
-        <div className="space-y-4">
-          <div className="h-8 w-48 animate-pulse rounded-lg bg-slate-100" />
-          <div className="h-4 w-64 animate-pulse rounded bg-slate-100" />
-          <div className="h-2 max-w-xl animate-pulse rounded-full bg-slate-100" />
-          <p className="text-sm text-slate-500">
-            Loading your dashboard...
-          </p>
+      <div role="status" aria-busy="true" className="space-y-6">
+        <p className="text-sm text-muted-foreground">Loading your dashboard...</p>
+        <div aria-hidden="true" className="space-y-6 motion-safe:animate-pulse">
+          <div className="h-44 rounded-2xl border bg-card" />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="h-64 rounded-2xl border bg-card" />
+            <div className="h-64 rounded-2xl border bg-card" />
+          </div>
         </div>
       </div>
     );
@@ -338,458 +365,239 @@ export default function DashboardPage() {
 
   if (loadError) {
     return (
-      <div
-        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-        role="alert"
-      >
-        <div className="space-y-4">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-              Dashboard unavailable
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              {loadError}
-            </p>
-          </div>
-
-          <Button onClick={() => window.location.reload()}>
-            Try again
-          </Button>
-        </div>
-      </div>
+      <Card className="shadow-none">
+        <CardContent className="space-y-4" role="alert">
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard unavailable</h1>
+          <p className="text-sm leading-6 text-muted-foreground">{loadError}</p>
+          <Button size="lg" onClick={() => setRetryAttempt((attempt) => attempt + 1)}>Try again</Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-10">
-      {/* HERO */}
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
-        <div className="max-w-3xl">
-          <p className="text-sm font-medium text-emerald-700">Your health workspace</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{getGreeting()}</h1>
-
-        <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
-          {hasProfile
-            ? `Goal: ${formatGoal(profile?.goal)}`
-            : "Add your details to get started"}
-        </p>
-
-        <div className="mt-6 max-w-xl">
-          <div className="h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-slate-200/70">
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <p className="mt-2 text-xs font-medium text-slate-500">
-            Setup {progressPercent}% complete
+    <div className="space-y-6 pb-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-primary">Your health workspace</p>
+          <h1 className="mt-2 break-words text-3xl font-semibold tracking-tight sm:text-4xl">{getGreeting()}{displayName ? `, ${displayName}` : ""}</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {hasProfile ? `Your goal is to ${formatGoal(profile?.goal)}.` : "Add your details to get started"}
           </p>
         </div>
+        <Button asChild variant="ghost" size="lg" className="self-start sm:self-auto">
+          <Link href="/profile">Your profile <ArrowUpRight aria-hidden="true" /></Link>
+        </Button>
+      </header>
 
-        {generationError && (
-          <p
-            className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-            role="alert"
-          >
-            {generationError}
-          </p>
-        )}
-
-        {generationSuccess && !generationError && (
-          <p
-            className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
-            role="status"
-            aria-live="polite"
-          >
-            Your nutrition plan is ready.
-          </p>
-        )}
-
-        {primaryAction && (
-          <div className="mt-6">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-              Next step
+      <section aria-labelledby="next-step-heading" className={`relative overflow-hidden rounded-2xl border border-primary/20 bg-card ${primaryAction ? "p-6 sm:p-8" : "p-5 sm:p-6"}`}>
+        <div aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-accent" />
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-xl">
+            <p className="text-xs font-medium uppercase tracking-widest text-primary">Your next step</p>
+            <h2 id="next-step-heading" className={`mt-2 font-semibold tracking-tight ${primaryAction ? "text-2xl" : "text-xl"}`}>
+              {primaryAction ? "Build your starting point" : "Record your weight"}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              {primaryAction
+                ? "A few details help us tailor your nutrition plan. Start here, then build a routine that works for you."
+                : "Record your weight when you are ready. Consistent measurements help put changes in context."}
             </p>
-            {primaryAction.href ? (
-              <Button asChild className="w-full sm:w-auto">
-                <Link href={primaryAction.href}>
-                  {primaryAction.label}
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                className="w-full sm:w-auto"
-                onClick={generateNutritionPlan}
-                disabled={generating}
-              >
-                {generating ? "Generating..." : primaryAction.label}
-              </Button>
-            )}
           </div>
-        )}
+          {nextAction.href ? (
+            <Button asChild size="lg" className="w-full sm:w-auto">
+              <Link href={nextAction.href}>{nextAction.label}<ArrowRight aria-hidden="true" /></Link>
+            </Button>
+          ) : (
+            <Button size="lg" className="w-full sm:w-auto" onClick={generateNutritionPlan} disabled={generating || planBlocked || (ageStatus !== null && ageStatus !== "ready")}>
+              {generating ? "Generating..." : nextAction.label}
+              <ArrowRight aria-hidden="true" />
+            </Button>
+          )}
         </div>
+        {primaryAction ? <div className="mt-6 border-t border-primary/15 pt-5">
+          <div className="flex items-center justify-between gap-4 text-xs">
+            <p className="font-medium">Setup {progressPercent}% complete</p>
+          </div>
+          <div role="progressbar" aria-label="Account setup" aria-valuemin={0} aria-valuemax={100}
+            aria-valuenow={progressPercent} className="mt-3 h-1.5 overflow-hidden rounded-full bg-primary/10">
+            <div className="h-full rounded-full bg-primary motion-safe:transition-[width]" style={{ width: `${progressPercent}%` }} />
+          </div>
+          <ol className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
+            {[
+              { label: "Profile details", complete: hasProfile },
+              { label: "First measurement", complete: hasWeight },
+              { label: "Nutrition plan", complete: hasCalories },
+            ].map((step, index) => (
+              <li key={step.label} className="flex items-center gap-2">
+                {step.complete ? <CircleCheck className="size-4 text-primary" aria-hidden="true" />
+                  : <span aria-hidden="true" className="flex size-4 items-center justify-center rounded-full border border-primary/30 text-primary">{index + 1}</span>}
+                <span className={step.complete ? "text-foreground" : "text-muted-foreground"}>{step.label}</span>
+                <span className="sr-only">{step.complete ? ": complete" : ": remaining"}</span>
+              </li>
+            ))}
+          </ol>
+        </div> : <p className="mt-4 text-xs text-muted-foreground">Setup 100% complete</p>}
+        {generationError && <p role="alert" className="mt-5 text-sm text-destructive">{generationError}</p>}
+        {generationSuccess && !generationError && <p role="status" className="mt-5 text-sm text-primary">Your nutrition plan is ready.</p>}
       </section>
 
-      {/* CORE */}
-      <div className="grid gap-5 md:grid-cols-3">
-        {/* BMI */}
-        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-          <CardContent className="p-6">
-            <p className="text-sm font-medium text-slate-500">BMI</p>
-            <p className="mt-1 text-xs text-slate-400">Current reading</p>
-
-            {recommendationsLoadError ? (
-              <p className="mt-5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm leading-5 text-slate-600">
-                BMI information is temporarily unavailable. Your other
-                dashboard information is still available.
-              </p>
-            ) : recommendations ? (
-              <div className="mt-6">
-                <div className="text-4xl font-semibold tracking-tight text-slate-950">
-                  {recommendations.bmi.toFixed(1)}
-                </div>
-                <p className="mt-2 text-sm font-medium text-slate-600">
-                  {recommendations.category.label}
-                </p>
+      {showDetailedDashboard ? <>
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        <section aria-labelledby="progress-heading">
+          <Card className="shadow-none">
+            <CardContent>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 id="progress-heading" className="text-lg font-semibold tracking-tight">Goal progress</h2>
+                {ageStatus === "ready" && !progressLoading && !progressLoadError && progressEvaluation && <ProgressStatus state={progressEvaluation.state} />}
               </div>
-            ) : (
-              <div className="mt-6">
-                <p className="text-sm leading-6 text-slate-500">
-                  Calculate your BMI to see your current reading.
-                </p>
-                <Link
-                  href="/tools/bmi"
-                  className="mt-3 inline-flex text-sm font-medium text-emerald-700 hover:underline"
-                >
-                  Calculate BMI →
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* WEIGHT */}
-        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-          <CardContent className="p-6">
-            <p className="text-sm font-medium text-slate-500">Weight</p>
-            <p className="mt-1 text-xs text-slate-400">Latest measurement</p>
-
-            {latestWeight ? (
-              <div className="mt-6">
-                <div className="text-4xl font-semibold tracking-tight text-slate-950">
-                  {latestWeight.weightKg} kg
-                </div>
-                <p className="mt-2 text-xs text-slate-400">
-                  Recorded {formatRecordedDate(latestWeight.date)}
-                </p>
-
-                <div className="mt-4 h-20">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <Line
-                        dataKey="weight"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Tooltip />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <Link
-                  href="/tools/tracking/weight"
-                  className="mt-3 inline-flex text-sm font-medium text-emerald-700 hover:underline"
-                >
-                  Log weight →
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-6">
-                <p className="text-sm leading-6 text-slate-500">
-                  Start tracking your weight to see your progress here.
-                </p>
-                <Link
-                  href="/tools/tracking/weight"
-                  className="mt-3 inline-flex text-sm font-medium text-emerald-700 hover:underline"
-                >
-                  Add weight →
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* CALORIES */}
-        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-          <CardContent className="p-6">
-            <p className="text-sm font-medium text-slate-500">Calories</p>
-            <p className="mt-1 text-xs text-slate-400">Daily target</p>
-
-            {nutritionPlan ? (
-              <div className="mt-6">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-semibold tracking-tight text-slate-950">
-                    {nutritionPlan.targetCalories.toLocaleString()}
-                  </span>
-                  <span className="text-sm font-medium text-slate-500">
-                    kcal/day
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Your current recommended daily intake.
-                </p>
-              </div>
-            ) : (
-              <div className="mt-6 space-y-2">
-                <p className="text-sm leading-6 text-slate-500">
-                  Complete your profile and add your current weight to generate
-                  your nutrition plan.
-                </p>
-                {hasProfile && hasWeight && (
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="h-auto p-0 text-sm text-emerald-700"
-                    onClick={generateNutritionPlan}
-                    disabled={generating}
-                  >
-                    {generating ? "Generating..." : "Generate nutrition plan →"}
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* INSIGHTS */}
-      <section aria-labelledby="insights-heading">
-        <div className="mb-5">
-          <p className="text-sm font-medium text-slate-500">Your progress</p>
-          <h2
-            id="insights-heading"
-            className="mt-1 text-2xl font-semibold tracking-tight text-slate-950"
-          >
-            Progress & insights
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-            A clearer view of how your plan is working and what to focus on next.
-          </p>
-        </div>
-
-        <div className="grid gap-5 md:grid-cols-2">
-          {/* PROGRESS */}
-          <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md md:col-span-2">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">
-                    Goal progress
-                  </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    How your current plan is tracking
-                  </p>
-                </div>
-              </div>
-
-              {progressLoadError ? (
-                <p className="mt-6 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm leading-5 text-slate-600">
-                  {getOptionalLoadMessage("progress")}
-                </p>
+              {ageStatus && ageStatus !== "ready" ? (
+                <p role="status" className="mt-6 text-sm leading-6">{PLAN_ELIGIBILITY_MESSAGES[ageStatus]}</p>
+              ) : progressLoading ? (
+                <p role="status" className="mt-6 text-sm text-muted-foreground">Loading progress...</p>
+              ) : progressLoadError ? (
+                <p role="status" className="mt-6 rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm leading-6">{getOptionalLoadMessage("progress")}</p>
               ) : progressEvaluation ? (
                 <div className="mt-6">
-                  <div className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                    {progressEvaluation.headline}
-                  </div>
-
-                  <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-                    {progressEvaluation.summary}
-                  </p>
-
+                  <h3 className="text-xl font-semibold tracking-tight">{progressEvaluation.headline}</h3>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{progressEvaluation.summary}</p>
                   {progressRecommendation && (
-                    <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Recommendation
-                      </p>
-
-                      <p className="mt-2 text-sm leading-6 text-slate-700">
-                        {progressRecommendation.message}
-                      </p>
-
-                      {progressRecommendation.recommendedAction ===
-                        "CONSIDER_ADJUSTMENT" &&
-                        progressRecommendation.adjustmentDecision ===
-                          "PENDING" && (
-                          <div className="mt-4 space-y-2">
-                            <div className="flex flex-col gap-2 sm:flex-row">
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={() =>
-                                  respondToAdjustment("ACCEPTED")
-                                }
-                                disabled={adjustmentSubmitting}
-                              >
-                                {adjustmentSubmitting
-                                  ? "Saving..."
-                                  : "Use adjusted plan"}
-                              </Button>
-
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  respondToAdjustment("DECLINED")
-                                }
-                                disabled={adjustmentSubmitting}
-                              >
-                                Keep current plan
-                              </Button>
-                            </div>
-
-                            {adjustmentError && (
-                              <p role="alert" className="text-xs text-red-600">
-                                {adjustmentError}
-                              </p>
-                            )}
+                    <div className="mt-5 rounded-xl bg-muted/60 p-4">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Recommendation</p>
+                      <p className="mt-2 text-sm leading-6">{progressRecommendation.message}</p>
+                      {progressRecommendation.recommendedAction === "CONSIDER_ADJUSTMENT" && progressRecommendation.adjustmentDecision === "PENDING" && (
+                        <div className="mt-4 space-y-3">
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button size="lg" onClick={() => respondToAdjustment("ACCEPTED")} disabled={adjustmentSubmitting || adjustmentBlocked}>
+                              {adjustmentSubmitting ? "Saving..." : "Use adjusted plan"}
+                            </Button>
+                            <Button size="lg" variant="outline" onClick={() => respondToAdjustment("DECLINED")} disabled={adjustmentSubmitting || adjustmentBlocked}>Keep current plan</Button>
                           </div>
-                        )}
-
-                      {progressRecommendation.recommendedAction ===
-                        "CONSIDER_ADJUSTMENT" &&
-                        progressRecommendation.adjustmentDecision !==
-                          "PENDING" && (
-                          <p
-                            className={`mt-4 text-xs ${
-                              progressRecommendation.adjustmentDecision ===
-                              "ACCEPTED"
-                                ? "text-emerald-700"
-                                : "text-slate-500"
-                            }`}
-                            role="status"
-                            aria-live="polite"
-                          >
-                            {progressRecommendation.adjustmentDecision ===
-                            "ACCEPTED"
-                              ? getAdjustmentResultMessage({
-                                  decision: "ACCEPTED",
-                                  nutritionPlan,
-                                })
-                              : getAdjustmentResultMessage({
-                                  decision: "DECLINED",
-                                  nutritionPlan,
-                                })}
-                          </p>
-                        )}
+                          {adjustmentError && <p role="alert" className="text-sm text-destructive">{adjustmentError}</p>}
+                          {adjustmentBlocked && <Button variant="outline" onClick={() => window.location.reload()}>Reload current progress</Button>}
+                        </div>
+                      )}
+                      {!adjustmentSuccess && progressRecommendation.recommendedAction === "CONSIDER_ADJUSTMENT" && progressRecommendation.adjustmentDecision !== "PENDING" && (
+                        <p role="status" className="mt-4 text-sm text-primary">
+                          {getAdjustmentResultMessage({ decision: progressRecommendation.adjustmentDecision, nutritionPlan })}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="mt-6">
-                  <p className="max-w-2xl text-sm leading-6 text-slate-500">
-                    Keep logging your weight so we can understand how things
-                    are changing over time.
-                  </p>
-                  <Link
-                    href="/tools/tracking/weight"
-                    className="mt-3 inline-flex text-sm font-medium text-emerald-700 hover:underline"
-                  >
-                    Log weight →
-                  </Link>
+                  <p className="text-sm leading-6 text-muted-foreground">Keep logging your weight so we can understand how things are changing over time.</p>
+                  <Button asChild variant="outline" size="lg" className="mt-5"><Link href="/tools/tracking/weight">Log weight <ArrowUpRight aria-hidden="true" /></Link></Button>
                 </div>
               )}
+              {adjustmentSuccess && <p role="status" className="mt-5 text-sm leading-6 text-primary">{adjustmentSuccess}</p>}
             </CardContent>
           </Card>
+        </section>
 
-          {/* MACROS */}
-          <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-            <CardContent className="p-6">
-              <p className="text-sm font-medium text-slate-500">Macros</p>
-              <p className="mt-1 text-xs text-slate-400">Daily targets</p>
-
-              {nutritionPlan ? (
-                <div className="mt-6 grid grid-cols-3">
-                  <div className="pr-3">
-                    <div className="text-2xl font-semibold tracking-tight text-slate-950">
-                      {nutritionPlan.proteinG}g
-                    </div>
-                    <p className="mt-1 text-xs font-medium text-slate-500">
-                      Protein
-                    </p>
+        <section aria-labelledby="weight-heading" className="min-w-0">
+          <Card className="shadow-none">
+            <CardContent>
+              <CardInfoPanel
+                title="Weight snapshot" titleId="weight-heading"
+                front={latestWeight ? <div className="space-y-3">
+                  <div>
+                    <p className="text-3xl font-semibold tracking-tight tabular-nums">{latestWeight.weightKg} <span className="text-base font-normal text-muted-foreground">kg</span></p>
+                    <p className="mt-1 text-xs text-muted-foreground">Recorded {formatRecordedDate(latestWeight.date)}</p>
                   </div>
-
-                  <div className="border-x border-slate-200 px-3">
-                    <div className="text-2xl font-semibold tracking-tight text-slate-950">
-                      {nutritionPlan.carbsG}g
+                  <WeightHistoryChart entries={recentWeights} />
+                </div> : <p className="mt-6 text-sm leading-6 text-muted-foreground">Your first measurement gives you a starting point. Your weight history will appear here.</p>}
+                information={<>
+                  <h3 className="font-semibold">How this chart works</h3>
+                  <p>Multiple measurements on one date are averaged. Individual values remain in the measurement table.</p>
+                  <p>The seven-day trend averages recorded daily means within each seven-day window. Missing days are not filled in.</p>
+                  <p>The vertical axis follows the displayed values. Chart periods end on your latest recorded date.</p>
+                  <p>Progress is interpreted against your plan, not this chart alone.</p>
+                  {recentWeights.length > 0 ? <details className="rounded-xl border bg-card">
+                    <summary className="min-h-11 cursor-pointer rounded-xl px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">View measurement data</summary>
+                    <div className="max-h-48 overflow-auto px-3 pb-3" tabIndex={0} role="region" aria-label="Individual weight measurements">
+                      <table className="w-full text-left text-sm tabular-nums">
+                        <caption className="sr-only">Individual weight measurements</caption>
+                        <thead><tr className="border-b"><th scope="col" className="py-2 font-medium">Date</th><th scope="col" className="py-2 text-right font-medium">Weight (kg)</th></tr></thead>
+                        <tbody>{recentWeights.map((entry) => <tr key={entry.id} className="border-b last:border-0"><th scope="row" className="py-2 font-normal text-muted-foreground">{formatRecordedDate(entry.date)}</th><td className="py-2 text-right">{entry.weightKg}</td></tr>)}</tbody>
+                      </table>
                     </div>
-                    <p className="mt-1 text-xs font-medium text-slate-500">
-                      Carbs
-                    </p>
-                  </div>
-
-                  <div className="pl-3">
-                    <div className="text-2xl font-semibold tracking-tight text-slate-950">
-                      {nutritionPlan.fatG}g
-                    </div>
-                    <p className="mt-1 text-xs font-medium text-slate-500">
-                      Fat
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-6 text-sm leading-6 text-slate-500">
-                  Your protein, carbs, and fat targets will appear once your
-                  nutrition plan is generated.
-                </p>
-              )}
+                  </details> : null}
+                </>}
+              />
+              <Button asChild variant="ghost" size="lg" className="mt-4"><Link href="/tools/tracking/weight">Weight history <ArrowUpRight aria-hidden="true" /></Link></Button>
             </CardContent>
           </Card>
+        </section>
+      </div>
 
-          {/* RECOMMENDATIONS */}
-          <Card className="rounded-2xl border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-            <CardContent className="p-6">
-              <p className="text-sm font-medium text-slate-500">
-                Recommendations
-              </p>
-              <p className="mt-1 text-xs text-slate-400">
-                Personalised guidance
-              </p>
-
-              {recommendationsLoadError ? (
-                <p className="mt-6 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm leading-5 text-slate-600">
-                  {getOptionalLoadMessage("recommendations")}
-                </p>
-              ) : rec ? (
-                <div className="mt-6">
-                  <p className="text-sm leading-6 text-slate-600 line-clamp-3">
-                    {rec.summary}
-                  </p>
-
-                  <Link
-                    href="/tools/recommendations"
-                    className="mt-4 inline-flex text-sm font-medium text-emerald-700 hover:underline"
-                  >
-                    View all recommendations →
-                  </Link>
-                </div>
-              ) : (
-                <div className="mt-6">
-                  <p className="text-sm leading-6 text-slate-500">
-                    Complete your profile to get personalised recommendations.
-                  </p>
-                  <Link
-                    href="/tools/recommendations"
-                    className="mt-3 inline-flex text-sm font-medium text-emerald-700 hover:underline"
-                  >
-                    View recommendations →
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      <section aria-labelledby="targets-heading">
+        <div className="mb-4 flex items-center gap-2"><Utensils className="size-5 text-primary" aria-hidden="true" /><h2 id="targets-heading" className="text-lg font-semibold tracking-tight">Your daily targets</h2></div>
+        <Card className="shadow-none">
+          <CardContent>
+            {nutritionPlan ? (
+              <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+                {[
+                  { label: "Calories", value: nutritionPlan.targetCalories, unit: "kcal" },
+                  { label: "Protein", value: nutritionPlan.proteinG, unit: "g" },
+                  { label: "Carbs", value: nutritionPlan.carbsG, unit: "g" },
+                  { label: "Fat", value: nutritionPlan.fatG, unit: "g" },
+                ].map((target) => (
+                  <div key={target.label} className="min-w-0">
+                    <p className="text-sm text-muted-foreground">{target.label}</p>
+                    <p className="mt-2 flex flex-wrap items-baseline gap-1 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">{target.value}<span className="text-sm font-normal text-muted-foreground">{target.unit}</span></p>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="text-sm leading-6 text-muted-foreground">Your daily calorie and macro targets will appear once your nutrition plan is generated.</p>}
+            {nutritionPlan && <p className="mt-5 border-t pt-4 text-xs text-muted-foreground">Current plan: version {nutritionPlan.version}. These are targets, not a record of what you have eaten.</p>}
+            {nutritionPlan && <CardExplanation label="How these targets are calculated" className="mt-4">
+              <p>Your plan uses profile details and recorded weight to estimate daily calorie and macro targets.</p>
+              <Link href="/tools/calories" className="inline-flex min-h-11 items-center font-medium text-primary hover:underline">Review or recalculate your plan</Link>
+            </CardExplanation>}
+          </CardContent>
+        </Card>
       </section>
+
+      {planBlocked && <Button variant="outline" onClick={() => window.location.reload()}>Reload current plan</Button>}
+      <div className="grid items-start gap-6 lg:grid-cols-3">
+        <section aria-labelledby="guidance-heading" className="lg:col-span-2">
+          <Card className="shadow-none">
+            <CardContent>
+              <h2 id="guidance-heading" className="text-lg font-semibold tracking-tight">Personalised guidance</h2>
+              {recommendationsLoading ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading recommendations...</p>
+                : recommendationsLoadError ? <p role="status" className="mt-5 rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm leading-6">{getOptionalLoadMessage("recommendations")}</p>
+                : ageStatus && ageStatus !== "ready" ? <p role="status" className="mt-5 text-sm leading-6">{PLAN_ELIGIBILITY_MESSAGES[ageStatus]}</p>
+                : rec ? <p className="mt-5 text-sm leading-7 text-muted-foreground">{rec.summary}</p>
+                : <p className="mt-5 text-sm leading-6 text-muted-foreground">Complete your profile to get personalised recommendations.</p>}
+              <Button asChild variant="outline" size="lg" className="mt-5"><Link href="/tools/recommendations">View recommendations <ArrowUpRight aria-hidden="true" /></Link></Button>
+            </CardContent>
+          </Card>
+        </section>
+        <section aria-labelledby="bmi-heading">
+          <Card className="shadow-none">
+            <CardContent>
+              <h2 id="bmi-heading" className="text-lg font-semibold tracking-tight">BMI context</h2>
+              {recommendationsLoading ? <p role="status" className="mt-5 text-sm text-muted-foreground">Loading BMI information...</p>
+                : recommendationsLoadError ? <p className="mt-5 text-sm leading-6 text-muted-foreground">BMI information is temporarily unavailable. Your other dashboard information is still available.</p>
+                : ageStatus && ageStatus !== "ready" ? <p className="mt-5 text-sm leading-6">Personalised BMI context is unavailable for this profile. Review your age in your profile.</p>
+                : recommendations ? <div className="mt-5"><p className="text-3xl font-semibold tabular-nums">{recommendations.bmi.toFixed(1)}</p><p className="mt-2 text-sm text-muted-foreground">{recommendations.category.label}</p></div>
+                : <p className="mt-5 text-sm leading-6 text-muted-foreground">Calculate your BMI to see your current reading.</p>}
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">BMI is a screening measure, not a diagnosis. It does not capture all health factors.</p>
+              <Button asChild variant="ghost" size="lg" className="mt-3"><Link href="/tools/bmi">BMI calculator <ArrowUpRight aria-hidden="true" /></Link></Button>
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+      </> : (
+        <section aria-label="Getting started" className="space-y-3 text-sm leading-6 text-muted-foreground">
+          <p>Complete your profile to get personalised recommendations.</p>
+          <p>Your weight history and daily targets will appear as you complete setup.</p>
+          {recommendationsLoading && <p role="status">Loading recommendations...</p>}
+          {progressLoading && <p role="status">Loading progress...</p>}
+        </section>
+      )}
     </div>
   );
 }

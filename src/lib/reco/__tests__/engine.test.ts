@@ -92,3 +92,45 @@ describe("buildRecommendations", () => {
     expect(result.nextSteps.length).toBeGreaterThan(0);
   });
 });
+
+
+describe("consistent, explainable guidance", () => {
+  it.each([
+    ["underweight", "lose"], ["underweight", "maintain"],
+    ["overweight", "gain"], ["obese", "gain"],
+  ] as const)("prioritises a goal review for %s with %s", (category, goal) => {
+    const result = buildRecommendations({ bmi: 22, category, goal });
+    expect(result.guidanceMode).toBe("goal-review");
+    expect(result.actions[0].id).toBe("review-goal");
+    expect(result.actions[0].href).toBe("/profile");
+    expect(result.nextSteps.join(" ")).not.toContain("target calories");
+    expect(result.summary).toContain("before following weight-change targets");
+    expect(result.warnings[0]).toContain("qualified health professional");
+  });
+
+  it.each([
+    ["underweight", "gain"], ["normal", "lose"], ["normal", "gain"],
+    ["normal", "maintain"], ["overweight", "lose"], ["overweight", "maintain"],
+    ["obese", "lose"], ["obese", "maintain"],
+  ] as const)("avoids additional calorie prescriptions for %s with %s", (category, goal) => {
+    const result = buildRecommendations({ bmi: 22, category, goal });
+    expect(result.guidanceMode).toBe("general");
+    expect(result.actions[0].href).toBe("/tools/calories");
+    expect(result.nextSteps.join(" ")).not.toMatch(/surplus|deficit|250|400/);
+  });
+
+  it("provides meal examples separately from actions and explains their limits", () => {
+    const result = buildRecommendations({ ...base, goal: "maintain" });
+    expect(result.mealIdeas).not.toEqual(result.nextSteps);
+    expect(result.mealIdeas[0]).toContain("Beans");
+    expect(result.mealIdeasNote).toContain("allergies");
+    expect(result.mealIdeasNote).toContain("not been calculated");
+    expect(result.actions.every((action) => action.reason.length > 0)).toBe(true);
+    expect(result.sources.every((source) => new URL(source.url).hostname === "www.who.int")).toBe(true);
+    expect(result.contentVersion).toBe("2026-10-07.1");
+  });
+
+  it.each([NaN, Infinity, 0, -1])("rejects an invalid BMI: %s", (bmi) => {
+    expect(() => buildRecommendations({ ...base, bmi, goal: "maintain" })).toThrow("A valid BMI is required.");
+  });
+});

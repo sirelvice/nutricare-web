@@ -36,6 +36,7 @@ NutriCare is a nutrition and tracking tool. Its estimates and guidance do not re
 
 Product direction, design decisions, technical guidance and review records live in the documentation:
 
+- [Workspace and system overview](README.dashboard.md)
 - [Product requirements](Docs/product/v3/01-prd-premium-experience.md)
 - [UX architecture](Docs/product/v3/02-rfc-ux-architecture.md)
 - [Design system](Docs/product/v3/03-design-system.md)

@@ -1,306 +1,173 @@
-# NutriCare Dashboard — System Overview
+# NutriCare — Workspace and System Overview
 
-## 🎯 Purpose
+This document describes the V3 authenticated workspace delivered in v0.5.0. It is intended for developers, QA reviewers and product demonstrations. Product requirements and detailed architecture decisions remain in the [V3 PRD](Docs/product/v3/01-prd-premium-experience.md) and [UX architecture RFC](Docs/product/v3/02-rfc-ux-architecture.md).
 
-This document explains how the **NutriCare dashboard system works**, including:
+## System boundaries
 
-* Data flow
-* User journey
-* Tool interactions
-* How to demo the product
+NutriCare has two connected experiences:
 
-This is intended for:
+- The public website introduces the product, learning resources and partnership opportunities, and accepts contact and partner inquiries.
+- The authenticated workspace manages a user's profile, weight records, saved nutrition plans, progress guidance, history and reports.
 
-* Developers
-* QA testers
-* Product demos
+The dashboard is a view of these capabilities, not the system's persistence or calculation layer. Personal data comes from authenticated APIs backed by PostgreSQL. Standalone calculations can run in the browser using shared calculation functions; persisted plans and progress decisions are handled on the server.
 
----
-
-# 🧠 System Architecture
-
-The dashboard follows a **single source of truth architecture**:
-
-```
-Profile → Tools → API → History → Dashboard
-```
-
-### Explanation:
-
-### 1. Profile (User Context)
-
-Stored locally.
-
-Contains:
-
-* Height
-* Age
-* Gender
-* Activity level
-* Goal
-
-👉 This is the **foundation of all calculations**
-
----
-
-### 2. Tools (User Actions)
-
-#### BMI Tool
-
-* Input: height + weight
-* Sends data to API
-* Receives:
-
-  * BMI
-  * Category
-  * Recommendations
-* Saves result → BMI History
-
----
-
-#### Calories Tool
-
-* Uses:
-
-  * Profile data
-  * Latest weight
-* Calls API automatically
-* Receives:
-
-  * Target calories
-* Saves result → Calories History
-
----
-
-### 3. API (Core Logic)
-
-Endpoint:
-
-```
-/api/recommendations
+```mermaid
+flowchart TB
+    subgraph Browser["Browser"]
+        Public["Public website"]
+        Workspace["Authenticated workspace"]
+        Local["Standalone BMI calculation"]
+        Workspace --> Local
+    end
+    subgraph Server["Next.js server"]
+        Auth["Auth.js and route guards"]
+        Personal["Personal APIs"]
+        Inquiry["Public inquiry APIs"]
+        Services["Domain services"]
+        Repos["Prisma repositories"]
+    end
+    DB[("PostgreSQL")]
+    Workspace --> Auth
+    Auth --> Personal
+    Personal --> Services
+    Public --> Inquiry
+    Inquiry --> Repos
+    Services --> Repos
+    Repos --> DB
 ```
 
-Responsible for:
+This is a logical architecture diagram. Route guards and authentication do not replace authorization inside each personal API. The server derives the account identity from the session and scopes access to that account.
 
-* BMI calculation
-* Category classification
-* BMR → TDEE → Calories
-* Nutrition recommendations
+## Ownership and persistence
 
-👉 This is the **single source of truth**
+| Information | Source and role |
+| --- | --- |
+| Profile | Persisted account context, including height, age, gender, activity and goal |
+| Weight entries | Persisted measurements used for history, charts and service calculations |
+| Nutrition plans | Persisted versions containing calculated targets and the saved goal |
+| Progress evaluations | Persisted interpretation and recommendation linked to a plan version |
+| Adjustment decisions | Recorded response to a particular evaluation; accepting an eligible adjustment creates a new plan version |
+| Dashboard | Reads profile, measurements, plan and guidance; it does not persist a separate dashboard record |
+| Report | Assembles existing account data at request time; PDF export renders that report |
+| Standalone BMI result | Temporary browser calculation from explicitly entered height and weight; it does not create a weight or plan record |
 
-Frontend does NOT calculate core metrics.
+Browser storage is not the authoritative store for the personal records above. Interface state, such as an open disclosure or selected chart period, is separate from persisted domain data.
 
----
+Saved targets describe a historical plan. They are not food-intake measurements or proof of a health outcome. Historical BMI must not be reconstructed from old weights using today's profile height.
 
-### 4. History (Persistence Layer)
+## API responsibilities
 
-Stored in localStorage.
+| Endpoint | Responsibility |
+| --- | --- |
+| `/api/profile` | Read and save the authenticated user's profile |
+| `/api/weight-entries` | List or record the user's weight measurements |
+| `/api/weight-entries/[id]` | Delete a measurement within the authenticated user's ownership scope |
+| `/api/nutrition-plan` | Read the latest plan or generate a saved plan from persisted context |
+| `/api/nutrition-plan/history` | Read saved plan versions |
+| `/api/recommendations` | Build recommendations from eligible user context |
+| `/api/progress` | Read current progress interpretation for the latest saved plan |
+| `/api/progress/adjustment` | Accept or decline an eligible progress adjustment |
+| `/api/report` | Assemble the personal report |
+| `/api/report/pdf` | Generate the branded personal PDF |
 
-Types:
+`/api/recommendations` is not a universal calculation endpoint. Nutrition-plan generation, tracking, progress decisions and reporting have their own services and API boundaries.
 
-* BMI History
-* Calories History
-* Weight History
+## Dashboard loading
 
-Used by:
+The dashboard loads profile, weight entries and the latest plan as its core data. Recommendations and progress have separate loading and recovery paths so a failed guidance read does not erase successfully loaded core information.
 
-* Dashboard
-* Tools (pre-fill + context)
-
----
-
-### 5. Dashboard (Read-Only Insights)
-
-Displays:
-
-* Latest BMI (from history)
-* Latest weight (from tracking)
-* Latest calorie target (from history)
-
-👉 Dashboard NEVER calculates — it only reads data.
-
----
-
-# 🔄 Data Flow Example
-
-### BMI Flow
-
+```mermaid
+flowchart TB
+    Dashboard["Dashboard loader"]
+    Dashboard --> Core["Core reads"]
+    Dashboard --> Guidance["Independent guidance reads"]
+    Core --> Profile["Profile"]
+    Core --> Weight["Weight entries"]
+    Core --> Plan["Latest plan"]
+    Guidance --> Reco["Recommendations"]
+    Guidance --> Progress["Current progress"]
+    Profile --> View["Dashboard presentation"]
+    Weight --> View
+    Plan --> View
+    Reco --> View
+    Progress --> View
 ```
-User inputs → BMI Tool → API → Result → Saved → Dashboard updates
+
+Loading, missing context, empty records and failed reads have different meanings and should remain distinguishable. Cancellation prevents obsolete requests from updating the interface. A read can refresh displayed information without generating a new saved plan.
+
+Charts derive display data from measurements, including daily averages and seven-calendar-day means. Missing dates are not inserted as zero measurements. Chart aggregation is presentation logic; it does not replace the progress service's interpretation.
+
+## Plan generation and progress
+
+Plan generation uses persisted profile context and the latest measurement. Eligibility checks run on the server before the calculated plan is saved as a version. Opening Calories or Macros displays the shared nutrition-plan experience; it does not automatically save a fresh plan on every visit.
+
+Weight recording saves the measurement first. If a current plan exists, the service checks whether progress evaluation is due. An existing evaluation is subject to a seven-day cadence. Evaluation failure after persistence must not be reported as a failed measurement save.
+
+```mermaid
+flowchart TB
+    Save["Record weight"] --> Stored["Measurement saved"]
+    Stored --> Due{"Plan exists and evaluation due?"}
+    Due -->|No| Done["Return saved measurement"]
+    Due -->|Yes| Evaluate["Evaluate progress"]
+    Evaluate -->|Success| Guidance["Persist evaluation and recommendation"]
+    Evaluate -->|Failure| Recover["Return saved measurement with evaluation failure"]
+    Guidance --> Decision{"User responds to eligible adjustment"}
+    Decision -->|Accept| NewPlan["Record decision and create next plan version"]
+    Decision -->|Decline| Declined["Record decline; retain plan"]
 ```
 
----
+Decisions are checked against the user's evaluation and current plan. Stale recommendations and already recorded decisions are not valid new adjustments. An uncertain network response requires reconciliation with saved data before another write is attempted.
 
-### Calories Flow
+## History and reports
 
+History reads weight measurements and saved nutrition plans independently. Lists render ten records per page; this bounds displayed rows, not the amount fetched from the API. Long notes and macro details use disclosures. Plan comparison shows newer minus older saved targets regardless of selector order.
+
+The report service combines profile, weight entries, latest saved plan and current progress. When possible, it derives current BMI from the latest weight and current profile height. Missing measurements or targets stay explicit. The PDF renderer uses the same report structure and adds NutriCare branding, tables, wrapping and page footers.
+
+```mermaid
+flowchart TB
+    Profile["Profile"] --> Report["Report service"]
+    Weights["Weight entries"] --> Report
+    Plan["Latest saved plan"] --> Report
+    Progress["Current progress"] --> Report
+    Report --> JSON["Personal report response"]
+    Report --> PDF["Branded PDF renderer"]
+    JSON --> Screen["Report screen"]
+    PDF --> Download["PDF download"]
 ```
-Profile + Weight → API → Calories → Saved → Dashboard updates
-```
 
----
+## Security and deployment boundaries
 
-# 🧑‍💻 User Journey (Expected Usage)
+Personal API authorization is based on the authenticated session, not a user ID supplied by the browser. Personal responses use private, no-store caching. Write endpoints apply origin checks; relevant request bodies are bounded and validated. Authentication includes rate-limit and CSRF protections.
 
-### First-Time User
+These controls describe the implementation, not a claim that the platform is attack-proof. Open findings and verification limits are documented in the [security review](Docs/engineering/testing/v3-security-review.md).
 
-1. Go to **Profile**
-2. Enter:
+Vercel hosts the current deployment. Node 22 is the repository runtime. Database TLS verifies the server certificate; the configured CA must be included in both route and proxy deployment bundles. `APP_URL` must match the intended browser origin for security checks and reset links. Production and Preview environment scopes require deliberate configuration.
 
-   * Height
-   * Age
-   * Gender
-   * Activity
-   * Goal
+See the [domain-change guide](Docs/engineering/deployment/domain-change.md) for deployment and future domain changes. Repository changes follow **working branch → PR into develop → release PR into main**, including documentation changes.
 
----
+## Product demonstration
 
-### Then:
+1. Sign in and save a profile. Explain that it provides context for personalised tools.
+2. Record a weight measurement. Show the saved record before discussing progress guidance.
+3. Generate a nutrition plan when the profile and measurement are eligible. Show calorie and macro targets as estimates.
+4. Open Dashboard. Explain the difference between measurements, saved targets and service-derived guidance.
+5. Add enough appropriate test data to demonstrate history and trends. Do not promise a progress adjustment after every measurement.
+6. Compare saved plan versions and open a long note or macro disclosure.
+7. Open Report and download the branded PDF.
+8. Optionally demonstrate standalone BMI. Explain that this exploratory calculation does not save a measurement.
 
-3. Go to **BMI Tool**
-4. Enter weight → calculate
+Use a designated demonstration account. Do not show another person's personal data or production credentials.
 
----
+## Review and maintenance
 
-### Then:
+Reviewers should verify persistence across reloads, account isolation, eligibility feedback, failed-read recovery, uncertain-write reconciliation and the effect of accepted or declined adjustments. Include empty and partial data, long histories, keyboard interaction, mobile layouts and PDF pagination.
 
-5. Go to **Calories**
+The complete checklists and recorded evidence are maintained separately:
 
-* Auto-calculates (no input needed if profile + weight exist)
+- [End-to-end guide](Docs/engineering/testing/end-to-end.md)
+- [Manual regression checklist](Docs/engineering/testing/manual-regression.md)
+- [Release evidence](Docs/engineering/testing/v3-release-evidence.md)
+- [Design system](Docs/product/v3/03-design-system.md)
 
----
-
-### Finally:
-
-6. View **Dashboard**
-
-* See:
-
-  * BMI
-  * Weight trend
-  * Calories
-
----
-
-# 🎬 Demo Script (IMPORTANT)
-
-Use this when presenting the app:
-
----
-
-### Step 1 — Profile
-
-> "We start by setting up user details"
-
-* Enter height, age, etc.
-* Save
-
----
-
-### Step 2 — BMI
-
-> "Now we calculate BMI and recommendations"
-
-* Enter weight
-* Click calculate
-* Show:
-
-  * BMI
-  * Category
-  * Recommendations
-
----
-
-### Step 3 — Calories
-
-> "Calories are automatically computed from profile and weight"
-
-* Open calories page
-* Show auto result
-
----
-
-### Step 4 — Dashboard
-
-> "Everything is now reflected in the dashboard"
-
-* Show:
-
-  * BMI card
-  * Weight
-  * Calories
-
----
-
-# ⚠️ Key Rules (DO NOT BREAK)
-
-* ❌ Do NOT calculate BMI in frontend
-
-* ❌ Do NOT calculate calories in multiple places
-
-* ❌ Do NOT store duplicate logic
-
-* ✅ API is the only computation layer
-
-* ✅ History is the only persisted result
-
-* ✅ Dashboard is read-only
-
----
-
-# 🧪 QA Checklist
-
-Testers should verify:
-
-### Profile
-
-* Can save valid data
-* Rejects invalid inputs
-
----
-
-### BMI Tool
-
-* Requires height + weight
-* Saves result to history
-
----
-
-### Calories Tool
-
-* Auto-calculates when profile exists
-* Saves result
-
----
-
-### Dashboard
-
-* Reflects latest:
-
-  * BMI
-  * Calories
-  * Weight
-
----
-
-# 🚀 Future Improvements
-
-* Auto-sync dashboard (real-time updates)
-* Remove manual recalculation completely
-* Integrate macros & recommendations deeper
-* Backend persistence (replace localStorage)
-
----
-
-# 🧠 Summary
-
-This system is designed to be:
-
-* **Consistent** → one source of truth
-* **Scalable** → reusable API logic
-* **Predictable** → clear data flow
-* **Maintainable** → no duplication
-
----
-
-End of document.
+Update this overview when persistence, API ownership, plan versioning or report flows change. Keep execution results in release evidence rather than treating this architecture document as a test certificate.

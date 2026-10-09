@@ -87,6 +87,7 @@ describe("GET /api/report", () => {
     const response = await GET();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await response.json()).toEqual(
       expect.objectContaining({
         profile: expect.objectContaining({

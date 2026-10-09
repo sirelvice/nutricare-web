@@ -1,356 +1,111 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-
-type RecommendationData = {
-  bmi: number;
-  category: {
-    label: string;
-    note: string;
-  };
-  targetCalories: number;
-  macros: {
-    proteinG: number;
-    carbsG: number;
-    fatG: number;
-  };
-  recommendations: {
-    summary: string;
-    priorities: string[];
-    foodsToFocus: string[];
-    foodsToLimit: string[];
-    nextSteps: string[];
-  };
-};
-
-type ApiResponse =
-  | RecommendationData
-  | {
-      error: string;
-    };
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { CardExplanation } from "@/components/ui/card-explanation";
+import { ProgressGuidance } from "@/components/progress/ProgressGuidance";
+import { readRecommendations, type RecommendationRead } from "@/lib/reco/client";
 
 export default function RecommendationsPage() {
-  const [data, setData] = useState<RecommendationData | null>(null);
+  const [result, setResult] = useState<RecommendationRead | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
-    async function loadRecommendations() {
-      try {
-        const res = await fetch("/api/recommendations");
-        const json = (await res.json()) as ApiResponse;
+    const controller = new AbortController();
+    readRecommendations(controller.signal).then((value) => {
+      if (!controller.signal.aborted) setResult(value);
+    }).catch(() => {
+      if (!controller.signal.aborted) setError(true);
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
+    return () => controller.abort();
+  }, [revision]);
 
-        if (!res.ok) {
-          setError(
-            "error" in json
-              ? json.error
-              : "Unable to load recommendations.",
-          );
-          return;
-        }
-
-        setData(json as RecommendationData);
-      } catch {
-        setError("Network error. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadRecommendations();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-8">
-        <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-            Personalised guidance
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-            Recommendations
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-            Practical guidance based on your current plan, profile and
-            progress.
-          </p>
-        </section>
-
-        <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
-          <CardContent className="p-6">
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6">
-              <p className="text-sm font-medium text-slate-700">
-                Loading your recommendations
-              </p>
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                We&apos;re preparing guidance from your latest information.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  function refreshGuidance() {
+    setLoading(true); setError(false); setResult(null); setRevision((value) => value + 1);
   }
 
-  if (error) {
-    return (
-      <div className="space-y-8">
-        <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-            Personalised guidance
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-            Recommendations
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-            Practical guidance based on your current plan, profile and
-            progress.
-          </p>
-        </section>
-
-        <Card className="rounded-2xl border-red-200 bg-red-50 shadow-sm">
-          <CardContent className="p-6">
-            <p className="text-sm font-semibold text-red-900">
-              We couldn&apos;t load your recommendations.
-            </p>
-            <p className="mt-1 text-sm leading-6 text-red-700">{error}</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return null;
-  }
-
-  const { recommendations } = data;
-
+  const data = result?.kind === "ready" ? result.data : null;
+  const guidance = data?.recommendations;
   return (
-    <div className="space-y-8">
-      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-sm sm:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Personalised guidance
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-          Recommendations
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-          Practical guidance based on your current plan, profile and progress.
-          Use these recommendations alongside your nutrition targets.
-        </p>
-      </section>
-
-      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
-          <div>
-            <CardTitle className="text-xl text-slate-950">
-              Your current position
-            </CardTitle>
-            <p className="mt-1 text-sm text-slate-500">
-              Key measures used to provide your current guidance.
-            </p>
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-medium uppercase tracking-wider text-primary">Your next steps</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Recommendations</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Practical guidance from your saved profile, weight and plan.</p></div>
+        <Button variant="outline" disabled={loading} onClick={refreshGuidance}>Refresh guidance</Button></header>
+      {loading ? <p role="status" className="text-sm text-muted-foreground">Loading your recommendations...</p>
+        : error ? <Card><CardContent className="space-y-4 p-6">
+          <p role="alert" className="text-sm text-destructive">Recommendations are temporarily unavailable. Please try again.</p>
+          <Button variant="outline" onClick={refreshGuidance}>Try again</Button>
+        </CardContent></Card>
+        : result && result.kind !== "ready" ? <Card><CardContent className="space-y-4 p-6">
+          <h2 className="text-lg font-semibold">{result.kind === "setup" ? "Build your starting point" : "About your guidance"}</h2>
+          <p role="status" className="text-sm leading-6 text-muted-foreground">{result.kind === "setup"
+            ? "Complete your profile, record a weight and create a nutrition plan to see your recommendations."
+            : result.message}</p>
+          <div className="flex flex-wrap gap-3"><Button asChild><Link href="/profile">Review profile</Link></Button>
+            {result.kind === "plan-review" ? <Button asChild variant="outline"><Link href="/tools/calories">Review nutrition plan</Link></Button> : null}
+            {result.kind === "setup" ? <><Button asChild variant="outline"><Link href="/tools/tracking/weight">Record weight</Link></Button>
+              <Button asChild variant="outline"><Link href="/tools/calories">Review nutrition plan</Link></Button></> : null}</div>
+        </CardContent></Card> : null}
+      {!loading && !error && data && guidance ? <>
+        <Card><CardContent className="space-y-5 p-6">
+          <p className="text-xs text-muted-foreground">Plan version {data.context.plan.version} · Weight recorded {data.context.measurement.date}</p>
+          <div><h2 className="text-lg font-semibold">Your recommendations</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{guidance.summary}</p></div>
+          <section aria-labelledby="next-steps-heading"><h3 id="next-steps-heading" className="font-semibold">Next steps</h3>
+            <ul className="mt-3 grid gap-3 md:grid-cols-2">{guidance.actions.map((action) => <li key={action.id} className="space-y-3 rounded-xl border p-4">
+              <p className="font-medium">{action.title}</p>
+              <CardExplanation label="Why this step">{action.reason}</CardExplanation>
+              <Link href={action.href} className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline">
+                {action.href === "/profile" ? "Review your goal" : action.href === "/tools/calories" ? "Review your targets" : "Record weight"}
+              </Link>
+            </li>)}</ul></section>
+          <div className="space-y-2 rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm leading-6">
+            <p>Guidance is informational and not a medical diagnosis.</p>
+            {guidance.warnings.map((warning) => <p key={warning}>{warning}</p>)}
           </div>
-        </CardHeader>
-
-        <CardContent className="grid gap-4 p-6 sm:grid-cols-3 sm:p-7">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              BMI
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-slate-950">
-              {data.bmi.toFixed(1)}
-            </p>
-            <Badge variant="secondary" className="mt-3 bg-white">
-              {data.category.label}
-            </Badge>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Daily calories
-            </p>
-            <div className="mt-2 flex items-end gap-2">
-              <span className="text-2xl font-semibold text-slate-950">
-                {data.targetCalories}
-              </span>
-              <span className="pb-0.5 text-sm font-medium text-slate-500">
-                kcal/day
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Current nutrition target
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Guidance focus
-            </p>
-            <p className="mt-2 text-base font-semibold text-slate-950">
-              Personalised plan
-            </p>
-            <p className="mt-2 text-xs leading-5 text-slate-500">
-              Based on your current profile and progress.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
-          <div>
-            <CardTitle className="text-xl text-slate-950">
-              Your nutrition targets
-            </CardTitle>
-            <p className="mt-1 text-sm text-slate-500">
-              Daily macro targets from your current nutrition plan.
-            </p>
-          </div>
-        </CardHeader>
-
-        <CardContent className="grid gap-4 p-6 md:grid-cols-3 sm:p-7">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Protein
-            </p>
-            <div className="mt-3 flex items-end gap-2">
-              <span className="text-3xl font-semibold tracking-tight text-slate-950">
-                {data.macros.proteinG}
-              </span>
-              <span className="pb-1 text-sm font-medium text-slate-500">
-                g/day
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Carbohydrates
-            </p>
-            <div className="mt-3 flex items-end gap-2">
-              <span className="text-3xl font-semibold tracking-tight text-slate-950">
-                {data.macros.carbsG}
-              </span>
-              <span className="pb-1 text-sm font-medium text-slate-500">
-                g/day
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Fat
-            </p>
-            <div className="mt-3 flex items-end gap-2">
-              <span className="text-3xl font-semibold tracking-tight text-slate-950">
-                {data.macros.fatG}
-              </span>
-              <span className="pb-1 text-sm font-medium text-slate-500">
-                g/day
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-6 py-5">
-          <div>
-            <CardTitle className="text-xl text-slate-950">
-              Your recommendations
-            </CardTitle>
-            <p className="mt-1 text-sm text-slate-500">
-              Focus areas and practical next steps from your current plan.
-            </p>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-7 p-6 sm:p-7">
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">
-              Summary
-            </p>
-            <p className="mt-2 text-base leading-7 text-slate-800">
-              {recommendations.summary}
-            </p>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <h2 className="text-base font-semibold text-slate-950">
-                Top priorities
-              </h2>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-                {recommendations.priorities.map((item) => (
-                  <li key={item} className="pl-1">
-                    <span className="mr-2 text-emerald-700">•</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <h2 className="text-base font-semibold text-slate-950">
-                Next steps
-              </h2>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-                {recommendations.nextSteps.map((item) => (
-                  <li key={item} className="pl-1">
-                    <span className="mr-2 text-emerald-700">•</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <h2 className="text-base font-semibold text-slate-950">
-                Foods to focus
-              </h2>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-                {recommendations.foodsToFocus.map((item) => (
-                  <li key={item} className="pl-1">
-                    <span className="mr-2 text-emerald-700">•</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <h2 className="text-base font-semibold text-slate-950">
-                Foods to limit
-              </h2>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
-                {recommendations.foodsToLimit.map((item) => (
-                  <li key={item} className="pl-1">
-                    <span className="mr-2 text-amber-700">•</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            <p className="text-sm leading-6 text-slate-600">
-              {data.category.note}
-            </p>
-            <p className="mt-2 text-xs leading-5 text-slate-500">
-              Guidance is informational and not a medical diagnosis.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        </CardContent></Card>
+        {guidance.guidanceMode === "general" ? <section aria-label="Your current estimates" className="grid gap-4 lg:grid-cols-2">
+          <Card><CardContent className="p-5"><h2 className="text-sm font-medium text-muted-foreground">Current plan targets</h2>
+            <p className="mt-2"><span className="text-3xl font-semibold tabular-nums">{data.targetCalories}</span> <span className="text-sm text-muted-foreground">kcal/day</span></p>
+            <dl className="mt-4 grid grid-cols-3 gap-3">{[
+              { label: "Protein", value: data.macros.proteinG },
+              { label: "Carbs", value: data.macros.carbsG },
+              { label: "Fat", value: data.macros.fatG },
+            ].map(({ label, value }) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt>
+              <dd className="mt-1"><span className="font-semibold tabular-nums">{value}</span> <span className="text-xs text-muted-foreground">g</span></dd></div>)}</dl>
+            <p className="mt-4 text-xs text-muted-foreground">Estimates from your saved plan, not a record of food eaten.</p>
+          </CardContent></Card>
+          <Card><CardContent className="p-5"><h2 className="text-sm font-medium text-muted-foreground">BMI context</h2>
+            <p className="mt-2 text-3xl font-semibold tabular-nums">{data.bmi.toFixed(1)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{data.category.label}</p>
+            <p className="mt-4 text-xs leading-5 text-muted-foreground">Adult screening context. Your nutritional needs require more than a BMI reading.</p>
+          </CardContent></Card>
+        </section> : null}
+        {guidance.guidanceMode === "general" ? <ProgressGuidance key={data.context.plan.id} planId={data.context.plan.id} /> : null}
+        <CardExplanation label="Meal examples">
+          <p>{guidance.mealIdeasNote}</p>
+          <ul className="list-disc space-y-2 pl-5">{guidance.mealIdeas.map((meal) => <li key={meal}>{meal}</li>)}</ul>
+        </CardExplanation>
+        <CardExplanation label="More about your guidance">
+          {[
+            { label: "Top priorities", items: guidance.priorities },
+            { label: "Foods to focus", items: guidance.foodsToFocus },
+            { label: "Foods to limit", items: guidance.foodsToLimit },
+          ].map(({ label, items }) => <section key={label}><h3 className="font-semibold text-foreground">{label}</h3>
+            <ul className="mt-2 list-disc space-y-2 pl-5">{items.map((item) => <li key={item}>{item}</li>)}</ul></section>)}
+          <h3 className="font-semibold text-foreground">Sources and approach</h3>
+          <p>General guidance adapted from WHO principles. These sources do not validate your individual calorie targets or prescribe the example meals.</p>
+          <ul>{guidance.sources.map((source) => <li key={source.url}><a href={source.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-primary hover:underline">{source.title}</a></li>)}</ul>
+          <p className="text-xs">Guidance version: {guidance.contentVersion}</p>
+        </CardExplanation>
+      </> : null}
     </div>
   );
 }

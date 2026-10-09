@@ -44,3 +44,10 @@ describe("calculateNutritionPlan", () => {
     expect(result).toBeNull();
   });
 });
+
+it.each([10, 19, 19.5, 121, NaN])("does not calculate personalised targets for age %s", (age) => {
+  expect(calculateNutritionPlan({ profile: { ...profile, age }, weightKg: 60 })).toBeNull();
+});
+it("supports the product age boundary of 20", () => {
+  expect(calculateNutritionPlan({ profile: { ...profile, age: 20 }, weightKg: 60 })).not.toBeNull();
+});

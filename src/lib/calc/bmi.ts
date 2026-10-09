@@ -1,4 +1,7 @@
 export function calcBMIKgM(weightKg: number, heightCm: number) {
+  if (!Number.isFinite(weightKg) || !Number.isFinite(heightCm) || weightKg <= 0 || heightCm <= 0) {
+    return null;
+  }
   const h = heightCm / 100;
   const bmi = weightKg / (h * h);
   return Number.isFinite(bmi) ? Number(bmi.toFixed(1)) : null;

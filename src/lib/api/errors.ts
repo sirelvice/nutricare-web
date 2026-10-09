@@ -5,11 +5,13 @@ export function apiError(
   status: number,
   headers?: HeadersInit,
 ) {
+  const responseHeaders = new Headers(headers);
+  responseHeaders.set("Cache-Control", "private, no-store");
   return NextResponse.json(
     { error: message },
     {
       status,
-      headers,
+      headers: responseHeaders,
     },
   );
 }

@@ -1,3 +1,4 @@
+import { readJsonRequest } from "@/lib/api/read-json-request";
 import { NextResponse } from "next/server";
 import {
   unauthorized,
@@ -30,55 +31,56 @@ const createWeightEntrySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return unauthorized();
-  }
-
   try {
-    assertSameOrigin(req);
-  } catch (error) {
-    if (error instanceof InvalidRequestOriginError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 403 },
-      );
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return unauthorized();
     }
 
-    throw error;
-  }
+    assertSameOrigin(req);
 
-  const body = await req.json().catch(() => null);
-  const parsed = createWeightEntrySchema.safeParse(body);
+    const requestBody = await readJsonRequest(req);
+    if (!requestBody.ok) return requestBody.response;
+    const body = requestBody.data;
+    const parsed = createWeightEntrySchema.safeParse(body);
 
-  if (!parsed.success) {
-    return badRequest("Invalid weight entry.");
-  }
+    if (!parsed.success) {
+      return badRequest("Invalid weight entry.");
+    }
 
-  const weightRepository = new PrismaWeightRepository(prisma);
-  const recordWeightService = new RecordWeightEntryService(weightRepository);
+    const weightRepository = new PrismaWeightRepository(prisma);
+    const recordWeightService = new RecordWeightEntryService(weightRepository);
 
-  const evaluateAndRecordProgressService =
-    new EvaluateAndRecordProgressService(
-      new PrismaProfileRepository(prisma),
-      weightRepository,
+    const evaluateAndRecordProgressService =
+      new EvaluateAndRecordProgressService(
+        new PrismaProfileRepository(prisma),
+        weightRepository,
+        prismaNutritionPlanRepository,
+        new PrismaProgressEvaluationRepository(prisma),
+      );
+
+    const service = new RecordWeightAndEvaluateService(
+      recordWeightService,
       prismaNutritionPlanRepository,
       new PrismaProgressEvaluationRepository(prisma),
+      evaluateAndRecordProgressService,
     );
 
-  const service = new RecordWeightAndEvaluateService(
-    recordWeightService,
-    prismaNutritionPlanRepository,
-    new PrismaProgressEvaluationRepository(prisma),
-    evaluateAndRecordProgressService,
-  );
-
-  try {
     const result = await service.execute(session.user.id, parsed.data);
 
-    return NextResponse.json(result.entry, { status: 201 });
+    return NextResponse.json(result.entry, {
+      status: 201,
+      // Keep the established entry body; clients can distinguish a saved
+      // measurement from an unavailable secondary progress update.
+      ...(result.evaluationFailed ? {
+        headers: { "X-NutriCare-Progress-Status": "unavailable" },
+      } : {}),
+    });
   } catch (error) {
+    if (error instanceof InvalidRequestOriginError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     if (error instanceof InvalidWeightEntryError) {
       return badRequest("Invalid weight entry.");
     }
@@ -91,17 +93,17 @@ export async function POST(req: Request) {
 
 
 export async function GET() {
-  const session = await auth();
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return unauthorized();
 
-  if (!session?.user?.id) {
-    return unauthorized();
+    const service = new ListWeightEntriesService(
+      new PrismaWeightRepository(prisma),
+    );
+    const entries = await service.execute(session.user.id);
+    return NextResponse.json(entries, { status: 200, headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) {
+    console.error("Failed to load weight entries:", error);
+    return internalServerError("Unable to load weight entries.");
   }
-
-  const service = new ListWeightEntriesService(
-    new PrismaWeightRepository(prisma),
-  );
-
-  const entries = await service.execute(session.user.id);
-
-  return NextResponse.json(entries, { status: 200 });
 }

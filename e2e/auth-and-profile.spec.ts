@@ -21,6 +21,11 @@ test.beforeEach(async ({ page }, testInfo) => {
   });
 });
 
+function planGoalLabel(goal: string) {
+  const labels: Record<string, string> = { lose: "Lose weight", maintain: "Maintain weight", gain: "Gain weight" };
+  return labels[goal] ?? goal;
+}
+
 test("user can register, sign in, and save a profile goal", async ({ page }) => {
 
 
@@ -51,7 +56,7 @@ test("user can register, sign in, and save a profile goal", async ({ page }) => 
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -79,8 +84,8 @@ test("user can register, sign in, and save a profile goal", async ({ page }) => 
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "About your profile" }).getByText("Saved goal: Lose weight. Changes apply when you save.", { exact: true })).toBeVisible();
 });
 
 test("dashboard remains usable when recommendations are unavailable", async ({
@@ -109,7 +114,7 @@ test("dashboard remains usable when recommendations are unavailable", async ({
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -170,7 +175,7 @@ test("user can add and delete a weight entry", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -302,7 +307,7 @@ test("user can calculate and recalculate BMI", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -389,7 +394,7 @@ test("user can view the health report", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -412,7 +417,7 @@ test("user can view the health report", async ({ page }) => {
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -446,7 +451,7 @@ test("user can view the health report", async ({ page }) => {
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
 
@@ -501,7 +506,7 @@ test("user can view the health report", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText("A clear snapshot of your nutrition, weight and health indicators, based on the information currently available in your account.", {
+    page.getByText("Measurements, saved targets and progress.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -523,9 +528,7 @@ test("user can view the health report", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText(String(report.nutritionPlan.targetCalories), {
-      exact: true,
-    }),
+    page.getByRole("region", { name: "Report overview" }).getByText(`${report.nutritionPlan.targetCalories}kcal/day`, { exact: true }),
   ).toBeVisible();
 
   const caloriesCard = page
@@ -534,15 +537,15 @@ test("user can view the health report", async ({ page }) => {
     .locator("..");
 
   await expect(
-    caloriesCard.getByText(report.nutritionPlan.goal, { exact: true }),
+    caloriesCard.getByText(planGoalLabel(report.nutritionPlan.goal), { exact: true }),
   ).toBeVisible();
 
   await expect(
-    page.getByRole("heading", { name: "Recent change", exact: true }),
+    page.getByRole("heading", { name: "Recorded weight change", exact: true }),
   ).toBeVisible();
 
   const weightCard = page
-    .getByRole("heading", { name: "Recent change", exact: true })
+    .getByRole("heading", { name: "Recorded weight change", exact: true })
     .locator("..")
     .locator("..");
 
@@ -551,7 +554,7 @@ test("user can view the health report", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    weightCard.getByText("No progress evaluation available", { exact: true }),
+    page.getByText("No progress evaluation available", { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -588,7 +591,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -610,7 +613,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   await page.getByLabel("Activity level").selectOption("moderate");
 
   await page.getByRole("button", { name: "Save profile" }).click();
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -644,7 +647,7 @@ test("user can export the health report as PDF", async ({ page }) => {
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
 
@@ -670,7 +673,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   expect(pdfBytes.length).toBeGreaterThan(100);
   expect(pdfBytes.subarray(0, 4).toString()).toBe("%PDF");
 
-  // Verify the Report page's client-side PDF export.
+  // Verify the Report page downloads through the server PDF endpoint.
   await page.goto("/report");
 
   await expect(
@@ -686,7 +689,7 @@ test("user can export the health report as PDF", async ({ page }) => {
   const download = await downloadPromise;
   const filename = download.suggestedFilename();
 
-  expect(filename).toMatch(/^nutricare-report-.*\.pdf$/);
+  expect(filename).toBe("nutricare-personal-report.pdf");
 
   const downloadPath = await download.path();
 
@@ -728,7 +731,7 @@ test("user can edit and persist their profile", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -751,8 +754,8 @@ test("user can edit and persist their profile", async ({ page }) => {
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Gain weight", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "About your profile" }).getByText("Saved goal: Gain weight. Changes apply when you save.", { exact: true })).toBeVisible();
 
   await page.reload();
 
@@ -786,9 +789,14 @@ test("user sees password reset service failure", async ({ page }) => {
 
   expect(resetResponse.status()).toBe(503);
 
-  await expect(
-    page.locator("p.text-sm.text-red-600"),
-  ).toBeVisible();
+  const recoveryAlert = page
+    .getByRole("region", { name: "Forgot Password?", exact: true })
+    .getByRole("alert");
+
+  await expect(recoveryAlert).toBeVisible();
+  await expect(recoveryAlert).toHaveText(
+    "Password reset is temporarily unavailable.",
+  );
 
   await expect(
     page.getByRole("heading", { name: "Forgot Password?" }),
@@ -850,7 +858,7 @@ test("user can view and recalculate nutrition calories", async ({
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -872,7 +880,7 @@ test("user can view and recalculate nutrition calories", async ({
   await page.getByLabel("Activity level").selectOption("moderate");
 
   await page.getByRole("button", { name: "Save profile" }).click();
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -908,7 +916,7 @@ test("user can view and recalculate nutrition calories", async ({
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const initialPlanResponse = await initialPlanResponsePromise;
 
@@ -928,13 +936,6 @@ test("user can view and recalculate nutrition calories", async ({
     page.getByText("Daily calorie target", { exact: true }),
   ).toBeVisible();
 
-  await expect(
-    page.getByText(
-      "Use this as your current daily energy target.",
-      { exact: true },
-    ),
-  ).toBeVisible();
-
   const planCard = page
     .getByRole("heading", {
       name: "Current nutrition plan",
@@ -944,7 +945,7 @@ test("user can view and recalculate nutrition calories", async ({
     .locator("..");
 
   await expect(
-    planCard.getByText(`Goal: ${initialPlan.plan.goal}`, { exact: true }),
+    planCard.getByText(`Goal: ${planGoalLabel(initialPlan.plan.goal)}`, { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -1054,7 +1055,7 @@ test("user can view current nutrition macros", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -1077,7 +1078,7 @@ test("user can view current nutrition macros", async ({ page }) => {
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -1111,7 +1112,7 @@ test("user can view current nutrition macros", async ({ page }) => {
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
 
@@ -1162,12 +1163,6 @@ test("user can view current nutrition macros", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText("Your latest personalised daily macro targets.", {
-      exact: true,
-    }),
-  ).toBeVisible();
-
-  await expect(
     page.getByRole("heading", {
       name: "Current nutrition plan",
       exact: true,
@@ -1175,7 +1170,7 @@ test("user can view current nutrition macros", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText(`Goal: ${currentPlan.goal}`, { exact: true }),
+    page.getByText(`Goal: ${planGoalLabel(currentPlan.goal)}`, { exact: true }),
   ).toBeVisible();
 
   await expect(
@@ -1199,6 +1194,8 @@ test("user can view current nutrition macros", async ({ page }) => {
   await expect(
     page.getByText(String(currentPlan.fatG), { exact: true }),
   ).toBeVisible();
+
+  await page.getByRole("main").getByText("About these targets", { exact: true }).click();
 
   await expect(
     page.getByText(
@@ -1242,7 +1239,7 @@ test("user can view personalized nutrition recommendations", async ({
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -1265,7 +1262,7 @@ test("user can view personalized nutrition recommendations", async ({
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -1299,7 +1296,7 @@ test("user can view personalized nutrition recommendations", async ({
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
 
@@ -1387,6 +1384,8 @@ test("user can view personalized nutrition recommendations", async ({
     exact: true,
   })).toBeVisible();
 
+  await page.getByText("More about your guidance", { exact: true }).click();
+
   await expect(
     page.getByRole("heading", { name: "Top priorities", exact: true }),
   ).toBeVisible();
@@ -1435,7 +1434,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -1458,7 +1457,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -1499,7 +1498,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
 
@@ -1535,9 +1534,15 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
     page.getByRole("heading", { name: "Weight history", exact: true }),
   ).toBeVisible();
 
-  await expect(
-    page.getByText(`${entryDate} • History check`, { exact: true }),
-  ).toBeVisible();
+  const measurement = page
+    .getByRole("list", { name: "Recorded measurements" })
+    .getByRole("listitem")
+    .filter({ has: page.getByText(entryDate, { exact: true }) });
+  await expect(measurement).toHaveCount(1);
+  await expect(measurement.getByText("70 kg", { exact: true })).toBeVisible();
+  await expect(measurement.getByText("History check", { exact: true })).toBeHidden();
+  await measurement.getByText("Measurement note", { exact: true }).click();
+  await expect(measurement.getByText("History check", { exact: true })).toBeVisible();
 
   const weightHistoryCard = page
     .getByRole("heading", { name: "Weight history", exact: true })
@@ -1549,9 +1554,8 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
     weightHistoryCard.getByText("70 kg", { exact: true }),
   ).toBeVisible();
 
-  await expect(
-    page.getByText(/BMI 22\.9 • Normal/, { exact: true }),
-  ).toBeVisible();
+  // History shows saved measurements, not BMI reconstructed with today's height.
+  await expect(page.getByText(/BMI 22\.9 • Normal/, { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Nutrition Plans" }).click();
 
@@ -1570,7 +1574,7 @@ test("user can review weight and nutrition plan history", async ({ page }) => {
   ).toBeVisible();
 
   await expect(
-    page.getByText(`Goal: ${planBody.plan.goal}`, { exact: true }),
+    page.getByText(`Goal: ${planGoalLabel(planBody.plan.goal)}`, { exact: true }),
   ).toBeVisible();
 
 });
@@ -1601,7 +1605,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -1624,8 +1628,8 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "About your profile" }).getByText("Saved goal: Lose weight. Changes apply when you save.", { exact: true })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -1675,7 +1679,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
   await page.goto("/dashboard");
 
   await expect(
-    page.getByRole("button", { name: "Generate nutrition plan →" }),
+    page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }),
   ).toBeVisible();
 
   const planResponsePromise = page.waitForResponse(
@@ -1684,7 +1688,7 @@ test("user can generate a nutrition plan, log weight, and observe progress", asy
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
   if (planResponse.status() !== 201) {
@@ -1777,7 +1781,7 @@ test("user can decline a progress adjustment and keep the current plan", async (
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -1800,8 +1804,8 @@ test("user can decline a progress adjustment and keep the current plan", async (
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "About your profile" }).getByText("Saved goal: Lose weight. Changes apply when you save.", { exact: true })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -1831,7 +1835,7 @@ test("user can decline a progress adjustment and keep the current plan", async (
   await page.goto("/dashboard");
 
   await expect(
-    page.getByRole("button", { name: "Generate nutrition plan →" }),
+    page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }),
   ).toBeVisible();
 
   const planResponsePromise = page.waitForResponse(
@@ -1840,7 +1844,7 @@ test("user can decline a progress adjustment and keep the current plan", async (
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
   if (planResponse.status() !== 201) {
@@ -2009,7 +2013,7 @@ test("user can accept a progress adjustment and see the new plan version in hist
   }
 
   await expect(
-    page.getByText("Account created successfully. You can now sign in."),
+    page.getByText("Registration request received. Sign in with your password. If you already have an account, use your existing password or reset it."),
   ).toBeVisible();
 
   await page.getByLabel("Email address").fill(email);
@@ -2032,8 +2036,8 @@ test("user can accept a progress adjustment and see the new plan version in hist
 
   await page.getByRole("button", { name: "Save profile" }).click();
 
-  await expect(page.getByText("Saved ✓")).toBeVisible();
-  await expect(page.getByText("Goal", { exact: true }).locator("..").getByText("Lose weight", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "About your profile" }).getByText("Saved goal: Lose weight. Changes apply when you save.", { exact: true })).toBeVisible();
 
   await page.goto("/tools/tracking/weight");
 
@@ -2063,7 +2067,7 @@ test("user can accept a progress adjustment and see the new plan version in hist
   await page.goto("/dashboard");
 
   await expect(
-    page.getByRole("button", { name: "Generate nutrition plan →" }),
+    page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }),
   ).toBeVisible();
 
   const planResponsePromise = page.waitForResponse(
@@ -2072,7 +2076,7 @@ test("user can accept a progress adjustment and see the new plan version in hist
       response.request().method() === "POST",
   );
 
-  await page.getByRole("button", { name: "Generate nutrition plan →" }).click();
+  await page.getByRole("region", { name: "Build your starting point", exact: true }).getByRole("button", { name: "Generate your nutrition plan", exact: true }).click();
 
   const planResponse = await planResponsePromise;
   if (planResponse.status() !== 201) {

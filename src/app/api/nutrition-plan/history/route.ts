@@ -21,7 +21,7 @@ export async function GET() {
 
     const plans = await historyService.execute(session.user.id);
 
-    return NextResponse.json({ plans }, { status: 200 });
+    return NextResponse.json({ plans }, { status: 200, headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     console.error("GET /api/nutrition-plan/history failed", error);
 

@@ -1,3 +1,4 @@
+import { GoalChangeError } from "../goal-change-errors";
 import type { Goal, UserProfile } from "../domain";
 import type { WeightRepository } from "@/lib/tracking/repositories/weight-repository";
 import type { NutritionPlanRepository } from "@/lib/nutrition-plan/repository";
@@ -24,7 +25,8 @@ export class ChangeGoalService {
       await this.nutritionPlanRepository.findLatestByUserId(userId);
 
     if (currentPlan && currentPlan.goal !== previousGoal) {
-      throw new Error(
+      throw new GoalChangeError(
+        "GOAL_CHANGE_CONFLICT",
         "Nutrition plan has changed since the goal was loaded",
       );
     }
@@ -33,7 +35,7 @@ export class ChangeGoalService {
       await this.weightRepository.findLatestByUserId(userId);
 
     if (!latestWeight) {
-      throw new Error("Weight entry is required to change goal");
+      throw new GoalChangeError("GOAL_CHANGE_WEIGHT_REQUIRED", "Weight entry is required to change goal");
     }
 
     const calculation = calculateNutritionPlan({
@@ -42,7 +44,7 @@ export class ChangeGoalService {
     });
 
     if (!calculation) {
-      throw new Error("Unable to calculate nutrition plan for new goal");
+      throw new GoalChangeError("GOAL_CHANGE_PLAN_UNAVAILABLE", "Unable to calculate nutrition plan for new goal");
     }
 
     const result = await this.workflowRepository.changeGoal(

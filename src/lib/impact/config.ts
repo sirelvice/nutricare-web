@@ -4,32 +4,28 @@ export type ImpactMetric = {
   note: string;
 };
 
-export const impactMetrics: ImpactMetric[] = [
-  { label: "People reached", value: "—", note: "Set once pilots begin" },
-  { label: "Facilities / sites", value: "—", note: "Partner implementations" },
-  { label: "Screenings completed", value: "—", note: "BMI, calories, tracking" },
-  { label: "Reports exported", value: "—", note: "Donor/partner snapshots" },
-];
+// No verified programme totals have been published. Do not invent metrics.
+export const impactMetrics: ImpactMetric[] = [];
 
 export const impactNarrative = {
-  title: "Impact model",
+  title: "A clear approach to measuring impact",
   body: [
-    "NutriCare is built to support nutrition programmes with privacy-first tools and measurable reporting.",
-    "We focus on simple, explainable calculations (BMI, calories) and trend tracking (weight), with exportable summaries for partners.",
+    "NutriCare helps people understand saved nutrition targets and track their weight over time.",
+    "Programme results have not been published. Product activity alone does not demonstrate better health outcomes.",
   ],
 };
 
 export const impactMeasures = [
   {
-    title: "Outputs",
-    items: ["Screenings completed", "Profiles saved", "Reports exported"],
+    title: "What the product supports",
+    items: ["Personal profiles and saved nutrition targets", "Weight history and progress guidance", "Personal PDF reports"],
   },
   {
-    title: "Outcomes (pilot)",
-    items: ["Improved nutrition knowledge", "Healthier meal patterns", "Weight trend improvement (where appropriate)"],
+    title: "What a pilot would assess",
+    items: ["Whether people can use the tools consistently", "Whether guidance is understandable and useful", "Outcomes agreed with partners before a pilot begins"],
   },
   {
-    title: "Safeguards",
-    items: ["No medical diagnosis", "Privacy-first local storage (MVP)", "Professional guidance encouraged"],
+    title: "Boundaries",
+    items: ["Calculations and guidance are not a medical diagnosis", "Account records are separate from public impact information", "Programme reporting requires agreed measures and data safeguards"],
   },
 ];

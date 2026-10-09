@@ -55,7 +55,10 @@ describe("ChangeGoalService", () => {
 
     await expect(
       service.execute("user-1", "lose", profile),
-    ).rejects.toThrow("Weight entry is required to change goal");
+    ).rejects.toMatchObject({
+      code: "GOAL_CHANGE_WEIGHT_REQUIRED",
+      message: "Weight entry is required to change goal",
+    });
 
     expect(workflowRepository.changeGoal).not.toHaveBeenCalled();
   });
@@ -90,9 +93,10 @@ describe("ChangeGoalService", () => {
         ...profile,
         heightCm: null,
       }),
-    ).rejects.toThrow(
-      "Unable to calculate nutrition plan for new goal",
-    );
+    ).rejects.toMatchObject({
+      code: "GOAL_CHANGE_PLAN_UNAVAILABLE",
+      message: "Unable to calculate nutrition plan for new goal",
+    });
 
     expect(workflowRepository.changeGoal).not.toHaveBeenCalled();
   });
@@ -195,9 +199,10 @@ describe("ChangeGoalService", () => {
         ...profile,
         goal: "gain",
       }),
-    ).rejects.toThrow(
-      "Nutrition plan has changed since the goal was loaded",
-    );
+    ).rejects.toMatchObject({
+      code: "GOAL_CHANGE_CONFLICT",
+      message: "Nutrition plan has changed since the goal was loaded",
+    });
 
     expect(workflowRepository.changeGoal).not.toHaveBeenCalled();
   });

@@ -4,6 +4,12 @@ This document defines the manual regression baseline for NutriCare.
 
 It complements automated unit, integration, API, and Playwright coverage. It is intended for substantial releases, production validation, and changes that affect critical user journeys. It is not necessary to run the entire checklist for every small pull request.
 
+## V3 release use
+
+This checklist retains the QA baseline introduced in PR #18 (commit `f48f5d51f7144ea63b96657463fc8da649162698`) and adds checks for the delivered V3 experience. It specifies tests; unchecked items are not evidence of a pass. Record PASS, FAIL, BLOCKED or NOT RUN against an exact deployment/commit in [V3 release evidence](v3-release-evidence.md).
+
+Automated browser results do not substitute for the PRD's manual accessibility and mobile acceptance gates. Use test accounts, not real users' personal records. Review API security separately in [V3 security review](v3-security-review.md).
+
 ## Test environment
 
 Record before testing:
@@ -224,3 +230,36 @@ The complete product loop should remain understandable:
 - Non-blocking issues:
 - Follow-up issue links:
 - Notes:
+
+## 15. V3 navigation and accessible interaction
+
+- [ ] On public, login and workspace pages, the first keyboard focus exposes a skip link; activating it moves focus to main content.
+- [ ] Mobile workspace navigation has a clear dialog name, initial focus and Tab/Shift+Tab containment. Escape closes it and returns focus to the trigger.
+- [ ] Closing the drawer restores scrolling. Resizing an open drawer to desktop closes it without leaving a scroll lock or hidden focus.
+- [ ] Sign-out is reachable within two interactions on desktop and mobile; protected APIs and views remain inaccessible afterwards.
+- [ ] Screen-reader navigation exposes useful headings, landmarks, field labels and feedback in shell, dashboard and onboarding. Record the assistive technology and browser used.
+- [ ] Measure text/control contrast; check focus visibility and that progress states do not rely on colour alone. Record issues rather than relying on visual impression.
+- [ ] At 200% zoom and a 320 CSS-pixel viewport, important content and actions remain usable without unintended horizontal scrolling. Check 375px, 768px and 1280px layouts as well.
+- [ ] Card Info/Close controls expose the active content, respond to Escape and restore focus; hidden content cannot receive keyboard focus.
+- [ ] Public marquee pause/resume works. Reduced motion removes continuous animation and provides a usable journey-card alternative.
+
+## 16. V3 data, history and report states
+
+- [ ] Partial setup, missing age and unsupported planning age display distinct actionable feedback rather than invented targets.
+- [ ] All supported progress states are readable: ON_TRACK, BEHIND_OPPOSITE, PLATEAU and INSUFFICIENT_DATA; also review pending/resolved adjustments and professional-consult guidance where supported fixtures exist.
+- [ ] A successful weight save with unavailable secondary evaluation remains a saved entry and does not invite a duplicate write.
+- [ ] Failed profile reads disable editing until recovery. Failed or uncertain plan/adjustment writes require reconciliation and do not retry automatically.
+- [ ] History switches Weight/Plans independently; loading, empty and failed reads remain distinct. Retry recovers in place.
+- [ ] With a prepared test history, pagination makes all records accessible, notes/macros disclose on demand and version comparisons remain chronological when selections are reversed.
+- [ ] Weight charts handle 100-record fixtures and repeated dates without overflow or zero-filled missing days. Daily averages and the seven-day mean remain distinguishable.
+- [ ] The branded PDF contains the correct user's values, logo, units, dates, wrapped text and page footers. Empty data stays explicit. The server-generated download may be newer than the on-screen snapshot.
+- [ ] Pricing is discoverable from public navigation/footer. Home, About, Learn, Partners, Impact, Contact and information pages retain the approved marketing composition on mobile and desktop.
+
+## 17. Release security and operational evidence
+
+- [ ] Record anonymous-access and two-account isolation test results against the reviewed code.
+- [ ] Record password byte-limit, oversized-request and CSRF rejection coverage.
+- [ ] Verify deployed secure/HttpOnly session-cookie behavior, Node 22 runtime, certificate inclusion and database connectivity without copying secrets into QA evidence.
+- [ ] Verify password-reset email delivery and old-session invalidation after reset in an isolated staging account.
+- [ ] Assess unresolved dependency findings and deployment proxy/IP behavior. Link each release-blocking issue and its remediation or reviewed disposition.
+- [ ] Record manual accessibility/mobile outcomes separately from automated results; mark unavailable environments or fixtures BLOCKED or NOT RUN.

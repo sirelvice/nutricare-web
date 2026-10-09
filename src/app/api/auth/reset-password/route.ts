@@ -1,3 +1,4 @@
+import { readJsonRequest } from "@/lib/api/read-json-request";
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
@@ -7,7 +8,7 @@ import {
   rateLimitHeaders,
 } from "@/lib/security/rate-limit";
 import { prisma } from "@/lib/db";
-import { resetPasswordSchema } from "@/lib/security/auth-validation";
+import { PASSWORD_BYTE_LIMIT_MESSAGE, resetPasswordSchema } from "@/lib/security/auth-validation";
 import { apiError, badRequest, internalServerError } from "@/lib/api/errors";
 import {
   recordSecurityEvent,
@@ -45,7 +46,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const parsed = schema.safeParse(await req.json());
+    const requestBody = await readJsonRequest(req);
+    if (!requestBody.ok) return requestBody.response;
+    const parsed = schema.safeParse(requestBody.data);
 
     if (!parsed.success) {
       await recordSecurityEvent({
@@ -53,7 +56,10 @@ export async function POST(req: Request) {
         outcome: SECURITY_EVENT_OUTCOMES.FAILURE,
       });
 
-      return badRequest("Invalid reset request.");
+      const passwordTooLong = parsed.error.issues.some(
+        (issue) => issue.path[0] === "password" && issue.message === PASSWORD_BYTE_LIMIT_MESSAGE,
+      );
+      return badRequest(passwordTooLong ? PASSWORD_BYTE_LIMIT_MESSAGE : "Invalid reset request.");
     }
 
     const { token, password } = parsed.data;

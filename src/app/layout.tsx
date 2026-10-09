@@ -15,7 +15,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://nutricare.app"),
+  icons: {
+    icon: { url: "/brand/nutricare-mark.png?v=3", type: "image/png" },
+    shortcut: "/brand/nutricare-mark.png?v=3",
+    apple: "/brand/nutricare-mark.png?v=3",
+  },
+  metadataBase: new URL("https://nutricare-web-zeta.vercel.app"),
   title: {
     default: "NutriCare | Nutrition Planning and Tracking",
     template: "%s | NutriCare",
@@ -33,13 +38,12 @@ export const metadata: Metadata = {
     title: "NutriCare | Nutrition Planning and Tracking",
     description:
       "Bring your nutrition targets, weight history and progress together with clear explanations.",
-    url: "https://nutricare.app",
+    url: "https://nutricare-web-zeta.vercel.app",
     siteName: "NutriCare",
     images: [
       {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
+        url: "/marketing/nutricare-everyday-nutrition.webp",
+        alt: "Everyday nutrition with NutriCare",
       },
     ],
     locale: "en_US",
@@ -50,7 +54,10 @@ export const metadata: Metadata = {
     title: "NutriCare | Nutrition Planning and Tracking",
     description:
       "Nutrition planning, weight tracking and clear guidance for your everyday routine.",
-    images: ["/og-image.png"],
+    images: [{
+      url: "/marketing/nutricare-everyday-nutrition.webp",
+      alt: "Everyday nutrition with NutriCare",
+    }],
   },
   robots: {
     index: true,

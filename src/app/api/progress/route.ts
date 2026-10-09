@@ -29,7 +29,7 @@ export async function GET() {
       return notFound("Current progress is not available");
     }
 
-    return NextResponse.json({ progress }, { status: 200 });
+    return NextResponse.json({ progress }, { status: 200, headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     console.error("GET /api/progress failed", error);
 

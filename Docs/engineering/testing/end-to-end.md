@@ -12,6 +12,12 @@ The primary product loop is:
 
 **Assess → Goal → Plan → Track → Evaluate → Adjust → Track**
 
+## V3 release context
+
+Retain the journeys introduced in PR #18 as the core baseline. V3 adds compact disclosures, profile/age eligibility states, independent loading and recovery, saved-plan comparison and branded server PDF output. Visible controls may differ from the earlier prototype; verify the user outcome through the current UI.
+
+Record execution against the exact deployment/commit in [V3 release evidence](v3-release-evidence.md). Existing scenario descriptions and prior test runs are not a V3 manual sign-off. Use the companion [manual regression checklist](manual-regression.md) and [security review](v3-security-review.md).
+
 ## How to use this document
 
 For each journey:
@@ -137,7 +143,7 @@ The user has successfully completed:
 
 **Assess → Goal → Plan**
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -200,7 +206,7 @@ The user has successfully completed:
 
 **Track → review history → return to current state**
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -230,7 +236,7 @@ Add the available recent weight data and return to the dashboard/progress experi
 
 The product correctly represents uncertainty.
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -281,7 +287,7 @@ The user has completed:
 
 **Track → Evaluate**
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Progress state tested:
 
@@ -322,7 +328,7 @@ The user has completed:
 
 **Evaluate → receive next action**
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -373,7 +379,7 @@ The user has completed:
 
 **Evaluate → Adjust decision → keep current plan**
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -431,7 +437,7 @@ The user has completed:
 
 **Evaluate → Adjust → new Plan → Track**
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -472,7 +478,7 @@ Use the supported delete action.
 
 ## Final outcome
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -506,7 +512,7 @@ Navigate away and return.
 
 ## Final outcome
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -544,7 +550,7 @@ Visit dashboard, profile, tracking, history, recommendations, and report.
 
 ## Final outcome
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -594,7 +600,7 @@ Sign in with the new password.
 
 ## Final outcome
 
-Result: PASS / FAIL / NOT RUN
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -627,7 +633,7 @@ Use PDF/export functionality where available.
 
 ## Final outcome
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -651,7 +657,7 @@ Verify:
 
 ## Final outcome
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Notes:
 
@@ -675,7 +681,7 @@ Verify:
 
 ## Final outcome
 
-Result: PASS / FAIL
+Result: PASS / FAIL / BLOCKED / NOT RUN
 
 Viewport/device:
 
@@ -717,3 +723,61 @@ GitHub issue links:
 Tester:
 
 Date:
+
+# V3 journey extensions
+
+## E2E 15 — Keyboard and assistive-technology journey
+
+Start signed out. Use keyboard navigation to reach the main content through the skip link, register/sign in, complete onboarding and reach the dashboard. Repeat shell, onboarding and dashboard checks with a screen reader.
+
+Expected: labels, errors, state changes and next actions are understandable without relying on colour or pointing-device use. On mobile, the navigation dialog contains focus, closes with Escape and restores focus. Check sign-out and protected access afterwards.
+
+Result: PASS / FAIL / BLOCKED / NOT RUN
+
+Browser / assistive technology / viewport:
+
+Evidence / issues:
+
+## E2E 16 — Saved history and compact information
+
+Use a test account with prepared weight and plan histories. Switch history sections, traverse pagination, open a long note and macro details, compare two plan versions and reverse the selector order. Review the dashboard weight chart with a long/repeated-date fixture and change the visible period.
+
+Expected: all saved records remain accessible; disclosed content is keyboard/touch accessible; comparison direction is consistent; missing days do not become zero weights; charts and tables fit the viewport. Historical records do not imply present suitability or reconstructed historical BMI from today's profile.
+
+Result: PASS / FAIL / BLOCKED / NOT RUN
+
+Fixture / viewport:
+
+Evidence / issues:
+
+## E2E 17 — Recovery and uncertain writes
+
+Use an isolated test environment with controlled failures. Exercise failed profile reads, optional dashboard-section failures and a saved weight whose secondary evaluation is unavailable. Exercise an uncertain plan or adjustment response and subsequent reconciliation.
+
+Expected: failed reads never look like empty history; input is preserved where appropriate; known successful writes remain successful; uncertain outcomes do not cause automatic resubmission; recovery restores authoritative server state.
+
+If failure injection is unavailable, mark the manual scenario BLOCKED or NOT RUN and link automated coverage rather than claiming a manual pass.
+
+Result: PASS / FAIL / BLOCKED / NOT RUN
+
+Failure mechanism / evidence / issues:
+
+## E2E 18 — Public brand and motion journey
+
+At mobile and desktop widths, navigate Home, About, Learn, Pricing, Impact, Partners and Contact. Use the journey-card controls, pause the marquee, enable reduced motion and follow FAQs/primary calls to action. Complete a test inquiry in the permitted staging environment.
+
+Expected: approved brand visuals and responsive crops remain coherent, navigation works, keyboard controls remain usable and submission feedback distinguishes confirmed/rejected/uncertain outcomes without losing content.
+
+Result: PASS / FAIL / BLOCKED / NOT RUN
+
+Viewport / motion setting:
+
+Evidence / issues:
+
+## Additional V3 sign-off gates
+
+- [ ] Manual keyboard, screen-reader and contrast review is recorded for authenticated shell, dashboard and onboarding.
+- [ ] Manual mobile core journey and zoom/reflow review are recorded.
+- [ ] Long-history, disclosure, chart and branded PDF results are recorded.
+- [ ] API security and deployment findings have a documented disposition; passing product journeys alone does not close them.
+- [ ] Release evidence names the tested commit and lists unresolved blockers and unrun checks.

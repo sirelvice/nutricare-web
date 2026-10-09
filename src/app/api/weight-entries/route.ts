@@ -1,3 +1,4 @@
+import { readJsonRequest } from "@/lib/api/read-json-request";
 import { NextResponse } from "next/server";
 import {
   unauthorized,
@@ -39,7 +40,9 @@ export async function POST(req: Request) {
 
     assertSameOrigin(req);
 
-    const body = await req.json().catch(() => null);
+    const requestBody = await readJsonRequest(req);
+    if (!requestBody.ok) return requestBody.response;
+    const body = requestBody.data;
     const parsed = createWeightEntrySchema.safeParse(body);
 
     if (!parsed.success) {
@@ -98,7 +101,7 @@ export async function GET() {
       new PrismaWeightRepository(prisma),
     );
     const entries = await service.execute(session.user.id);
-    return NextResponse.json(entries, { status: 200 });
+    return NextResponse.json(entries, { status: 200, headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     console.error("Failed to load weight entries:", error);
     return internalServerError("Unable to load weight entries.");

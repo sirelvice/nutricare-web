@@ -1,3 +1,4 @@
+import { readCredentialsRequest } from "@/lib/security/read-credentials-request";
 import { NextRequest, NextResponse } from "next/server";
 import { handlers } from "@/auth";
 import {
@@ -39,14 +40,9 @@ export async function POST(request: NextRequest) {
     return authPost(request);
   }
 
-  let email = "";
-
-  try {
-    const body = await request.clone().formData();
-    email = body.get("email")?.toString().trim().toLowerCase() ?? "";
-  } catch {
-    // Auth.js will handle malformed credentials requests.
-  }
+  const bounded = await readCredentialsRequest(request);
+  if (!bounded.ok) return bounded.response;
+  const { email } = bounded;
 
   const ip = getClientIp(request);
 
@@ -80,5 +76,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return authPost(request);
+  return authPost(bounded.request);
 }

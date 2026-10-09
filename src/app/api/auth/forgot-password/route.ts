@@ -1,3 +1,4 @@
+import { readJsonRequest } from "@/lib/api/read-json-request";
 import { NextResponse } from "next/server";
 import { randomBytes, createHash } from "node:crypto";
 import { prisma } from "@/lib/db";
@@ -64,7 +65,9 @@ async function sendResetEmail(email: string, resetUrl: string) {
 
 export async function POST(req: Request) {
   try {
-    const parsed = schema.safeParse(await req.json());
+    const requestBody = await readJsonRequest(req);
+    if (!requestBody.ok) return requestBody.response;
+    const parsed = schema.safeParse(requestBody.data);
 
     if (!parsed.success) {
       return badRequest("Enter a valid email address.");
